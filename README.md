@@ -151,7 +151,9 @@ All of the callbacks are passed a `void *env` argument from the
 arbitrary state along. For example, it can pass a custom memory
 allocator to alloc, or limit information used while generating the
 instance. (This combination of a callback & environment pointer is also
-known as a closure.)
+known as a closure.) If its contents vary from trial to trial and
+influence the property test, it should be considered another input and
+hashed accordingly.
 
 ### alloc - allocate an instance from a random number stream
 
@@ -181,7 +183,9 @@ calling `theft_hash_sink` on the instance's contents, then returning the
 result from `theft_hash_done`.
    
 If provided, theft will use these hashes to avoid re-testing
-combinations of arguments that it has already tried.
+combinations of arguments that it has already tried. Note that if the
+contents of `env` impacts how instances are constructed / simplified, it
+should also be fed into the hash.
    
 ### shrink - produce a simpler copy of an instance
 
@@ -256,8 +260,18 @@ space that it has already tested.
 The shrink callback can also vary its tactics as the instance changes.
 For example, exploring changes to every individual byte in a 64 KB byte
 buffer is probably too expensive, but could be worth trying once other
-tactics have reduced the buffer to under 1 KB. The shrink callback's
-tactic argument is just an integer, so its interpretation is flexible.
+tactics have reduced the buffer to under 1 KB. Similarly, the contents
+of `env` can influence shrinking -- if the property function stores
+coverage info from the most recent trial in `env`, it can focus
+shrinking on parts of the input that are actually being used. (In that
+case, be sure to include the env data in the hash.) Since the shrink
+callback's tactic argument is just an integer, its interpretation is
+flexible.
+
+The requirement for shrinking is that the same combination of `env`
+info, argument(s), and shrinking tactic number should always simplify to
+the same instance, and therefore lead to the property function having
+the same result.
 
 
 # Running and Reporting
