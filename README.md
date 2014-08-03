@@ -242,8 +242,8 @@ For a list of numbers, shrinking tactics could include:
 The first 3 shrink the list by much larger steps than the others, which
 will only be tried once first 3 discard whatever details are causing the
 property to fail. Then, if a later tactic leads to a simpler failing
-instance, then it will try the earlier tactics again in the next pass
-- they may no longer lead to dead ends.
+instance, then it will try the earlier tactics again in the next pass --
+they may no longer lead to dead ends.
 
 Shrinking works by breadth-first search over all arguments and all of
 their shrinking tactics, so it will attempt to simplify all arguments
@@ -262,18 +262,18 @@ tactic argument is just an integer, so its interpretation is flexible.
 
 # Running and Reporting
 
-`theft_run` has an optional argument, "report", which takes a pointer to
-a `theft_trial_report` struct. If non-NULL, this will be populated with
-more detailed info about the test run `theft_run`'s result, which only
-indicates whether there were any failures. Currently, it includes
-counts for passes, failures, trials skipped at user request, and trials
-skipped because the arguments are probable duplicates.
-
-`theft_run` also has an optional "progress_cb" argument, which takes a
+`theft_run` has an optional 'progress_cb' argument, which takes a
 pointer to a function to call with details after every trial. The
 callback should return `THEFT_PROGRESS_CONTINUE`, or
-`THEFT_PROGRESS_HALT` to halt a test run early. This can be used to
-stop searching if there are too many duplicates, to print '.' characters
-to show progress every N iterations of a slow test, to halt after a
-certain number of failures have been found, etc. If not set, theft will
-default to a progress callback that just returns 'continue'.
+`THEFT_PROGRESS_HALT` to halt a test run early. This can be used to stop
+searching if there are too many duplicates, to print '.' characters to
+show progress every N iterations of a slow test, to halt after a certain
+number of failures have been found, etc. If not set, theft will default
+to a progress callback that just returns `CONTINUE`.
+
+`theft_run` also has an optional argument, 'report', which takes a
+pointer to a `theft_trial_report` struct. If non-NULL, this will be
+populated with more detailed info about the test run's result, which
+only indicates whether there were any failures. Currently, it includes
+counts for passes, failures, trials skipped at user request, and trials
+skipped because the arguments are probable duplicates.
