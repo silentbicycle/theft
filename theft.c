@@ -14,8 +14,9 @@
  * 
  * Returns a NULL if malloc fails or BLOOM_BITS is out of bounds. */
 struct theft *theft_init(uint8_t bloom_bits) {
-    if (bloom_bits != 0 && (bloom_bits < THEFT_BLOOM_BITS_MIN
-            || bloom_bits > THEFT_BLOOM_BITS_MAX)) {
+    if ((bloom_bits != 0 && (bloom_bits < THEFT_BLOOM_BITS_MIN))
+        || ((bloom_bits > THEFT_BLOOM_BITS_MAX) &&
+            bloom_bits != THEFT_BLOOM_DISABLE)) {
         return NULL;
     }
 
@@ -138,7 +139,9 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
         if (t->requested_bloom_bits == 0) {
             t->requested_bloom_bits = theft_bloom_recommendation(trials);
         }
-        t->bloom = theft_bloom_init(t->requested_bloom_bits);
+        if (t->requested_bloom_bits != THEFT_BLOOM_DISABLE) {
+            t->bloom = theft_bloom_init(t->requested_bloom_bits);
+        }
     }
     
     theft_seed initial_seed = t->seed;
