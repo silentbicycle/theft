@@ -30,7 +30,8 @@
  * combinations of arguments that have already been tested.
  * If 0, a default size will be chosen based on trial count.
  * (This will only be used if all property types have hash
- * callbacks defined.)
+ * callbacks defined.) The bloom filter can also be disabled
+ * by setting BLOOM_BITS to THEFT_BLOOM_DISABLE.
  * 
  * Returns a NULL if malloc fails or BLOOM_BITS is out of bounds. */
 struct theft *theft_init(uint8_t bloom_bits);
@@ -41,8 +42,11 @@ void theft_free(struct theft *t);
 /* (Re-)initialize the random number generator with a specific seed. */
 void theft_set_seed(struct theft *t, uint64_t seed);
 
-/* Get a random number from the test runner's PRNG. */
+/* Get a random 64-bit integer from the test runner's PRNG. */
 theft_hash theft_random(struct theft *t);
+
+/* Get a random double from the test runner's PRNG. */
+double theft_random_double(struct theft *t);
 
 /* Change T's output stream handle to OUT. (Default: stdout.) */
 void theft_set_output_stream(struct theft *t, FILE *out);

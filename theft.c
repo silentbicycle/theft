@@ -10,7 +10,8 @@
  * combinations of arguments that have already been tested.
  * If 0, a default size will be chosen based on trial count.
  * (This will only be used if all property types have hash
- * callbacks defined.)
+ * callbacks defined.) The bloom filter can also be disabled
+ * by setting BLOOM_BITS to THEFT_BLOOM_DISABLE.
  * 
  * Returns a NULL if malloc fails or BLOOM_BITS is out of bounds. */
 struct theft *theft_init(uint8_t bloom_bits) {
@@ -41,11 +42,15 @@ void theft_set_seed(struct theft *t, uint64_t seed) {
     theft_mt_reset(t->mt, seed);
 }
 
-/* Get a random number from the test runner's PRNG. */
+/* Get a random 64-bit integer from the test runner's PRNG. */
 theft_seed theft_random(struct theft *t) {
     theft_seed ns = (theft_seed)theft_mt_random(t->mt);
-    t->seed = ns;
     return ns;
+}
+
+/* Get a random double from the test runner's PRNG. */
+double theft_random_double(struct theft *t) {
+    return theft_mt_random_double(t->mt);
 }
 
 /* Change T's output stream handle to OUT. (Default: stdout.) */
@@ -98,7 +103,11 @@ theft_run(struct theft *t, struct theft_cfg *cfg) {
     info.always_seed_count = cfg->always_seed_count;
     info.always_seeds = cfg->always_seeds;
 
-    if (cfg->seed) { theft_set_seed(t, cfg->seed); }
+    if (cfg->seed) {
+        theft_set_seed(t, cfg->seed);
+    } else {
+        theft_set_seed(t, DEFAULT_THEFT_SEED);
+    }
 
     if (cfg->trials == 0) { cfg->trials = THEFT_DEF_TRIALS; }
 
@@ -144,13 +153,12 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
         }
     }
     
+    theft_seed seed = t->seed;
     theft_seed initial_seed = t->seed;
     int always_seeds = info->always_seed_count;
     if (info->always_seeds == NULL) { always_seeds = 0; }
 
     void *args[THEFT_MAX_ARITY];
-
-    theft_seed seed = t->seed;
     
     theft_progress_callback_res cres = THEFT_PROGRESS_CONTINUE;
 
@@ -174,6 +182,7 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
             .args = args
         };
 
+        theft_set_seed(t, seed);
         all_gen_res_t gres = gen_all_args(t, info, seed, args, env);
         switch (gres) {
         case ALL_GEN_SKIP:

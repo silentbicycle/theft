@@ -4,7 +4,7 @@
 typedef struct theft theft;
 
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
-#define DEFAULT_THEFT_SEED 0x600d5eed
+#define DEFAULT_THEFT_SEED 0xa600d16b175eedL
 
 typedef enum {
     ALL_GEN_OK,                 /* all arguments generated okay */
