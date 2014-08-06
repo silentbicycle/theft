@@ -471,9 +471,9 @@ static theft_progress_callback_res report_on_failure(theft *t,
     fprintf(t->out, "    Trial %u, Seed 0x%016llx\n", ti->trial,
         (uint64_t)ti->seed);
     for (int i = 0; i < arity; i++) {
-        fprintf(t->out, "    Argument %d:\n", i);
         theft_print_cb *print = info->type_info[i]->print;
         if (print) {
+            fprintf(t->out, "    Argument %d:\n", i);
             print(t->out, ti->args[i], env);
             fprintf(t->out, "\n");
         }
