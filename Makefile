@@ -51,4 +51,4 @@ uninstall:
 
 # Other dependencies
 theft.o: Makefile
-theft.o: theft.h theft_types.h
+theft.o: theft.h theft_types.h theft_types_internal.h
