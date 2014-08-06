@@ -6,10 +6,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Version 0.1.1 */
+/* Version 0.2.0 */
 #define THEFT_VERSION_MAJOR 0
-#define THEFT_VERSION_MINOR 1
-#define THEFT_VERSION_PATCH 1
+#define THEFT_VERSION_MINOR 2
+#define THEFT_VERSION_PATCH 0
 
 /* A property can have at most this many arguments. */
 #define THEFT_MAX_ARITY 10
