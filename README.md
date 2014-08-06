@@ -160,9 +160,10 @@ hashed accordingly.
     void *(theft_alloc_cb)(struct theft *t, theft_seed seed, void *env)
 
 Use a stream of random numbers to construct an instance of the argument.
-This is called with a known seed, so the same instance can be
-constructed again if necessary. More random numbers can be requested
-with `theft_random()`.
+More random numbers can be requested with `theft_random()`. This is
+called with a known seed, so the same instance can be constructed again
+if necessary. (These streams of random numbers may not be consistent
+across versions of the library, though.)
    
 This is the only required callback.
 
