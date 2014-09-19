@@ -1,22 +1,28 @@
 # theft: property-based testing for C
 
-theft is a C library for property-based testing. Rather than defining
-specific inputs for code under test and checking the results, properties
-are asserted ("for any possible input, [condition] should hold"), and
-theft searches for counter-examples. If it finds a combination of
-arguments that causes the assertion to fail, it will search for simpler
-versions of those arguments that still fail, and then print the minimal
-failing input.
+theft is a C library for property-based testing. Rather than checking
+the results with specific input, properties are asserted ("for any
+possible input, [condition] should hold"), and theft searches for
+counter-examples. If it finds a combination of arguments that causes the
+property to fail, it will search for simpler versions of those arguments
+that still fail, and then print the minimal failing input.
 
-Property-based testing stresses programs differently than tests biased
-by understanding how the program "should" work. Like using fuzz testing
-to find security vulnerabilities, this can discover edge cases that have
-not been covered by unit tests. It also generates thousands of tests
-with just a few lines of code, so it's a great way to get quick feedback
-on code that is rapidly evolving.
+[Property-based testing][pbt] stresses programs differently than tests
+biased by understanding how the program "should" work. Like using fuzz
+testing to find crashes or security vulnerabilities, this can discover
+edge cases that have not been covered by unit tests. It also generates
+thousands of tests with just a few lines of code, so it's a great way to
+get quick feedback on code that is rapidly evolving.
 
 theft is distributed under the ISC license.
 
+I have a [blog post][] about one of the theft tests used in
+[heatshrink][], and its repo has [several other property-test examples][ex].
+
+[pbt]: https://spin.atomicobject.com/2014/09/16/property-based-testing/
+[blog post]: https://spin.atomicobject.com/2014/09/17/property-based-testing-c/
+[heatshrink]: https://github.com/atomicobject/heatshrink
+[ex]: https://github.com/atomicobject/heatshrink/blob/master/test_heatshrink_dynamic_theft.c
 
 ## Installation & Dependencies
 
