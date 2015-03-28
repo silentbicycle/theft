@@ -91,7 +91,7 @@ static void infer_arity(struct theft_propfun_info *info) {
  * See the type definition in `theft_types.h`. */
 theft_run_res
 theft_run(struct theft *t, struct theft_cfg *cfg) {
-    if (t == NULL | cfg == NULL) {
+    if (t == NULL || cfg == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
 
