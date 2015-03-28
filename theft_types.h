@@ -1,6 +1,8 @@
 #ifndef THEFT_TYPES_H
 #define THEFT_TYPES_H
 
+#include "inttypes.h"
+
 /* A pseudo-random number/seed, used to generate instances. */
 typedef uint64_t theft_seed;
 
