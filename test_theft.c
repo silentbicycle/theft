@@ -36,7 +36,7 @@ static void uint_print(FILE *f, void *p, void *env) {
     fprintf(f, "%u", *(uint32_t *)p);
 }
 
-static theft_type_info uint = {
+static theft_type_info uint_type_info = {
     .alloc = uint_alloc,
     .free = uint_free,
     .print = uint_print,
@@ -66,7 +66,7 @@ TEST generated_unsigned_ints_are_positive() {
     res = theft_run(t, &(struct theft_cfg){
             .name = "generated_unsigned_ints_are_positive",
             .fun = is_pos,
-            .type_info = { &uint },
+            .type_info = { &uint_type_info },
             .progress_cb = guiap_prog_cb,
         });
     ASSERT_EQm("generated_unsigned_ints_are_positive", THEFT_RUN_PASS, res);
