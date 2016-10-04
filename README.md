@@ -39,11 +39,11 @@ contains implementations of the [Mersenne Twister][mt] PRNG and the
 To build:
 
     $ make
-    
+
 To build and run the tests:
 
     $ make test
-    
+
 This will produce example output from some trivially failing properties,
 and confirm that failures have been found.
 
@@ -96,17 +96,19 @@ To install libtheft and its headers:
 ## Usage
 
 First, define a property function:
-
+```c
     static theft_trial_res
     prop_encoded_and_decoded_data_should_match(buffer *input) {
         // [compress & uncompress input, compare output & original input]
         // return THEFT_TRIAL_PASS, FAIL, SKIP, or ERROR
     }
-    
+```
+
 Then, define how to generate the input argument type(s) by providing a
 struct with function pointers. (This definition can be shared between
 all properties that have the same input type.) For example:
-   
+
+```c
     static struct theft_type_info random_buffer_info = {
         .alloc = random_buffer_alloc_cb,    // allocate random instance
         .free = random_buffer_free_cb,      // free instance
@@ -114,6 +116,7 @@ all properties that have the same input type.) For example:
         .shrink = random_buffer_shrink_cb,  // simplify instance
         .print = random_buffer_print_cb,    // print instance
     };
+```
 
 All of these callbacks except 'alloc' are optional. For more details,
 see "Callbacks" below.
@@ -121,8 +124,9 @@ see "Callbacks" below.
 Finally, instantiate a theft test runner and pass it the property and
 type information:
 
+```c
     struct theft *t = theft_init(0);   // 0 -> auto-size bloom filter
-    
+
     // Configuration for the property test
     struct theft_cfg cfg = {
         // name of the property, used for failure messages (optional)
@@ -143,6 +147,7 @@ type information:
     theft_run_res result = theft_run(t, &cfg);
     theft_free(t);
     return result == THEFT_RUN_PASS;
+```
 
 The result will indicate whether it was able to find any failures. An
 optional progress callback and report struct can be used to get more
@@ -163,7 +168,9 @@ hashed accordingly.
 
 ### alloc - allocate an instance from a random number stream
 
+```c
     void *(theft_alloc_cb)(struct theft *t, theft_seed seed, void *env)
+```
 
 Use a stream of random numbers to construct an instance of the argument.
 More random numbers can be requested with `theft_random()`. This is
@@ -175,14 +182,18 @@ This is the only required callback.
 
 ### free - free an instance and any associated resources
 
+```c
     void (theft_free_cb)(void *instance, void *env);
+```
 
 Free the memory and other resources associated with the instance. If not
 provided, theft will just leak resources.
 
 ### hash - get a hash for an instance
 
+```c
     theft_hash (theft_hash_cb)(void *instance, void *env);
+```
 
 Using the included `theft_hash` functionality, get a hash value for a
 given instance. This will usually consist of `theft_hash_init`, then
@@ -196,7 +207,9 @@ should also be fed into the hash.
    
 ### shrink - produce a simpler copy of an instance
 
+```c
     void *(theft_shrink_cb)(void *instance, uint32_t tactic, void *env);
+```
 
 For a given instance, return either a pointer to a simplified copy of
 the instance, or special `THEFT_DEAD_END` or `THEFT_NO_MORE_TACTICS`
@@ -216,12 +229,16 @@ that always returns `THEFT_NO_MORE_TACTICS`.
 
 ### print - print a string based on a random instance
 
+```c
     void (theft_print_cb)(FILE *f, void *instance, void *env);
+```
 
 Print the instance to a given file stream, behaving like: 
 
+```c
     fprintf(f, "%s", instance_to_string(instance));
-   
+```
+
 If not provided, theft will just print the random number seeds that led
 to discovering counter-examples.
 
