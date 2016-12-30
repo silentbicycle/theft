@@ -45,6 +45,10 @@ void theft_set_seed(struct theft *t, uint64_t seed);
 /* Get a random 64-bit integer from the test runner's PRNG. */
 theft_hash theft_random(struct theft *t);
 
+/* Get BITS random bits from the test runner's PRNG.
+ * Bits can be retrieved at most 64 at a time. */
+uint64_t theft_random_bits(struct theft *t, uint8_t bits);
+
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t);
 

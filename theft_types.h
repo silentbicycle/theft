@@ -17,7 +17,10 @@ struct theft {
     theft_seed seed;
     uint8_t requested_bloom_bits;
     struct theft_bloom *bloom;  /* bloom filter */
+
     struct theft_mt *mt;        /* random number generator */
+    uint64_t prng_buf;          /* buffer for PRNG bits */
+    uint8_t bits_available;
 };
 
 /* Special sentinel values returned instead of instance pointers. */

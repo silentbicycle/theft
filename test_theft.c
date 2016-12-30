@@ -1,5 +1,4 @@
-#include "greatest.h"
-#include "theft.h"
+#include "test_theft.h"
 
 #include <sys/time.h>
 
@@ -49,7 +48,7 @@ guiap_prog_cb(struct theft_trial_info *info, void *env) {
 }
 
 static theft_trial_res is_pos(uint32_t *n) {
-    if ((*n) >= 0) {
+    if ((*n) >= 0) {  // tautological
         return THEFT_TRIAL_PASS;
     } else {
         return THEFT_TRIAL_FAIL;
@@ -700,7 +699,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
     PASS();
 }
 
-SUITE(suite) {
+SUITE(integration) {
     RUN_TEST(alloc_and_free);
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -720,6 +719,7 @@ GREATEST_MAIN_DEFS();
 
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
-    RUN_SUITE(suite);
+    RUN_SUITE(integration);
+    RUN_SUITE(prng);
     GREATEST_MAIN_END();        /* display results */
 }

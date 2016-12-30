@@ -6,23 +6,24 @@ CFLAGS += -std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE}
 #LDFLAGS +=
 
 # A tautological compare is expected in the test suite.
-CFLAGS += -Wno-tautological-compare
+CFLAGS += -Wno-tautological-compare -Wno-type-limits
 
 all: lib${PROJECT}.a
 all: test_${PROJECT}
 
+TEST_CFLAGS=	${CFLAGS} -Wno-tautological-compare
+TEST_LDFLAGS=	${LDFLAGS}
+
 OBJS= theft.o theft_bloom.o theft_hash.o theft_mt.o
 
-TEST_OBJS=
-
-${PROJECT}: main.c ${OBJS}
-	${CC} -o $@ main.c ${OBJS} ${LDFLAGS}
+TEST_OBJS=	test_theft.o \
+		test_theft_prng.o \
 
 lib${PROJECT}.a: ${OBJS}
 	ar -rcs lib${PROJECT}.a ${OBJS}
 
-test_${PROJECT}: test_${PROJECT}.c ${OBJS} ${TEST_OBJS}
-	${CC} -o $@ test_${PROJECT}.c ${OBJS} ${TEST_OBJS} ${CFLAGS} ${LDFLAGS}
+test_${PROJECT}: ${OBJS} ${TEST_OBJS}
+	${CC} -o $@ ${OBJS} ${TEST_OBJS} ${TEST_CFLAGS} ${TEST_LDFLAGS}
 
 test: ./test_${PROJECT}
 	./test_${PROJECT}
