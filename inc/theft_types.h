@@ -23,12 +23,6 @@ struct theft {
     uint8_t bits_available;
 };
 
-/* Special sentinel values returned instead of instance pointers. */
-#define THEFT_SKIP ((void *)-1)
-#define THEFT_ERROR ((void *)-2)
-#define THEFT_DEAD_END ((void *)-1)
-#define THEFT_NO_MORE_TACTICS ((void *)-3)
-
 /* Explicitly disable using the bloom filter.
  * Note that if you do this, you must be sure your simplify function
  * *always* returns a simpler value, or it will loop forever. */
@@ -36,40 +30,62 @@ struct theft {
 
 /* Allocate and return an instance of the type, based on a known
  * pseudo-random number seed. To get additional seeds, use
- * theft_random(t); this stream of numbers will be deterministic, so if
- * the alloc callback is constructed appropriately, an identical
- * instance can be constructed later from the same initial seed.
- * 
- * Returns a pointer to the instance, THEFT_ERROR, or THEFT_SKIP. */
-typedef void *(theft_alloc_cb)(struct theft *t, theft_seed seed, void *env);
+ * theft_random(t) or theft_random_bits(t, bit_count); this stream of
+ * numbers will be deterministic, so if the alloc callback is
+ * constructed appropriately, an identical instance can be constructed
+ * later from the same initial seed.
+ *
+ * The allocated instance should be written into *instance. */
+enum theft_alloc_res {
+    THEFT_ALLOC_OK,
+    THEFT_ALLOC_SKIP,
+    THEFT_ALLOC_ERROR,
+};
+typedef enum theft_alloc_res
+theft_alloc_cb(struct theft *t, theft_seed seed, void *env, void **instance);
 
 /* Free an instance. */
-typedef void (theft_free_cb)(void *instance, void *env);
+typedef void
+theft_free_cb(void *instance, void *env);
 
 /* Hash an instance. Used to skip combinations of arguments which
  * have probably already been checked. */
-typedef theft_hash (theft_hash_cb)(void *instance, void *env);
+typedef theft_hash
+theft_hash_cb(void *instance, void *env);
 
 /* Attempt to shrink an instance to a simpler instance.
- * 
+ *
  * For a given INSTANCE, there are likely to be multiple ways in which
  * it can be simplified. For example, a list of unsigned ints could have
  * the first element decremented, divided by 2, or dropped. This
- * callback should return a pointer to a freshly allocated, simplified
- * instance, or should return THEFT_DEAD_END to indicate that the
- * instance cannot be simplified further by this method.
+ * callback should write a pointer to a freshly allocated, simplified
+ * instance in *output, or should return THEFT_SHRINK_DEAD_END to
+ * indicate that the instance cannot be simplified further by this
+ * method.
  *
  * These tactics will be lazily explored breadth-first, to
  * try to find simpler versions of arguments that cause the
  * property to no longer hold.
  *
+ * If there are no other tactics to try for this instance, then
+ * return THEFT_SHRINK_NO_MORE_TACTICS. Otherwise, theft will
+ * keep calling the callback with successive tactics.
+ *
  * If this callback is NULL, it is equivalent to always returning
- * THEFT_NO_MORE_TACTICS. */
-typedef void *(theft_shrink_cb)(void *instance, uint32_t tactic, void *env);
+ * THEFT_SHRINK_NO_MORE_TACTICS. */
+enum theft_shrink_res {
+    THEFT_SHRINK_OK,
+    THEFT_SHRINK_DEAD_END,
+    THEFT_SHRINK_NO_MORE_TACTICS,
+    THEFT_SHRINK_ERROR,
+};
+typedef enum theft_shrink_res
+theft_shrink_cb(void *instance, uint32_t tactic, void *env, void **output);
 
 /* Print INSTANCE to output stream F.
  * Used for displaying counter-examples. Can be NULL. */
-typedef void (theft_print_cb)(FILE *f, void *instance, void *env);
+typedef void
+theft_print_cb(FILE *f, void *instance, void *env);
 
 /* Result from a single trial. */
 enum theft_trial_res {
@@ -84,7 +100,7 @@ enum theft_trial_res {
  * theft_cfg.type_info, or the result will be undefined. For example, a
  * propfun `prop_foo(A x, B y, C z)` must have a type_info array of
  * `{ info_A, info_B, info_C }`.
- * 
+ *
  * Should return:
  *     THEFT_TRIAL_PASS if the property holds,
  *     THEFT_TRIAL_FAIL if a counter-example is found,
@@ -147,7 +163,7 @@ struct theft_trial_report {
 
 /* Configuration struct for a theft test.
  * In C99, this struct can be specified as a literal, like this:
- * 
+ *
  *     struct theft_cfg cfg = {
  *         .name = "example",
  *         .fun = prop_fun,

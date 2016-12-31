@@ -15,6 +15,11 @@ The following enum types in the API are no longer typedef'd:
     - enum theft_run_res
     - enum theft_progress_callback_res
 
+Rather than returning a void pointer or special sentinel values
+(e.g. `THEFT_DEAD_END`), the alloc and shrink callbacks now return
+an enum and (when appropriate) write their output into a pointer
+argument called `output`.
+
 
 ### Other Improvements
 

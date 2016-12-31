@@ -17,12 +17,14 @@ TEST alloc_and_free() {
     PASS();
 }
 
-static void *uint_alloc(theft *t, theft_seed s, void *env) {
+static enum theft_alloc_res
+uint_alloc(theft *t, theft_seed s, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
-    if (n == NULL) { return THEFT_ERROR; }
+    if (n == NULL) { return THEFT_ALLOC_ERROR; }
     *n = (uint32_t)(s & 0xFFFFFFFF);
     (void)t; (void)env;
-    return n;
+    *output = n;
+    return THEFT_ALLOC_OK;
 }
 
 static void uint_free(void *p, void *env) {
@@ -96,7 +98,8 @@ static void list_unpack_seed(theft_hash seed, int32_t *lower, uint32_t *upper) {
 
 }
 
-static void *list_alloc(theft *t, theft_seed seed, void *env) {
+static enum theft_alloc_res
+list_alloc(theft *t, theft_seed seed, void *env, void **output) {
     (void)env;
     list *l = NULL;             /* empty */
 
@@ -127,7 +130,8 @@ static void *list_alloc(theft *t, theft_seed seed, void *env) {
         list_unpack_seed(seed, &lower, &upper);
     }
 
-    return l;
+    *output = l;
+    return THEFT_ALLOC_OK;
 }
 
 static theft_hash list_hash(void *instance, void *env) {
@@ -182,11 +186,12 @@ static int list_length(list *l) {
     return len;
 }
 
-static list *split_list_copy(list *l, bool first_half) {
+static enum theft_shrink_res
+split_list_copy(list *l, bool first_half, list **output) {
     int len = list_length(l);
-    if (len < 2) { return THEFT_DEAD_END; } 
+    if (len < 2) { return THEFT_SHRINK_DEAD_END; } 
     list *nl = copy_list(l);
-    if (nl == NULL) { return THEFT_ERROR; }
+    if (nl == NULL) { return THEFT_SHRINK_ERROR; }
     list *t = nl;
     for (int i = 0; i < len/2 - 1; i++) { t = t->next; }
 
@@ -194,16 +199,18 @@ static list *split_list_copy(list *l, bool first_half) {
     t->next = NULL;
     if (first_half) {
         list_free(tail, NULL);
-        return nl;
+        *output = nl;
     } else {
         list_free(nl, NULL);
-        return tail;
+        *output = tail;
     }
+    return THEFT_SHRINK_OK;
 }
 
-static void *list_shrink(void *instance, uint32_t tactic, void *env) {
+static enum theft_shrink_res
+list_shrink(void *instance, uint32_t tactic, void *env, void **output) {
     list *l = (list *)instance;
-    if (l == NULL) { return THEFT_NO_MORE_TACTICS; }
+    if (l == NULL) { return THEFT_SHRINK_NO_MORE_TACTICS; }
 
     /* When reducing, it's faster to have the tactics ordered by how
      * much they simplify the instance, if possible. In this case, we
@@ -212,9 +219,9 @@ static void *list_shrink(void *instance, uint32_t tactic, void *env) {
      * of the list. */
 
     if (tactic == 0) {          /* first half */
-        return split_list_copy(l, true);
+        return split_list_copy(l, true, (list **)output);
     } else if (tactic == 1) {   /* second half */
-        return split_list_copy(l, false);
+        return split_list_copy(l, false, (list **)output);
     } else if (tactic == 2) {      /* div whole list by 2 */
         bool nonzero = false;
         for (list *link = l; link; link = link->next) {
@@ -223,28 +230,30 @@ static void *list_shrink(void *instance, uint32_t tactic, void *env) {
 
         if (nonzero) {
             list *nl = copy_list(l);
-            if (nl == NULL) { return THEFT_ERROR; }
+            if (nl == NULL) { return THEFT_SHRINK_ERROR; }
 
             for (list *link = nl; link; link = link->next) {
                 link->v /= 2;
             }
-            return nl;
+            *output = nl;
+            return THEFT_SHRINK_OK;      
         } else {
-            return THEFT_DEAD_END;
+            return THEFT_SHRINK_DEAD_END;
         }
     } else if (tactic == 3) {      /* drop head */
-        if (l->next == NULL) { return THEFT_DEAD_END; }
+        if (l->next == NULL) { return THEFT_SHRINK_DEAD_END; }
         list *nl = copy_list(l->next);
-        if (nl == NULL) { return THEFT_ERROR; }
+        if (nl == NULL) { return THEFT_SHRINK_ERROR; }
         list *nnl = nl->next;
         nl->next = NULL;
         list_free(nl, NULL);
-        return nnl;
+        *output = nnl;
+        return THEFT_SHRINK_OK;      
     } else if (tactic == 4) {      /* drop tail */
-        if (l->next == NULL) { return THEFT_DEAD_END; }
+        if (l->next == NULL) { return THEFT_SHRINK_DEAD_END; }
 
         list *nl = copy_list(l);
-        if (nl == NULL) { return THEFT_ERROR; }
+        if (nl == NULL) { return THEFT_SHRINK_ERROR; }
         list *prev = nl;
         list *tl = nl;
         
@@ -254,12 +263,13 @@ static void *list_shrink(void *instance, uint32_t tactic, void *env) {
         }
         prev->next = NULL;
         list_free(tl, NULL);
-        return nl;        
+        *output = nl;
+        return THEFT_SHRINK_OK;      
     } else {
         (void)instance;
         (void)tactic;
         (void)env;
-        return THEFT_NO_MORE_TACTICS;
+        return THEFT_SHRINK_NO_MORE_TACTICS;
     }
 }
 
@@ -540,7 +550,8 @@ TEST always_seeds_must_be_run() {
 
 #define EXPECTED_SEED 0x15a600d16b175eedL
 
-static void *seed_cmp_alloc(theft *t, theft_seed seed, void *env) {
+static enum theft_alloc_res
+seed_cmp_alloc(theft *t, theft_seed seed, void *env, void **output) {
     bool *res = malloc(sizeof(*res));
     (void)env;
     (void)t;
@@ -556,9 +567,10 @@ static void *seed_cmp_alloc(theft *t, theft_seed seed, void *env) {
 
     if (res) {
         *res = (r1 != r2);
-        return res;
+        *output = res;
+        return THEFT_ALLOC_OK;
     } else {
-        return THEFT_ERROR;
+        return THEFT_ALLOC_ERROR;
     }
 }
 
@@ -600,13 +612,15 @@ TEST always_seeds_should_not_be_truncated(void) {
     PASS();
 }
 
-static void *seed_alloc(theft *t, theft_seed seed, void *env) {
+static enum theft_alloc_res
+seed_alloc(theft *t, theft_seed seed, void *env, void **output) {
     theft_seed *res = malloc(sizeof(*res));
-    if (res == NULL) { return THEFT_ERROR; }
+    if (res == NULL) { return THEFT_ALLOC_ERROR; }
     (void)env;
     (void)t;
     *res = seed;
-    return res;
+    *output = res;
+    return THEFT_ALLOC_OK;
 }
 
 static void seed_free(void *instance, void *env) {
@@ -654,13 +668,15 @@ prop_bool_tautology(bool *bp) {
     }
 }
 
-static void *bool_alloc(theft *t, theft_seed seed, void *env) {
+static enum theft_alloc_res
+bool_alloc(theft *t, theft_seed seed, void *env, void **output) {
     bool *bp = malloc(sizeof(*bp));
-    if (bp == NULL) { return THEFT_ERROR; }
+    if (bp == NULL) { return THEFT_ALLOC_ERROR; }
     *bp = (seed & 0x01 ? true : false);
     (void)env;
     (void)t;
-    return bp;
+    *output = bp;
+    return THEFT_ALLOC_OK;
 }
 
 static void bool_free(void *instance, void *env) {

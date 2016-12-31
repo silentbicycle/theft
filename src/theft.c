@@ -193,7 +193,7 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
     enum theft_progress_callback_res cres = THEFT_PROGRESS_CONTINUE;
 
     for (int trial = 0; trial < trials; trial++) {
-        memset(args, 0xFF, sizeof(args));
+        memset(args, 0x00, sizeof(args));
         if (cres == THEFT_PROGRESS_HALT) { break; }
 
         /* If any seeds to always run were specified, use those before
@@ -296,7 +296,7 @@ static void free_args(struct theft_propfun_info *info,
         void **args, void *env) {
     for (int i = 0; i < info->arity; i++) {
         theft_free_cb *fcb = info->type_info[i]->free;
-        if (fcb && args[i] != THEFT_SKIP) {
+        if (fcb && args[i] != NULL) {
             fcb(args[i], env);
         }
     }
@@ -367,12 +367,13 @@ gen_all_args(struct theft *t, struct theft_propfun_info *info,
         theft_seed seed, void *args[THEFT_MAX_ARITY], void *env) {
     for (int i = 0; i < info->arity; i++) {
         struct theft_type_info *ti = info->type_info[i];
-        void *p = ti->alloc(t, seed, env);
-        if (p == THEFT_SKIP || p == THEFT_ERROR) {
+        void *p = NULL;
+        enum theft_alloc_res res = ti->alloc(t, seed, env, &p);
+        if (res == THEFT_ALLOC_SKIP || res == THEFT_ALLOC_ERROR) {
             for (int j = 0; j < i; j++) {
                 ti->free(args[j], env);
             }
-            if (p == THEFT_SKIP) {
+            if (res == THEFT_ALLOC_SKIP) {
                 return ALL_GEN_SKIP;
             } else {
                 return ALL_GEN_ERROR;
@@ -435,20 +436,26 @@ attempt_to_shrink_arg(struct theft *t, struct theft_propfun_info *info,
 
     for (uint32_t tactic = 0; tactic < THEFT_MAX_TACTICS; tactic++) {
         void *cur = args[ai];
-        void *nv = ti->shrink(cur, tactic, env);
-        if (nv == THEFT_NO_MORE_TACTICS) {
+        enum theft_shrink_res sres;
+        void *candidate = NULL;
+        sres = ti->shrink(cur, tactic, env, &candidate);
+        switch (sres) {
+        case THEFT_SHRINK_OK:
+            break;
+        case THEFT_SHRINK_DEAD_END:
+            continue;           /* try next tactic */
+        case THEFT_SHRINK_NO_MORE_TACTICS:
             return SHRINK_DEAD_END;
-        } else if (nv == THEFT_ERROR) {
+        case THEFT_SHRINK_ERROR:
+        default:
             return SHRINK_ERROR;
-        } else if (nv == THEFT_DEAD_END) {
-            continue;   /* try next tactic */
         }
-        
-        args[ai] = nv;
+
+        args[ai] = candidate;
         if (t->bloom) {
             if (check_called(t, info, args, env)) {
                 /* probably redundant */
-                if (ti->free) { ti->free(nv, env); }
+                if (ti->free) { ti->free(candidate, env); }
                 args[ai] = cur;
                 continue;
             } else {
@@ -462,7 +469,7 @@ attempt_to_shrink_arg(struct theft *t, struct theft_propfun_info *info,
         case THEFT_TRIAL_SKIP:
             /* revert */
             args[ai] = cur;
-            if (ti->free) { ti->free(nv, env); }
+            if (ti->free) { ti->free(candidate, env); }
             break;
         case THEFT_TRIAL_FAIL:
             if (ti->free) { ti->free(cur, env); }
