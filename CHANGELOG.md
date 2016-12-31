@@ -17,6 +17,9 @@ Update vendored version of greatest.
 
 Use inttypes.h and `PRIx64` to avoid printf string build warning.
 
+Restructured project layout to build in a `build` directory, and
+keep source, header, and test files in `src`, `inc`, and `test`.
+
 
 ## v0.2.0 - 2014-08-06
 

@@ -1,48 +1,69 @@
-PROJECT = theft
-OPTIMIZE = -O3
-WARN = -Wall -Wextra -pedantic
-#CDEFS += 
-CFLAGS += -std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE}
-#LDFLAGS +=
+PROJECT = 	theft
+BUILD =		build
+INC =		inc
+VENDOR =	vendor
+OPTIMIZE = 	-O3
+WARN = 		-Wall -Wextra -pedantic
+CDEFS +=
+CINCS += 	-I${INC} -I${VENDOR}
+CFLAGS += 	-std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE} ${CINCS}
+LDFLAGS +=
+
+all: ${BUILD}/lib${PROJECT}.a
+all: ${BUILD}/test_${PROJECT}
 
 # A tautological compare is expected in the test suite.
-CFLAGS += -Wno-tautological-compare -Wno-type-limits
+TEST_CFLAGS += 	${CFLAGS} -Wno-tautological-compare -Wno-type-limits
+TEST_LDFLAGS +=	${LDFLAGS}
 
-all: lib${PROJECT}.a
-all: test_${PROJECT}
+OBJS= 		${BUILD}/theft.o \
+		${BUILD}/theft_bloom.o \
+		${BUILD}/theft_hash.o \
+		${BUILD}/theft_mt.o \
 
-TEST_CFLAGS=	${CFLAGS} -Wno-tautological-compare
-TEST_LDFLAGS=	${LDFLAGS}
+TEST_OBJS=	${BUILD}/test_theft.o \
+		${BUILD}/test_theft_prng.o \
 
-OBJS= theft.o theft_bloom.o theft_hash.o theft_mt.o
 
-TEST_OBJS=	test_theft.o \
-		test_theft_prng.o \
+# Basic targets
 
-lib${PROJECT}.a: ${OBJS}
-	ar -rcs lib${PROJECT}.a ${OBJS}
-
-test_${PROJECT}: ${OBJS} ${TEST_OBJS}
-	${CC} -o $@ ${OBJS} ${TEST_OBJS} ${TEST_CFLAGS} ${TEST_LDFLAGS}
-
-test: ./test_${PROJECT}
-	./test_${PROJECT}
+test: ${BUILD}/test_${PROJECT}
+	${BUILD}/test_${PROJECT}
 
 clean:
-	rm -f ${PROJECT} test_${PROJECT} *.o *.a *.core
+	rm -rf ${BUILD}
 
+tags: ${BUILD}/TAGS
+
+${BUILD}/lib${PROJECT}.a: ${OBJS}
+	ar -rcs ${BUILD}/lib${PROJECT}.a ${OBJS}
+
+${BUILD}/test_${PROJECT}: ${OBJS} ${TEST_OBJS}
+	${CC} -o $@ ${OBJS} ${TEST_OBJS} ${TEST_CFLAGS} ${TEST_LDFLAGS}
+
+${BUILD}/%.o: src/%.c ${BUILD}
+	${CC} -c -o $@ ${CFLAGS} $<
+
+${BUILD}/%.o: test/%.c ${BUILD}
+	${CC} -c -o $@ ${TEST_CFLAGS} $<
+
+${BUILD}/TAGS: ${BUILD}
+	etags -o $@ *.[ch]
+
+${BUILD}:
+	mkdir ${BUILD}
 
 # Installation
-PREFIX ?=/usr/local
-INSTALL ?= install
-RM ?=rm
+PREFIX ?=	/usr/local
+INSTALL ?= 	install
+RM ?=		rm
 
-install: lib${PROJECT}.a
+install: ${BUILD}/lib${PROJECT}.a
 	${INSTALL} -d ${PREFIX}/lib/
-	${INSTALL} -c lib${PROJECT}.a ${PREFIX}/lib/lib${PROJECT}.a
+	${INSTALL} -c ${BUILD}/lib${PROJECT}.a ${PREFIX}/lib/lib${PROJECT}.a
 	${INSTALL} -d ${PREFIX}/include/
-	${INSTALL} -c ${PROJECT}.h ${PREFIX}/include/
-	${INSTALL} -c ${PROJECT}_types.h ${PREFIX}/include/
+	${INSTALL} -c ${INC}/${PROJECT}.h ${PREFIX}/include/
+	${INSTALL} -c ${INC}/${PROJECT}_types.h ${PREFIX}/include/
 
 uninstall:
 	${RM} -f ${PREFIX}/lib/lib${PROJECT}.a
@@ -51,5 +72,4 @@ uninstall:
 
 
 # Other dependencies
-theft.o: Makefile
-theft.o: theft.h theft_types.h theft_types_internal.h
+${BUILD}/theft.o: Makefile ${INC}/*.h

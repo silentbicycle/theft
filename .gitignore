@@ -1,3 +1,2 @@
-*.o
-test_theft
-libtheft.a
+build/
+tmp/
