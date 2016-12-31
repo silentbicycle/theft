@@ -72,13 +72,13 @@ typedef void *(theft_shrink_cb)(void *instance, uint32_t tactic, void *env);
 typedef void (theft_print_cb)(FILE *f, void *instance, void *env);
 
 /* Result from a single trial. */
-typedef enum {
+enum theft_trial_res {
     THEFT_TRIAL_PASS,           /* property held */
     THEFT_TRIAL_FAIL,           /* property contradicted */
     THEFT_TRIAL_SKIP,           /* user requested skip; N/A */
     THEFT_TRIAL_DUP,            /* args probably already tried */
     THEFT_TRIAL_ERROR,          /* unrecoverable error, halt */
-} theft_trial_res;
+};
 
 /* A test property function. Arguments must match the types specified by
  * theft_cfg.type_info, or the result will be undefined. For example, a
@@ -90,7 +90,7 @@ typedef enum {
  *     THEFT_TRIAL_FAIL if a counter-example is found,
  *     THEFT_TRIAL_SKIP if the combination of args isn't applicable,
  *  or THEFT_TRIAL_ERROR if the whole run should be halted. */
-typedef theft_trial_res (theft_propfun)( /* arguments unconstrained */ );
+typedef enum theft_trial_res (theft_propfun)( /* arguments unconstrained */ );
 
 /* Callbacks used for testing with random instances of a type.
  * For more information, see comments on their typedefs. */
@@ -110,32 +110,32 @@ struct theft_trial_info {
     const char *name;           /* property name */
     int trial;                  /* N'th trial */
     theft_seed seed;            /* Seed used */
-    theft_trial_res status;     /* Run status */
+    enum theft_trial_res status;   /* Run status */
     uint8_t arity;              /* Number of arguments */
     void **args;                /* Arguments used */
 };
 
 /* Whether to keep running trials after N failures/skips/etc. */
-typedef enum {
+enum theft_progress_callback_res {
     THEFT_PROGRESS_CONTINUE,    /* keep running trials */
     THEFT_PROGRESS_HALT,        /* no need to continue */
-} theft_progress_callback_res;
+};
 
 /* Handle test results.
  * Can be used to halt after too many failures, print '.' after
  * every N trials, etc. */
-typedef theft_progress_callback_res
+typedef enum theft_progress_callback_res
 (theft_progress_cb)(struct theft_trial_info *info, void *env);
 
 /* Result from a trial run. */
-typedef enum {
+enum theft_run_res {
     THEFT_RUN_PASS = 0,             /* no failures */
     THEFT_RUN_FAIL = 1,             /* 1 or more failures */
     THEFT_RUN_ERROR = 2,            /* an error occurred */
     THEFT_RUN_ERROR_BAD_ARGS = -1,  /* API misuse */
     /* Missing required callback for 1 or more types */
     THEFT_RUN_ERROR_MISSING_CALLBACK = -2,
-} theft_run_res;
+};
 
 /* Optional report from a trial run; same meanings as theft_trial_res. */
 struct theft_trial_report {

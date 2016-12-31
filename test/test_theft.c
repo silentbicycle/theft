@@ -41,13 +41,13 @@ static theft_type_info uint_type_info = {
     .print = uint_print,
 };
 
-static theft_progress_callback_res
+static enum theft_progress_callback_res
 guiap_prog_cb(struct theft_trial_info *info, void *env) {
     (void)info; (void)env;
     return THEFT_PROGRESS_CONTINUE;
 }
 
-static theft_trial_res is_pos(uint32_t *n) {
+static enum theft_trial_res is_pos(uint32_t *n) {
     if ((*n) >= 0) {  // tautological
         return THEFT_TRIAL_PASS;
     } else {
@@ -58,7 +58,7 @@ static theft_trial_res is_pos(uint32_t *n) {
 TEST generated_unsigned_ints_are_positive() {
     theft *t = theft_init(0);
 
-    theft_run_res res;
+    enum theft_run_res res;
 
     /* The configuration struct can be passed in as an argument literal,
      * though you have to cast it. */
@@ -282,13 +282,13 @@ static theft_type_info list_info = {
     .print = list_print,
 };
 
-static theft_trial_res prop_gen_cons(list *l) {
+static enum theft_trial_res prop_gen_cons(list *l) {
     list *nl = malloc(sizeof(list));
     if (nl == NULL) { return THEFT_TRIAL_ERROR; }
     nl->v = 0;
     nl->next = l;
 
-    theft_trial_res res;
+    enum theft_trial_res res;
     if (list_length(nl) == list_length(l) + 1) {
         res = THEFT_TRIAL_PASS;
     } else {
@@ -298,7 +298,7 @@ static theft_trial_res prop_gen_cons(list *l) {
     return res;
 }
 
-static theft_progress_callback_res
+static enum theft_progress_callback_res
 gilwcil_prog_cb(struct theft_trial_info *info, void *env) {
     (void)info; (void)env;
     return THEFT_PROGRESS_CONTINUE;
@@ -306,7 +306,7 @@ gilwcil_prog_cb(struct theft_trial_info *info, void *env) {
 
 TEST generated_int_list_with_cons_is_longer() {
     theft *t = theft_init(0);
-    theft_run_res res;
+    enum theft_run_res res;
     struct theft_cfg cfg = {
         .name = __func__,
         .fun = prop_gen_cons,
@@ -320,7 +320,8 @@ TEST generated_int_list_with_cons_is_longer() {
     PASS();
 }
 
-static theft_trial_res prop_gen_list_unique(list *l) {
+static enum theft_trial_res
+prop_gen_list_unique(list *l) {
     /* For each link in the list, check that there are none later that
      * have the same value. (This should fail, as we're not constraining
      * against it in list generation.) */
@@ -335,7 +336,7 @@ static theft_trial_res prop_gen_list_unique(list *l) {
     return THEFT_TRIAL_PASS;
 }
 
-static theft_progress_callback_res
+static enum theft_progress_callback_res
 gildnrv_prog_cb(struct theft_trial_info *info, void *env) {
     (void)info; (void)env;
     if (info->trial % 100 == 0) { printf("."); fflush(stdout); }
@@ -348,7 +349,7 @@ TEST generated_int_list_does_not_repeat_values() {
     struct theft_trial_report report;
 
     theft *t = theft_init(0);
-    theft_run_res res;
+    enum theft_run_res res;
     struct theft_cfg cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique,
@@ -399,7 +400,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
     PASS();
 }
 
-static theft_trial_res
+static enum theft_trial_res
 prop_gen_list_unique_pair(list *a, list *b) {
     if (list_length(a) == list_length(b)) {
         list *la = a;
@@ -422,7 +423,7 @@ typedef struct {
     int dots;
 } test_env;
 
-static theft_progress_callback_res
+static enum theft_progress_callback_res
 prog_cb(struct theft_trial_info *info, void *env) {
     test_env *e = (test_env *)env;
 
@@ -449,7 +450,7 @@ TEST two_generated_lists_do_not_match() {
 
     theft *t = theft_init(0);
     ASSERT(t);
-    theft_run_res res;
+    enum theft_run_res res;
     struct theft_cfg cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique_pair,
@@ -472,7 +473,7 @@ typedef struct {
     int checked;
 } always_seed_env;
 
-static theft_progress_callback_res
+static enum theft_progress_callback_res
 always_prog_cb(struct theft_trial_info *info, void *venv) {
     always_seed_env *env = (always_seed_env *)venv;
 
@@ -513,7 +514,7 @@ TEST always_seeds_must_be_run() {
     struct theft_trial_report report;
 
     theft *t = theft_init(0);
-    theft_run_res res;
+    enum theft_run_res res;
     struct theft_cfg cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique,
@@ -571,7 +572,7 @@ static theft_type_info seed_cmp_info = {
     .free = seed_cmp_free,
 };
 
-static theft_trial_res
+static enum theft_trial_res
 prop_saved_seeds(bool *res) {
     if (*res == true) {
         return THEFT_TRIAL_PASS;
@@ -593,7 +594,7 @@ TEST always_seeds_should_not_be_truncated(void) {
         .seed = EXPECTED_SEED,
     };
 
-    theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(t, &cfg);
     ASSERT_EQ(THEFT_RUN_PASS, res);
     theft_free(t);
     PASS();
@@ -618,7 +619,7 @@ static theft_type_info seed_info = {
     .free = seed_free,
 };
 
-static theft_trial_res
+static enum theft_trial_res
 prop_expected_seed_is_generated(theft_seed *s) {
     if (*s == EXPECTED_SEED) {
         return THEFT_TRIAL_PASS;
@@ -637,13 +638,13 @@ TEST always_seeds_should_be_used_first(void) {
         .seed = EXPECTED_SEED,
     };
 
-    theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(t, &cfg);
     ASSERT_EQ(THEFT_RUN_PASS, res);
     theft_free(t);
     PASS();
 }
 
-static theft_trial_res
+static enum theft_trial_res
 prop_bool_tautology(bool *bp) {
     bool b = *bp;
     if (b || !b) {    // tautology to force shrinking
@@ -691,7 +692,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
         .trials = 100,
     };
 
-    theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(t, &cfg);
     theft_free(t);
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT_EQ(2, report.fail);

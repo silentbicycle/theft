@@ -4,7 +4,12 @@
 
 ### API Changes
 
-_ Add `theft_get_bits()`.
+Added `theft_get_bits()`.
+
+The following enum types in the API are no longer typedef'd:
+    - enum theft_trial_res
+    - enum theft_run_res
+    - enum theft_progress_callback_res
 
 
 ### Other Improvements

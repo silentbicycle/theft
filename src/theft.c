@@ -23,7 +23,7 @@ struct theft *theft_init(uint8_t bloom_bits) {
         return NULL;
     }
 
-    theft *t = malloc(sizeof(*t));
+    struct theft *t = malloc(sizeof(*t));
     if (t == NULL) { return NULL; }
     memset(t, 0, sizeof(*t));
 
@@ -98,14 +98,15 @@ check_all_args(struct theft_propfun_info *info, bool *all_hashable) {
     return true;
 }
 
-static theft_progress_callback_res
+static enum theft_progress_callback_res
 default_progress_cb(struct theft_trial_info *info, void *env) {
     (void)info;
     (void)env;
     return THEFT_PROGRESS_CONTINUE;
 }
 
-static void infer_arity(struct theft_propfun_info *info) {
+static void
+infer_arity(struct theft_propfun_info *info) {
     for (int i = 0; i < THEFT_MAX_ARITY; i++) {
         if (info->type_info[i] == NULL) {
             info->arity = i;
@@ -118,7 +119,7 @@ static void infer_arity(struct theft_propfun_info *info) {
  *
  * Configuration is specified in CFG; many fields are optional.
  * See the type definition in `theft_types.h`. */
-theft_run_res
+enum theft_run_res
 theft_run(struct theft *t, struct theft_cfg *cfg) {
     if (t == NULL || cfg == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
@@ -145,7 +146,7 @@ theft_run(struct theft *t, struct theft_cfg *cfg) {
 }
 
 /* Actually run the trials, with all arguments made explicit. */
-static theft_run_res
+static enum theft_run_res
 theft_run_internal(struct theft *t, struct theft_propfun_info *info,
         int trials, theft_progress_cb *cb, void *env,
         struct theft_trial_report *r) {
@@ -189,7 +190,7 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
 
     void *args[THEFT_MAX_ARITY];
     
-    theft_progress_callback_res cres = THEFT_PROGRESS_CONTINUE;
+    enum theft_progress_callback_res cres = THEFT_PROGRESS_CONTINUE;
 
     for (int trial = 0; trial < trials; trial++) {
         memset(args, 0xFF, sizeof(args));
@@ -212,7 +213,7 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
         };
 
         theft_set_seed(t, seed);
-        all_gen_res_t gres = gen_all_args(t, info, seed, args, env);
+        enum all_gen_res_t gres = gen_all_args(t, info, seed, args, env);
         switch (gres) {
         case ALL_GEN_SKIP:
             /* skip generating these args */
@@ -255,12 +256,13 @@ theft_run_internal(struct theft *t, struct theft_propfun_info *info,
 
 /* Now that arguments have been generated, run the trial and update
  * counters, call cb with results, etc. */
-static bool run_trial(struct theft *t, struct theft_propfun_info *info,
+static bool
+run_trial(struct theft *t, struct theft_propfun_info *info,
         void **args, theft_progress_cb *cb, void *env,
         struct theft_trial_report *r, struct theft_trial_info *ti,
-        theft_progress_callback_res *cres) {
+        enum theft_progress_callback_res *cres) {
     if (t->bloom) { mark_called(t, info, args, env); }
-    theft_trial_res tres = call_fun(info, args);
+    enum theft_trial_res tres = call_fun(info, args);
     ti->status = tres;
     switch (tres) {
     case THEFT_TRIAL_PASS:
@@ -313,9 +315,9 @@ void theft_free(struct theft *t) {
 /* Actually call the property function. Its number of arguments is not
  * constrained by the typedef, but will be defined at the call site
  * here. (If info->arity is wrong, it will probably crash.) */
-static theft_trial_res
+static enum theft_trial_res
 call_fun(struct theft_propfun_info *info, void **args) {
-    theft_trial_res res = THEFT_TRIAL_ERROR;
+    enum theft_trial_res res = THEFT_TRIAL_ERROR;
     switch (info->arity) {
     case 1:
         res = info->fun(args[0]);
@@ -360,8 +362,8 @@ call_fun(struct theft_propfun_info *info, void **args) {
 }
 
 /* Attempt to instantiate arguments, starting with the current seed. */
-static all_gen_res_t
-gen_all_args(theft *t, struct theft_propfun_info *info,
+static enum all_gen_res_t
+gen_all_args(struct theft *t, struct theft_propfun_info *info,
         theft_seed seed, void *args[THEFT_MAX_ARITY], void *env) {
     for (int i = 0; i < info->arity; i++) {
         struct theft_type_info *ti = info->type_info[i];
@@ -392,7 +394,7 @@ gen_all_args(theft *t, struct theft_propfun_info *info,
 /* Attempt to simplify all arguments, breadth first. Continue as long as
  * progress is made, i.e., until a local minima is reached. */
 static bool
-attempt_to_shrink(theft *t, struct theft_propfun_info *info,
+attempt_to_shrink(struct theft *t, struct theft_propfun_info *info,
         void *args[], void *env) {
     bool progress = false;
     do {
@@ -401,7 +403,7 @@ attempt_to_shrink(theft *t, struct theft_propfun_info *info,
             struct theft_type_info *ti = info->type_info[ai];
             if (ti->shrink) {
                 /* attempt to simplify this argument by one step */
-                shrink_res rres = attempt_to_shrink_arg(t, info, args, env, ai);
+                enum shrink_res rres = attempt_to_shrink_arg(t, info, args, env, ai);
                 switch (rres) {
                 case SHRINK_OK:
                     progress = true;
@@ -426,8 +428,8 @@ attempt_to_shrink(theft *t, struct theft_propfun_info *info,
  * If the bloom filter is being used (i.e., if all arguments have hash
  * callbacks defined), then use it to skip over areas of the state
  * space that have probably already been tried. */
-static shrink_res
-attempt_to_shrink_arg(theft *t, struct theft_propfun_info *info,
+static enum shrink_res
+attempt_to_shrink_arg(struct theft *t, struct theft_propfun_info *info,
         void *args[], void *env, int ai) {
     struct theft_type_info *ti = info->type_info[ai];
 
@@ -453,7 +455,7 @@ attempt_to_shrink_arg(theft *t, struct theft_propfun_info *info,
                 mark_called(t, info, args, env);
             }
         }
-        theft_trial_res res = call_fun(info, args);
+        enum theft_trial_res res = call_fun(info, args);
         
         switch (res) {
         case THEFT_TRIAL_PASS:
@@ -475,7 +477,8 @@ attempt_to_shrink_arg(theft *t, struct theft_propfun_info *info,
 }
 
 /* Populate a buffer with hashes of all the arguments. */
-static void get_arg_hash_buffer(theft_hash *buffer,
+static void
+get_arg_hash_buffer(theft_hash *buffer,
         struct theft_propfun_info *info, void **args, void *env) {
     for (int i = 0; i < info->arity; i++) {
         buffer[i] = info->type_info[i]->hash(args[i], env);
@@ -483,7 +486,8 @@ static void get_arg_hash_buffer(theft_hash *buffer,
 }
 
 /* Mark the tuple of argument instances as called in the bloom filter. */
-static void mark_called(theft *t, struct theft_propfun_info *info,
+static void
+mark_called(struct theft *t, struct theft_propfun_info *info,
         void **args, void *env) {
     theft_hash buffer[THEFT_MAX_ARITY];
     get_arg_hash_buffer(buffer, info, args, env);
@@ -492,7 +496,8 @@ static void mark_called(theft *t, struct theft_propfun_info *info,
 }
 
 /* Check if this combination of argument instances has been called. */
-static bool check_called(theft *t, struct theft_propfun_info *info,
+static bool
+check_called(struct theft *t, struct theft_propfun_info *info,
         void **args, void *env) {
     theft_hash buffer[THEFT_MAX_ARITY];
     get_arg_hash_buffer(buffer, info, args, env);
@@ -501,10 +506,11 @@ static bool check_called(theft *t, struct theft_propfun_info *info,
 }
 
 /* Print info about a failure. */
-static theft_progress_callback_res report_on_failure(theft *t,
+static enum theft_progress_callback_res
+report_on_failure(struct theft *t,
         struct theft_propfun_info *info,
         struct theft_trial_info *ti, theft_progress_cb *cb, void *env) {
-    static theft_progress_callback_res cres;
+    enum theft_progress_callback_res cres;
 
     int arity = info->arity;
     fprintf(t->out, "\n\n -- Counter-Example: %s\n",
