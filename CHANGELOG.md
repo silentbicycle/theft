@@ -4,7 +4,11 @@
 
 ### API Changes
 
-Added `theft_get_bits()`.
+Added `theft_random_bits()`, which returns less than the full 64 bits
+from the random number generator, and buffers the rest for future
+requests. This also tells theft how much of the random bit stream is
+being used. (`theft_random()` can still be used to get 64 bits at a
+time.)
 
 The following enum types in the API are no longer typedef'd:
     - enum theft_trial_res
