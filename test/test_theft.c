@@ -4,21 +4,15 @@
 
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
 
-/* Add typedefs to abbreviate these. */
-typedef struct theft theft;
-typedef struct theft_cfg theft_cfg;
-typedef struct theft_type_info theft_type_info;
-typedef struct theft_propfun_info theft_propfun_info;
-
 TEST alloc_and_free() {
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
 
     theft_free(t);
     PASS();
 }
 
 static enum theft_alloc_res
-uint_alloc(theft *t, theft_seed s, void *env, void **output) {
+uint_alloc(struct theft *t, theft_seed s, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
     if (n == NULL) { return THEFT_ALLOC_ERROR; }
     *n = (uint32_t)(s & 0xFFFFFFFF);
@@ -37,7 +31,7 @@ static void uint_print(FILE *f, void *p, void *env) {
     fprintf(f, "%u", *(uint32_t *)p);
 }
 
-static theft_type_info uint_type_info = {
+static struct theft_type_info uint_type_info = {
     .alloc = uint_alloc,
     .free = uint_free,
     .print = uint_print,
@@ -58,19 +52,20 @@ static enum theft_trial_res is_pos(uint32_t *n) {
 }
 
 TEST generated_unsigned_ints_are_positive() {
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
 
     enum theft_run_res res;
 
     /* The configuration struct can be passed in as an argument literal,
      * though you have to cast it. */
-    res = theft_run(t, &(struct theft_cfg){
+    res = theft_run(t, &(struct theft_config){
             .name = "generated_unsigned_ints_are_positive",
             .fun = is_pos,
             .type_info = { &uint_type_info },
             .progress_cb = guiap_prog_cb,
         });
-    ASSERT_EQm("generated_unsigned_ints_are_positive", THEFT_RUN_PASS, res);
+    ASSERT_EQm("generated_unsigned_ints_are_positive",
+        THEFT_RUN_PASS, res);
     theft_free(t);
     PASS();
 }
@@ -92,14 +87,16 @@ static void list_free(void *instance, void *env) {
     (void)env;
 }
 
-static void list_unpack_seed(theft_hash seed, int32_t *lower, uint32_t *upper) {
+static void list_unpack_seed(theft_hash seed,
+        int32_t *lower, uint32_t *upper) {
     *lower = (int32_t)(seed & 0xFFFFFFFF);
     *upper = (uint32_t)((seed >> 32) & 0xFFFFFFFF);
 
 }
 
 static enum theft_alloc_res
-list_alloc(theft *t, theft_seed seed, void *env, void **output) {
+list_alloc(struct theft *t, theft_seed seed, void *env,
+        void **output) {
     (void)env;
     list *l = NULL;             /* empty */
 
@@ -285,7 +282,7 @@ static void list_print(FILE *f, void *instance, void *env) {
     (void)env;
 }
 
-static theft_type_info list_info = {
+static struct theft_type_info list_info = {
     .alloc = list_alloc,
     .free = list_free,
     .hash = list_hash,
@@ -316,9 +313,9 @@ gilwcil_prog_cb(struct theft_trial_info *info, void *env) {
 }
 
 TEST generated_int_list_with_cons_is_longer() {
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
-    struct theft_cfg cfg = {
+    struct theft_config cfg = {
         .name = __func__,
         .fun = prop_gen_cons,
         .type_info = { &list_info },
@@ -359,9 +356,9 @@ TEST generated_int_list_does_not_repeat_values() {
 
     struct theft_trial_report report;
 
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
-    struct theft_cfg cfg = {
+    struct theft_config cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
@@ -384,7 +381,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
     theft_seed seeds[8];
     theft_seed values[8][8];
 
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
 
     /* Set for deterministic start */
     theft_set_seed(t, 0xabad5eed);
@@ -459,10 +456,10 @@ TEST two_generated_lists_do_not_match() {
     struct timeval tv;
     if (-1 == gettimeofday(&tv, NULL)) { FAIL(); }
 
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
     ASSERT(t);
     enum theft_run_res res;
-    struct theft_cfg cfg = {
+    struct theft_config cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique_pair,
         .type_info = { &list_info, &list_info },
@@ -524,9 +521,9 @@ TEST always_seeds_must_be_run() {
 
     struct theft_trial_report report;
 
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
-    struct theft_cfg cfg = {
+    struct theft_config cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
@@ -552,7 +549,8 @@ TEST always_seeds_must_be_run() {
 #define EXPECTED_SEED 0x15a600d16b175eedL
 
 static enum theft_alloc_res
-seed_cmp_alloc(theft *t, theft_seed seed, void *env, void **output) {
+seed_cmp_alloc(struct theft *t, theft_seed seed, void *env,
+        void **output) {
     bool *res = malloc(sizeof(*res));
     (void)env;
     (void)t;
@@ -580,7 +578,7 @@ static void seed_cmp_free(void *instance, void *env) {
     free(instance);
 }
 
-static theft_type_info seed_cmp_info = {
+static struct theft_type_info seed_cmp_info = {
     .alloc = seed_cmp_alloc,
     .free = seed_cmp_free,
 };
@@ -598,9 +596,9 @@ TEST always_seeds_should_not_be_truncated(void) {
     /* This isn't really a property test so much as a test checking
      * that explicitly requested 64-bit seeds are passed through to the
      * callbacks without being truncated. */
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
 
-    theft_cfg cfg = {
+    struct theft_config cfg = {
         .fun = prop_saved_seeds,
         .type_info = { &seed_cmp_info },
         .trials = 1,
@@ -614,7 +612,7 @@ TEST always_seeds_should_not_be_truncated(void) {
 }
 
 static enum theft_alloc_res
-seed_alloc(theft *t, theft_seed seed, void *env, void **output) {
+seed_alloc(struct theft *t, theft_seed seed, void *env, void **output) {
     theft_seed *res = malloc(sizeof(*res));
     if (res == NULL) { return THEFT_ALLOC_ERROR; }
     (void)env;
@@ -629,7 +627,7 @@ static void seed_free(void *instance, void *env) {
     free(instance);
 }
 
-static theft_type_info seed_info = {
+static struct theft_type_info seed_info = {
     .alloc = seed_alloc,
     .free = seed_free,
 };
@@ -644,9 +642,9 @@ prop_expected_seed_is_generated(theft_seed *s) {
 }
 
 TEST always_seeds_should_be_used_first(void) {
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
 
-    theft_cfg cfg = {
+    struct theft_config cfg = {
         .fun = prop_expected_seed_is_generated,
         .type_info = { &seed_info },
         .trials = 1,
@@ -670,7 +668,7 @@ prop_bool_tautology(bool *bp) {
 }
 
 static enum theft_alloc_res
-bool_alloc(theft *t, theft_seed seed, void *env, void **output) {
+bool_alloc(struct theft *t, theft_seed seed, void *env, void **output) {
     bool *bp = malloc(sizeof(*bp));
     if (bp == NULL) { return THEFT_ALLOC_ERROR; }
     *bp = (seed & 0x01 ? true : false);
@@ -692,17 +690,17 @@ static theft_hash bool_hash(void *instance, void *env) {
     return (theft_hash)(b ? 1 : 0);
 }
 
-static theft_type_info bool_info = {
+static struct theft_type_info bool_info = {
     .alloc = bool_alloc,
     .free = bool_free,
     .hash = bool_hash,
 };
 
 TEST overconstrained_state_spaces_should_be_detected(void) {
-    theft *t = theft_init(0);
+    struct theft *t = theft_init(0);
     struct theft_trial_report report;
 
-    theft_cfg cfg = {
+    struct theft_config cfg = {
         .fun = prop_bool_tautology,
         .type_info = { &bool_info },
         .report = &report,

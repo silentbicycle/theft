@@ -60,7 +60,7 @@ void theft_set_output_stream(struct theft *t, FILE *out);
  * Configuration is specified in CFG; many fields are optional.
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
-theft_run(struct theft *t, struct theft_cfg *cfg);
+theft_run(struct theft *t, struct theft_config *cfg);
 
 /* Hash a buffer in one pass. (Wraps the below functions.) */
 theft_hash theft_hash_onepass(uint8_t *data, size_t bytes);

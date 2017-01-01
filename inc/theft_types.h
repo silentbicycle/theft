@@ -98,8 +98,8 @@ enum theft_trial_res {
 };
 
 /* A test property function. Arguments must match the types specified by
- * theft_cfg.type_info, or the result will be undefined. For example, a
- * propfun `prop_foo(A x, B y, C z)` must have a type_info array of
+ * theft_config.type_info, or the result will be undefined. For example,
+ * a propfun `prop_foo(A x, B y, C z)` must have a type_info array of
  * `{ info_A, info_B, info_C }`.
  *
  * Should return:
@@ -165,7 +165,7 @@ struct theft_trial_report {
 /* Configuration struct for a theft test.
  * In C99, this struct can be specified as a literal, like this:
  *
- *     struct theft_cfg cfg = {
+ *     struct theft_config cfg = {
  *         .name = "example",
  *         .fun = prop_fun,
  *         .type_info = { type_arg_a, type_arg_b },
@@ -174,7 +174,7 @@ struct theft_trial_report {
  *
  * and omitted fields will be set to defaults.
  * */
-struct theft_cfg {
+struct theft_config {
     /* Property function under test, and info about its arguments.
      * The function is called with as many arguments are there
      * are values in TYPE_INFO, so it can crash if that is wrong. */

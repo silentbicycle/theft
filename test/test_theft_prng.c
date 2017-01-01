@@ -1,7 +1,7 @@
 #include "test_theft.h"
 
 TEST basic(uint64_t limit) {
-    struct theft_cfg cfg;
+    struct theft_config cfg;
     memset(&cfg, 0, sizeof(cfg));
     struct theft *t = theft_init(0);
 
@@ -20,7 +20,7 @@ TEST basic(uint64_t limit) {
 }
 
 TEST bit_sampling_two_bytes(uint64_t limit) {
-    struct theft_cfg cfg;
+    struct theft_config cfg;
     memset(&cfg, 0, sizeof(cfg));
     struct theft *t = theft_init(0);
 
@@ -45,7 +45,7 @@ TEST bit_sampling_two_bytes(uint64_t limit) {
 }
 
 TEST bit_sampling_bytes(uint64_t limit) {
-    struct theft_cfg cfg;
+    struct theft_config cfg;
     memset(&cfg, 0, sizeof(cfg));
     struct theft *t = theft_init(0);
 
@@ -77,7 +77,7 @@ TEST bit_sampling_bytes(uint64_t limit) {
 }
 
 TEST bit_sampling_odd_sizes(uint64_t limit) {
-    struct theft_cfg cfg;
+    struct theft_config cfg;
     memset(&cfg, 0, sizeof(cfg));
     struct theft *t = theft_init(0);
 

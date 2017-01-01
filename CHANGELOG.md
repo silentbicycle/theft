@@ -22,6 +22,8 @@ argument called `output`.
 
 The instance argument to the shrink callback is now const.
 
+Renamed `struct theft_cfg` to `struct theft_config`.
+
 
 ### Other Improvements
 

@@ -77,7 +77,7 @@ infer_arity(struct theft_propfun_info *info) {
  * Configuration is specified in CFG; many fields are optional.
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
-theft_run(struct theft *t, struct theft_cfg *cfg) {
+theft_run(struct theft *t, struct theft_config *cfg) {
     if (t == NULL || cfg == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
