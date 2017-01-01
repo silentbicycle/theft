@@ -208,7 +208,8 @@ split_list_copy(list *l, bool first_half, list **output) {
 }
 
 static enum theft_shrink_res
-list_shrink(void *instance, uint32_t tactic, void *env, void **output) {
+list_shrink(const void *instance, uint32_t tactic, void *env,
+        void **output) {
     list *l = (list *)instance;
     if (l == NULL) { return THEFT_SHRINK_NO_MORE_TACTICS; }
 

@@ -20,6 +20,8 @@ Rather than returning a void pointer or special sentinel values
 an enum and (when appropriate) write their output into a pointer
 argument called `output`.
 
+The instance argument to the shrink callback is now const.
+
 
 ### Other Improvements
 
