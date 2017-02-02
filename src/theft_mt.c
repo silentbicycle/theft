@@ -55,11 +55,20 @@
 
 /* The code has been modified to store internal state in heap/stack
  * allocated memory, rather than statically allocated memory, to allow
- * multiple instances running in the same address space. */
+ * multiple instances running in the same address space.
+ * 
+ * Also, the functions in the module's public interface have
+ * been prefixed with "theft_mt_". */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include "theft_mt.h"
+
+#define THEFT_MT_PARAM_N 312
+struct theft_mt {
+    uint64_t mt[THEFT_MT_PARAM_N]; /* the array for the state vector  */
+    int16_t mti;
+};
 
 #define NN THEFT_MT_PARAM_N
 #define MM 156

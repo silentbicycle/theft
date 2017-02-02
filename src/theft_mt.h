@@ -7,16 +7,10 @@
  * See copyright and license in theft_mt.c, more details at:
  *     http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
  *
- * The code has been modified to store internal state in heap/stack
- * allocated memory, rather than statically allocated memory, to allow
- * multiple instances running in the same address space. */
+ * Local modifications are described in theft_mt.c. */
 
-#define THEFT_MT_PARAM_N 312
-
-struct theft_mt {
-    uint64_t mt[THEFT_MT_PARAM_N]; /* the array for the state vector  */
-    int16_t mti;
-};
+/* Opaque type for a Mersenne Twister PRNG. */
+struct theft_mt;
 
 /* Heap-allocate a mersenne twister struct. */
 struct theft_mt *theft_mt_init(uint64_t seed);

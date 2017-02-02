@@ -65,8 +65,7 @@ theft_run(struct theft *t, struct theft_config *cfg);
 /* Hash a buffer in one pass. (Wraps the below functions.) */
 theft_hash theft_hash_onepass(uint8_t *data, size_t bytes);
 
-/* Init/reset a hasher for incremental hashing.
- * Returns true, or false if you gave it a NULL pointer. */
+/* Initialize/reset a hasher for incremental hashing. */
 void theft_hash_init(struct theft_hasher *h);
 
 /* Sink more data into an incremental hash. */
