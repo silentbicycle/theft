@@ -49,7 +49,7 @@ void theft_set_output_stream(struct theft *t, FILE *out) {
  * Configuration is specified in CFG; many fields are optional.
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
-theft_run(struct theft *t, struct theft_config *cfg) {
+theft_run(struct theft *t, struct theft_run_config *cfg) {
     if (t == NULL || cfg == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }

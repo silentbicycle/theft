@@ -156,7 +156,7 @@ struct theft_trial_report {
 /* Configuration struct for a theft test.
  * In C99, this struct can be specified as a literal, like this:
  *
- *     struct theft_config cfg = {
+ *     struct theft_run_config cfg = {
  *         .name = "example",
  *         .fun = prop_fun,
  *         .type_info = { type_arg_a, type_arg_b },
@@ -165,7 +165,7 @@ struct theft_trial_report {
  *
  * and omitted fields will be set to defaults.
  * */
-struct theft_config {
+struct theft_run_config {
     /* Property function under test, and info about its arguments.
      * The function is called with as many arguments are there
      * are values in TYPE_INFO, so it can crash if that is wrong. */

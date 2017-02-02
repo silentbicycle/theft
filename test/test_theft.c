@@ -58,7 +58,7 @@ TEST generated_unsigned_ints_are_positive() {
 
     /* The configuration struct can be passed in as an argument literal,
      * though you have to cast it. */
-    res = theft_run(t, &(struct theft_config){
+    res = theft_run(t, &(struct theft_run_config){
             .name = "generated_unsigned_ints_are_positive",
             .fun = is_pos,
             .type_info = { &uint_type_info },
@@ -315,7 +315,7 @@ gilwcil_prog_cb(struct theft_trial_info *info, void *env) {
 TEST generated_int_list_with_cons_is_longer() {
     struct theft *t = theft_init(0);
     enum theft_run_res res;
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .name = __func__,
         .fun = prop_gen_cons,
         .type_info = { &list_info },
@@ -358,7 +358,7 @@ TEST generated_int_list_does_not_repeat_values() {
 
     struct theft *t = theft_init(0);
     enum theft_run_res res;
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
@@ -459,7 +459,7 @@ TEST two_generated_lists_do_not_match() {
     struct theft *t = theft_init(0);
     ASSERT(t);
     enum theft_run_res res;
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique_pair,
         .type_info = { &list_info, &list_info },
@@ -523,7 +523,7 @@ TEST always_seeds_must_be_run() {
 
     struct theft *t = theft_init(0);
     enum theft_run_res res;
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
@@ -598,7 +598,7 @@ TEST always_seeds_should_not_be_truncated(void) {
      * callbacks without being truncated. */
     struct theft *t = theft_init(0);
 
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .fun = prop_saved_seeds,
         .type_info = { &seed_cmp_info },
         .trials = 1,
@@ -644,7 +644,7 @@ prop_expected_seed_is_generated(theft_seed *s) {
 TEST always_seeds_should_be_used_first(void) {
     struct theft *t = theft_init(0);
 
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .fun = prop_expected_seed_is_generated,
         .type_info = { &seed_info },
         .trials = 1,
@@ -700,7 +700,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
     struct theft *t = theft_init(0);
     struct theft_trial_report report;
 
-    struct theft_config cfg = {
+    struct theft_run_config cfg = {
         .fun = prop_bool_tautology,
         .type_info = { &bool_info },
         .report = &report,
