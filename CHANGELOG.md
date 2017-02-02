@@ -26,6 +26,9 @@ Renamed `struct theft_cfg` to `struct theft_run_config`.
 
 The `struct theft` type is now opaque.
 
+`THEFT_BLOOM_DISABLE` has been removed -- the bloom filter
+is always allocated now.
+
 
 ### Other Improvements
 

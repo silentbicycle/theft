@@ -14,11 +14,6 @@ struct theft_mt;                /* mersenne twister PRNG */
 /* Opaque struct handle for property-test runner. */
 struct theft;
 
-/* Explicitly disable using the bloom filter.
- * Note that if you do this, you must be sure your simplify function
- * *always* returns a simpler value, or it will loop forever. */
-#define THEFT_BLOOM_DISABLE ((uint8_t)-1)
-
 /* Allocate and return an instance of the type, based on a known
  * pseudo-random number seed. To get additional seeds, use
  * theft_random(t) or theft_random_bits(t, bit_count); this stream of

@@ -13,14 +13,12 @@
  * combinations of arguments that have already been tested.
  * If 0, a default size will be chosen based on trial count.
  * (This will only be used if all property types have hash
- * callbacks defined.) The bloom filter can also be disabled
- * by setting BLOOM_BITS to THEFT_BLOOM_DISABLE.
- * 
+ * callbacks defined.)
+ *
  * Returns a NULL if malloc fails or BLOOM_BITS is out of bounds. */
 struct theft *theft_init(uint8_t bloom_bits) {
     if ((bloom_bits != 0 && (bloom_bits < THEFT_BLOOM_BITS_MIN))
-        || ((bloom_bits > THEFT_BLOOM_BITS_MAX) &&
-            bloom_bits != THEFT_BLOOM_DISABLE)) {
+        || (bloom_bits > THEFT_BLOOM_BITS_MAX)) {
         return NULL;
     }
 

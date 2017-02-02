@@ -40,9 +40,7 @@ theft_run_trials(struct theft *t, struct theft_propfun_info *info,
         if (t->requested_bloom_bits == 0) {
             t->requested_bloom_bits = theft_bloom_recommendation(trials);
         }
-        if (t->requested_bloom_bits != THEFT_BLOOM_DISABLE) {
-            t->bloom = theft_bloom_init(t->requested_bloom_bits);
-        }
+        t->bloom = theft_bloom_init(t->requested_bloom_bits);
     }
     
     theft_seed seed = t->seed;
