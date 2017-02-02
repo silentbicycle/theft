@@ -5,7 +5,7 @@
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
 
 TEST alloc_and_free() {
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     theft_free(t);
     PASS();
@@ -52,7 +52,7 @@ static enum theft_trial_res is_pos(uint32_t *n) {
 }
 
 TEST generated_unsigned_ints_are_positive() {
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     enum theft_run_res res;
 
@@ -313,7 +313,7 @@ gilwcil_prog_cb(struct theft_trial_info *info, void *env) {
 }
 
 TEST generated_int_list_with_cons_is_longer() {
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
@@ -356,7 +356,7 @@ TEST generated_int_list_does_not_repeat_values() {
 
     struct theft_trial_report report;
 
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
@@ -381,7 +381,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
     theft_seed seeds[8];
     theft_seed values[8][8];
 
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     /* Set for deterministic start */
     theft_set_seed(t, 0xabad5eed);
@@ -456,7 +456,7 @@ TEST two_generated_lists_do_not_match() {
     struct timeval tv;
     if (-1 == gettimeofday(&tv, NULL)) { FAIL(); }
 
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
     ASSERT(t);
     enum theft_run_res res;
     struct theft_run_config cfg = {
@@ -521,7 +521,7 @@ TEST always_seeds_must_be_run() {
 
     struct theft_trial_report report;
 
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
@@ -596,7 +596,7 @@ TEST always_seeds_should_not_be_truncated(void) {
     /* This isn't really a property test so much as a test checking
      * that explicitly requested 64-bit seeds are passed through to the
      * callbacks without being truncated. */
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     struct theft_run_config cfg = {
         .fun = prop_saved_seeds,
@@ -642,7 +642,7 @@ prop_expected_seed_is_generated(theft_seed *s) {
 }
 
 TEST always_seeds_should_be_used_first(void) {
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     struct theft_run_config cfg = {
         .fun = prop_expected_seed_is_generated,
@@ -697,7 +697,7 @@ static struct theft_type_info bool_info = {
 };
 
 TEST overconstrained_state_spaces_should_be_detected(void) {
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
     struct theft_trial_report report;
 
     struct theft_run_config cfg = {

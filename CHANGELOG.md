@@ -29,6 +29,10 @@ The `struct theft` type is now opaque.
 `THEFT_BLOOM_DISABLE` has been removed -- the bloom filter
 is always allocated now.
 
+`theft_init` now takes a pointer to a `struct theft_config` with
+configuration, rather than just a number of bits to use for the
+bloom filter. If given a NULL pointer, it will use defaults.
+
 
 ### Other Improvements
 

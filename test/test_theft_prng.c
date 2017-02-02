@@ -3,7 +3,7 @@
 TEST basic(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_set_seed(t, seed);
@@ -22,7 +22,7 @@ TEST basic(uint64_t limit) {
 TEST bit_sampling_two_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_set_seed(t, seed);
@@ -47,7 +47,7 @@ TEST bit_sampling_two_bytes(uint64_t limit) {
 TEST bit_sampling_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_set_seed(t, seed);
@@ -79,7 +79,7 @@ TEST bit_sampling_bytes(uint64_t limit) {
 TEST bit_sampling_odd_sizes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_set_seed(t, seed);

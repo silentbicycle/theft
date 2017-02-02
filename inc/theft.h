@@ -25,15 +25,12 @@
 #define THEFT_BLOOM_BITS_MIN 13 /* 1 KB */
 #define THEFT_BLOOM_BITS_MAX 33 /* 1 GB */
 
-/* Initialize a theft test runner.
- * BLOOM_BITS sets the size of the table used for detecting
- * combinations of arguments that have already been tested.
- * If 0, a default size will be chosen based on trial count.
- * (This will only be used if all property types have hash
- * callbacks defined.)
- * 
- * Returns a NULL if malloc fails or BLOOM_BITS is out of bounds. */
-struct theft *theft_init(uint8_t bloom_bits);
+/* Initialize a theft test runner, with the configuration
+ * in CFG. If CFG is NULL, a default will be used.
+ *
+ * Returns a NULL if malloc fails or the provided configuration
+ * is invalid. */
+struct theft *theft_init(const struct theft_config *cfg);
 
 /* Free a property-test runner. */
 void theft_free(struct theft *t);

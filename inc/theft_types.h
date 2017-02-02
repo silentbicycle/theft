@@ -14,6 +14,15 @@ struct theft_mt;                /* mersenne twister PRNG */
 /* Opaque struct handle for property-test runner. */
 struct theft;
 
+struct theft_config {
+    /* The number of bits to use for the bloom filter, which
+     * detects combinations of arguments that have already
+     * been tested. If 0, a default size will be chosen
+     * based on the trial count. (This will only be used if
+     * all property types have hash callbacks defined.) */
+    uint8_t bloom_bits;
+};
+
 /* Allocate and return an instance of the type, based on a known
  * pseudo-random number seed. To get additional seeds, use
  * theft_random(t) or theft_random_bits(t, bit_count); this stream of
