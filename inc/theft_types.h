@@ -11,17 +11,8 @@ typedef uint64_t theft_hash;
 struct theft_bloom;             /* bloom filter */
 struct theft_mt;                /* mersenne twister PRNG */
 
-/* Struct for property-testing state. */
-struct theft {
-    FILE *out;
-    theft_seed seed;
-    uint8_t requested_bloom_bits;
-    struct theft_bloom *bloom;  /* bloom filter */
-
-    struct theft_mt *mt;        /* random number generator */
-    uint64_t prng_buf;          /* buffer for PRNG bits */
-    uint8_t bits_available;
-};
+/* Opaque struct handle for property-test runner. */
+struct theft;
 
 /* Explicitly disable using the bloom filter.
  * Note that if you do this, you must be sure your simplify function

@@ -2,10 +2,20 @@
 #define THEFT_TYPES_INTERNAL_H
 
 #include "theft.h"
-#include "theft_types_internal.h"
 
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
 #define DEFAULT_THEFT_SEED 0xa600d64b175eedLL
+
+struct theft {
+    FILE *out;
+    theft_seed seed;
+    uint8_t requested_bloom_bits;
+    struct theft_bloom *bloom;  /* bloom filter */
+
+    struct theft_mt *mt;        /* random number generator */
+    uint64_t prng_buf;          /* buffer for PRNG bits */
+    uint8_t bits_available;
+};
 
 enum all_gen_res_t {
     ALL_GEN_OK,                 /* all arguments generated okay */
