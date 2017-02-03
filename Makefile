@@ -1,6 +1,7 @@
 PROJECT = 	theft
 BUILD =		build
 SRC =		src
+TEST =		test
 INC =		inc
 VENDOR =	vendor
 OPTIMIZE = 	-O3
@@ -47,14 +48,14 @@ ${BUILD}/lib${PROJECT}.a: ${OBJS}
 ${BUILD}/test_${PROJECT}: ${OBJS} ${TEST_OBJS}
 	${CC} -o $@ ${OBJS} ${TEST_OBJS} ${TEST_CFLAGS} ${TEST_LDFLAGS}
 
-${BUILD}/%.o: src/%.c ${BUILD}
+${BUILD}/%.o: ${SRC}/%.c ${INC}/* | ${BUILD}
 	${CC} -c -o $@ ${CFLAGS} $<
 
-${BUILD}/%.o: test/%.c ${BUILD}
+${BUILD}/%.o: ${TEST}/%.c ${INC}/* | ${BUILD}
 	${CC} -c -o $@ ${TEST_CFLAGS} $<
 
-${BUILD}/TAGS: ${BUILD}
-	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h
+${BUILD}/TAGS: ${SRC}/*.c ${INC}/* | ${BUILD}
+	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
 
 ${BUILD}:
 	mkdir ${BUILD}
