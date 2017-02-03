@@ -53,28 +53,11 @@ void theft_set_output_stream(struct theft *t, FILE *out) {
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
 theft_run(struct theft *t, struct theft_run_config *cfg) {
-    if (t == NULL || cfg == NULL) {
+    if (t == NULL || cfg == NULL || cfg->fun == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
 
-    struct theft_propfun_info info;
-    memset(&info, 0, sizeof(info));
-    info.name = cfg->name;
-    info.fun = cfg->fun;
-    memcpy(info.type_info, cfg->type_info, sizeof(info.type_info));
-    info.always_seed_count = cfg->always_seed_count;
-    info.always_seeds = cfg->always_seeds;
-
-    if (cfg->seed) {
-        theft_set_seed(t, cfg->seed);
-    } else {
-        theft_set_seed(t, DEFAULT_THEFT_SEED);
-    }
-
-    if (cfg->trials == 0) { cfg->trials = THEFT_DEF_TRIALS; }
-
-    return theft_run_trials(t, &info, cfg->trials, cfg->progress_cb,
-        cfg->env, cfg->report);
+    return theft_run_trials(t, cfg);
 }
 
 /* Free a property-test runner. */

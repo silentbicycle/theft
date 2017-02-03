@@ -6,15 +6,15 @@
 /* Actually call the property function referenced in INFO,
  * with the arguments in ARGS. */
 enum theft_trial_res
-theft_call(struct theft_propfun_info *info, void **args);
+theft_call(struct theft_run_info *info, void **args);
 
 /* Check if this combination of argument instances has been called. */
 bool theft_call_check_called(struct theft *t,
-    struct theft_propfun_info *info, void **args, void *env);
+    struct theft_run_info *run_info, void **args);
 
 /* Mark the tuple of argument instances as called in the bloom filter. */
 void theft_call_mark_called(struct theft *t,
-    struct theft_propfun_info *info, void **args, void *env);
+    struct theft_run_info *run_info, void **args);
 
 
 #endif

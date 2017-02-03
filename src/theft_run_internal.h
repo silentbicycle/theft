@@ -3,17 +3,29 @@
 
 #include "theft_types_internal.h"
 
-static bool
-check_all_args(struct theft_propfun_info *info, bool *all_hashable);
+static uint8_t
+infer_arity(struct theft_run_config *cfg);
 
-static void
-infer_arity(struct theft_propfun_info *info);
+enum run_step_res {
+    RUN_STEP_OK,
+    RUN_STEP_HALT,
+    RUN_STEP_GEN_ERROR,
+    RUN_STEP_TRIAL_ERROR,
+};
+static enum run_step_res
+run_step(struct theft *t, struct theft_run_info *run_info,
+    struct theft_progress_info *progress_info,
+    size_t trial, void **args, theft_seed *seed);
+
+static bool
+check_all_args(uint8_t arity, struct theft_run_config *cfg,
+    bool *all_hashable);
 
 static enum all_gen_res_t
-gen_all_args(struct theft *t, struct theft_propfun_info *info,
+gen_all_args(struct theft *t, struct theft_run_info *info,
     theft_seed seed, void *args[THEFT_MAX_ARITY], void *env);
 
 static enum theft_progress_callback_res
-default_progress_cb(struct theft_trial_info *info, void *env);
+default_progress_cb(const struct theft_progress_info *info, void *env);
 
 #endif

@@ -4,6 +4,15 @@
 
 ### API Changes
 
+The `theft_progress_cb` callback's role has significantly expanded.
+Instead of only being called with the result after each trial, it is
+called in several contexts, and is passed a tagged union with details
+specific to that context. This hook supports many useful test-specific
+behaviors, such as halting shrinking after a time limit or a certain
+number of unsuccessful shrinks, or re-running a failed trial (with
+arguments shrunken to a local minima) after adjusting logging or adding
+breakpoints.
+
 Added `theft_random_bits()`, which returns less than the full 64 bits
 from the random number generator, and buffers the rest for future
 requests. This also tells theft how much of the random bit stream is
@@ -32,6 +41,9 @@ is always allocated now.
 `theft_init` now takes a pointer to a `struct theft_config` with
 configuration, rather than just a number of bits to use for the
 bloom filter. If given a NULL pointer, it will use defaults.
+
+In the config, `always_seed_count` and `trials` are now `size_t`s
+rather than `int`s.
 
 
 ### Other Improvements

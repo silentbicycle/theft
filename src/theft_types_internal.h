@@ -28,21 +28,47 @@ enum shrink_res {
     SHRINK_OK,                  /* simplified argument further */
     SHRINK_DEAD_END,            /* at local minima */
     SHRINK_ERROR,               /* hard error during shrinking */
+    SHRINK_HALT,                /* don't shrink any further */
 };
 
 /* Testing context for a specific property function. */
-struct theft_propfun_info {
+struct theft_run_info {
     const char *name;           /* property name, can be NULL */
-    theft_propfun *fun;         /* property function under test */
+    theft_propfun * const fun;  /* property function under test */
+    const size_t trial_count;
+    const theft_seed run_seed;
 
     /* Type info for ARITY arguments. */
-    uint8_t arity;              /* number of arguments */
+    const uint8_t arity;        /* number of arguments */
     struct theft_type_info *type_info[THEFT_MAX_ARITY];
 
     /* Optional array of seeds to always run.
      * Can be used for regression tests. */
-    int always_seed_count;      /* number of seeds */
-    theft_seed *always_seeds;   /* seeds to always run */
+    const size_t always_seed_count;   /* number of seeds */
+    const theft_seed *always_seeds;   /* seeds to always run */
+
+    /* Progress callback. */
+    theft_progress_cb *progress_cb;
+    /* User environment for all callbacks. */
+    void *env;
+
+    /* Counters passed to progress callback */
+    size_t pass;
+    size_t fail;
+    size_t skip;
+    size_t dup;
+};
+
+/* Result from an individual trial. */
+struct theft_trial_info {
+    const int trial;            /* N'th trial */
+    theft_seed seed;            /* Seed used */
+    enum theft_trial_res status;   /* Run status */
+    const uint8_t arity;        /* Number of arguments */
+    void **args;                /* Arguments used */
+    size_t shrink_count;
+    size_t successful_shrinks;
+    size_t failed_shrinks;
 };
 
 #endif

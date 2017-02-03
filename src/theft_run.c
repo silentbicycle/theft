@@ -4,131 +4,249 @@
 #include "theft_call.h"
 #include "theft_trial.h"
 #include <string.h>
+#include <assert.h>
 
 /* Actually run the trials, with all arguments made explicit. */
 enum theft_run_res
-theft_run_trials(struct theft *t, struct theft_propfun_info *info,
-        int trials, theft_progress_cb *cb, void *env,
-        struct theft_trial_report *r) {
-
-    struct theft_trial_report fake_report;
-    if (r == NULL) { r = &fake_report; }
-    memset(r, 0, sizeof(*r));
-    
-    infer_arity(info);
-    if (info->arity == 0) {
+theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
+    const uint8_t arity = infer_arity(cfg);
+    if (arity == 0) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
 
-    if (t == NULL || info == NULL || info->fun == NULL
-        || info->arity == 0) {
-        return THEFT_RUN_ERROR_BAD_ARGS;
-    }
-    
     bool all_hashable = false;
-    if (!check_all_args(info, &all_hashable)) {
+    if (!check_all_args(arity, cfg, &all_hashable)) {
         return THEFT_RUN_ERROR_MISSING_CALLBACK;
     }
 
-    if (cb == NULL) {
-        cb = default_progress_cb;
-    }
+    theft_progress_cb *cb = cfg->progress_cb
+      ? cfg->progress_cb : default_progress_cb;
+
+    struct theft_run_info run_info = {
+        .name = cfg->name,
+        .fun = cfg->fun,
+        .trial_count = cfg->trials == 0 ? THEFT_DEF_TRIALS : cfg->trials,
+        .run_seed = cfg->seed ? cfg->seed : DEFAULT_THEFT_SEED,
+        .arity = arity,
+        /* type_info is memcpy'd below */
+        .always_seed_count = (cfg->always_seeds == NULL
+            ? 0 : cfg->always_seed_count),
+        .always_seeds = cfg->always_seeds,
+        .progress_cb = cb,
+        .env = cfg->env,
+    };
+    memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
 
     /* If all arguments are hashable, then attempt to use
      * a bloom filter to avoid redundant checking. */
     if (all_hashable) {
         if (t->requested_bloom_bits == 0) {
-            t->requested_bloom_bits = theft_bloom_recommendation(trials);
+            t->requested_bloom_bits = theft_bloom_recommendation(run_info.trial_count);
         }
         t->bloom = theft_bloom_init(t->requested_bloom_bits);
     }
-    
-    theft_seed seed = t->seed;
-    theft_seed initial_seed = t->seed;
-    int always_seeds = info->always_seed_count;
-    if (info->always_seeds == NULL) { always_seeds = 0; }
 
-    void *args[THEFT_MAX_ARITY];
-    
-    enum theft_progress_callback_res cres = THEFT_PROGRESS_CONTINUE;
+    struct theft_progress_info progress_info = {
+        .prop_name = run_info.name,
+        .total_trials = run_info.trial_count,
+        .run_seed = run_info.run_seed,
 
-    for (int trial = 0; trial < trials; trial++) {
-        memset(args, 0x00, sizeof(args));
-        if (cres == THEFT_PROGRESS_HALT) { break; }
-
-        /* If any seeds to always run were specified, use those before
-         * reverting to the specified starting seed. */
-        if (trial < always_seeds) {
-            seed = info->always_seeds[trial];
-        } else if ((always_seeds > 0) && (trial == always_seeds)) {
-            seed = initial_seed;
-        }
-
-        struct theft_trial_info ti = {
-            .name = info->name,
-            .trial = trial,
-            .seed = seed,
-            .arity = info->arity,
-            .args = args
-        };
-
-        theft_set_seed(t, seed);
-        enum all_gen_res_t gres = gen_all_args(t, info, seed, args, env);
-        switch (gres) {
-        case ALL_GEN_SKIP:
-            /* skip generating these args */
-            ti.status = THEFT_TRIAL_SKIP;
-            r->skip++;
-            cres = cb(&ti, env);
-            break;
-        case ALL_GEN_DUP:
-            /* skip these args -- probably already tried */
-            ti.status = THEFT_TRIAL_DUP;
-            r->dup++;
-            cres = cb(&ti, env);
-            break;
-        default:
-        case ALL_GEN_ERROR:
-            /* Error while generating args */
-            ti.status = THEFT_TRIAL_ERROR;
-            cres = cb(&ti, env);
-            return THEFT_RUN_ERROR;
-        case ALL_GEN_OK:
-            if (!theft_trial_run(t, info, args, cb, env, r, &ti, &cres)) {
-                return THEFT_RUN_ERROR;
-            }
-        }
-
-        theft_trial_free_args(info, args, env);
-
-        /* Restore last known seed and generate next. */
-        theft_set_seed(t, seed);
-        seed = theft_random(t);
+        .type = THEFT_PROGRESS_TYPE_RUN_PRE,
+        /* RUN_PRE has no other info in the union */
+    };
+    if (cb(&progress_info, run_info.env) != THEFT_PROGRESS_CONTINUE) {
+        return THEFT_RUN_ERROR;
     }
 
-    if (r->fail > 0) {
+    size_t limit = run_info.trial_count;
+    theft_seed seed = run_info.run_seed;
+
+    for (size_t trial = 0; trial < limit; trial++) {
+        void *args[THEFT_MAX_ARITY];
+        enum run_step_res res = run_step(t, &run_info, &progress_info,
+            trial, args, &seed);
+        theft_trial_free_args(&run_info, args);
+
+        switch (res) {
+        case RUN_STEP_OK:
+            continue;
+        case RUN_STEP_HALT:
+            limit = trial;
+            break;
+        default:
+        case RUN_STEP_GEN_ERROR:
+        case RUN_STEP_TRIAL_ERROR:
+            return THEFT_RUN_ERROR;
+        }
+    }
+
+    progress_info = (struct theft_progress_info) {
+        .prop_name = run_info.name,
+        .total_trials = run_info.trial_count,
+        .run_seed = run_info.run_seed,
+
+        .type = THEFT_PROGRESS_TYPE_RUN_POST,
+        .u.run_post.report = {
+            .pass = run_info.pass,
+            .fail = run_info.fail,
+            .skip = run_info.skip,
+            .dup = run_info.dup,
+        },
+    };
+
+    if (cb(&progress_info, run_info.env) != THEFT_PROGRESS_CONTINUE) {
+        return THEFT_RUN_ERROR;
+    }
+
+    if (run_info.fail > 0) {
         return THEFT_RUN_FAIL;
     } else {
         return THEFT_RUN_PASS;
     }
 }
 
-static void
-infer_arity(struct theft_propfun_info *info) {
-    for (int i = 0; i < THEFT_MAX_ARITY; i++) {
-        if (info->type_info[i] == NULL) {
-            info->arity = i;
-            break;
+static enum run_step_res
+run_step(struct theft *t, struct theft_run_info *run_info,
+        struct theft_progress_info *progress_info,
+        size_t trial, void **args, theft_seed *seed) {
+    memset(args, 0x00, THEFT_MAX_ARITY * sizeof(args[0]));
+
+    /* If any seeds to always run were specified, use those before
+     * reverting to the specified starting seed. */
+    const size_t always_seeds = run_info->always_seed_count;
+    if (trial < always_seeds) {
+        *seed = run_info->always_seeds[trial];
+    } else if ((always_seeds > 0) && (trial == always_seeds)) {
+        *seed = run_info->run_seed;
+    }
+
+    struct theft_trial_info trial_info = {
+        .trial = trial,
+        .seed = *seed,
+        .arity = run_info->arity,
+        .args = args
+    };
+
+    *progress_info = (struct theft_progress_info) {
+        .prop_name = run_info->name,
+        .total_trials = run_info->trial_count,
+        .run_seed = run_info->run_seed,
+
+        .type = THEFT_PROGRESS_TYPE_GEN_ARGS_PRE,
+        .u.gen_args_pre = {
+            .trial_id = trial,
+            .trial_seed = trial_info.seed,
+            .arity = run_info->arity
+        },
+    };
+    enum theft_progress_callback_res cres;
+    cres = run_info->progress_cb(progress_info, run_info->env);
+
+    switch (cres) {
+    case THEFT_PROGRESS_CONTINUE:
+        break;
+    case THEFT_PROGRESS_HALT:
+        return RUN_STEP_HALT;
+    default:
+        assert(false);
+    case THEFT_PROGRESS_ERROR:
+        return RUN_STEP_GEN_ERROR;
+    }
+
+    theft_set_seed(t, *seed);
+
+    enum all_gen_res_t gres = gen_all_args(t, run_info,
+        *seed, args, run_info->env);
+    *progress_info = (struct theft_progress_info) {
+        .prop_name = run_info->name,
+        .total_trials = run_info->trial_count,
+        .run_seed = *seed,
+        .type = THEFT_PROGRESS_TYPE_TRIAL_POST,
+        .u.trial_post = {
+            .trial_id = trial,
+            .trial_seed = trial_info.seed,
+            .arity = run_info->arity,
+            .args = args,
+        },
+    };
+
+    switch (gres) {
+    case ALL_GEN_SKIP:
+        /* skip generating these args */
+        run_info->skip++;
+        progress_info->u.trial_post.result = THEFT_TRIAL_SKIP;
+        cres = run_info->progress_cb(progress_info, run_info->env);
+        break;
+    case ALL_GEN_DUP:
+        /* skip these args -- probably already tried */
+        run_info->dup++;
+        progress_info->u.trial_post.result = THEFT_TRIAL_DUP;
+        cres = run_info->progress_cb(progress_info, run_info->env);
+        break;
+    default:
+    case ALL_GEN_ERROR:
+        /* Error while generating args */
+        progress_info->u.trial_post.result = THEFT_TRIAL_ERROR;
+        cres = run_info->progress_cb(progress_info, run_info->env);
+        return RUN_STEP_GEN_ERROR;
+    case ALL_GEN_OK:
+        *progress_info = (struct theft_progress_info) {
+            .prop_name = run_info->name,
+            .total_trials = run_info->trial_count,
+            .run_seed = run_info->run_seed,
+            .type = THEFT_PROGRESS_TYPE_TRIAL_PRE,
+            .u.trial_pre = {
+                .trial_id = trial,
+                .trial_seed = trial_info.seed,
+                .arity = run_info->arity,
+                .args = args,
+            },
+        };
+        cres = run_info->progress_cb(progress_info, run_info->env);
+        if (cres == THEFT_PROGRESS_HALT) {
+            return RUN_STEP_HALT;
+        }
+        if (!theft_trial_run(t, run_info, &trial_info, &cres)) {
+            return RUN_STEP_TRIAL_ERROR;
         }
     }
+
+    /* Restore last known seed and generate next. */
+    theft_set_seed(t, *seed);
+    *seed = theft_random(t);
+    return RUN_STEP_OK;
+}
+
+static uint8_t
+infer_arity(struct theft_run_config *cfg) {
+    for (uint8_t i = 0; i < THEFT_MAX_ARITY; i++) {
+        if (cfg->type_info[i] == NULL) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+/* Check if all argument info structs have all required callbacks. */
+static bool
+check_all_args(uint8_t arity, struct theft_run_config *cfg,
+        bool *all_hashable) {
+    bool ah = true;
+    for (int i = 0; i < arity; i++) {
+        const struct theft_type_info *ti = cfg->type_info[i];
+        if (ti->alloc == NULL) { return false; }
+        if (ti->hash == NULL) { ah = false; }
+    }
+    *all_hashable = ah;
+    return true;
 }
 
 /* Attempt to instantiate arguments, starting with the current seed. */
 static enum all_gen_res_t
-gen_all_args(struct theft *t, struct theft_propfun_info *info,
+gen_all_args(struct theft *t, struct theft_run_info *run_info,
         theft_seed seed, void *args[THEFT_MAX_ARITY], void *env) {
-    for (int i = 0; i < info->arity; i++) {
-        struct theft_type_info *ti = info->type_info[i];
+    for (int i = 0; i < run_info->arity; i++) {
+        struct theft_type_info *ti = run_info->type_info[i];
         void *p = NULL;
         enum theft_alloc_res res = ti->alloc(t, seed, env, &p);
         if (res == THEFT_ALLOC_SKIP || res == THEFT_ALLOC_ERROR) {
@@ -147,28 +265,15 @@ gen_all_args(struct theft *t, struct theft_propfun_info *info,
     }
 
     /* check bloom filter */
-    if (t->bloom && theft_call_check_called(t, info, args, env)) {
+    if (t->bloom && theft_call_check_called(t, run_info, args)) {
         return ALL_GEN_DUP;
     }
-    
+
     return ALL_GEN_OK;
 }
 
-/* Check if all argument info structs have all required callbacks. */
-static bool
-check_all_args(struct theft_propfun_info *info, bool *all_hashable) {
-    bool ah = true;
-    for (int i = 0; i < info->arity; i++) {
-        struct theft_type_info *ti = info->type_info[i];
-        if (ti->alloc == NULL) { return false; }
-        if (ti->hash == NULL) { ah = false; }
-    }
-    *all_hashable = ah;
-    return true;
-}
-
 static enum theft_progress_callback_res
-default_progress_cb(struct theft_trial_info *info, void *env) {
+default_progress_cb(const struct theft_progress_info *info, void *env) {
     (void)info;
     (void)env;
     return THEFT_PROGRESS_CONTINUE;

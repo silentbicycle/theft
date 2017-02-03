@@ -6,7 +6,8 @@
 
 static enum theft_progress_callback_res
 report_on_failure(struct theft *t,
-    struct theft_propfun_info *info,
-    struct theft_trial_info *ti, theft_progress_cb *cb, void *env);
+    struct theft_run_info *run_info,
+    struct theft_trial_info *trial_info,
+    struct theft_progress_info *progress_info);
 
 #endif

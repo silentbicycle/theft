@@ -1,5 +1,6 @@
 PROJECT = 	theft
 BUILD =		build
+SRC =		src
 INC =		inc
 VENDOR =	vendor
 OPTIMIZE = 	-O3
@@ -53,7 +54,7 @@ ${BUILD}/%.o: test/%.c ${BUILD}
 	${CC} -c -o $@ ${TEST_CFLAGS} $<
 
 ${BUILD}/TAGS: ${BUILD}
-	etags -o $@ *.[ch]
+	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h
 
 ${BUILD}:
 	mkdir ${BUILD}

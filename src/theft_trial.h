@@ -2,13 +2,12 @@
 #define THEFT_TRIAL_H
 
 bool
-theft_trial_run(struct theft *t, struct theft_propfun_info *info,
-    void **args, theft_progress_cb *cb, void *env,
-    struct theft_trial_report *r, struct theft_trial_info *ti,
+theft_trial_run(struct theft *t, struct theft_run_info *run_info,
+    struct theft_trial_info *trial_info,
     enum theft_progress_callback_res *cres);
 
 void
-theft_trial_free_args(struct theft_propfun_info *info,
-    void **args, void *env);
+theft_trial_free_args(struct theft_run_info *info,
+    void **args);
 
 #endif
