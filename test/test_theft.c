@@ -39,10 +39,10 @@ static struct theft_type_info uint_type_info = {
     .print = uint_print,
 };
 
-static enum theft_progress_callback_res
-guiap_prog_cb(const struct theft_progress_info *info, void *env) {
+static enum theft_hook_res
+guiap_hook_cb(const struct theft_hook_info *info, void *env) {
     (void)info; (void)env;
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 static enum theft_trial_res is_pos(uint32_t *n) {
@@ -64,7 +64,7 @@ TEST generated_unsigned_ints_are_positive() {
             .name = "generated_unsigned_ints_are_positive",
             .fun = is_pos,
             .type_info = { &uint_type_info },
-            .progress_cb = guiap_prog_cb,
+            .hook_cb = guiap_hook_cb,
         });
     ASSERT_EQm("generated_unsigned_ints_are_positive",
         THEFT_RUN_PASS, res);
@@ -308,10 +308,10 @@ static enum theft_trial_res prop_gen_cons(list *l) {
     return res;
 }
 
-static enum theft_progress_callback_res
-gilwcil_prog_cb(const struct theft_progress_info *info, void *env) {
+static enum theft_hook_res
+gilwcil_hook_cb(const struct theft_hook_info *info, void *env) {
     (void)info; (void)env;
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST generated_int_list_with_cons_is_longer() {
@@ -321,7 +321,7 @@ TEST generated_int_list_with_cons_is_longer() {
         .name = __func__,
         .fun = prop_gen_cons,
         .type_info = { &list_info },
-        .progress_cb = gilwcil_prog_cb,
+        .hook_cb = gilwcil_hook_cb,
     };
     res = theft_run(t, &cfg);
 
@@ -351,11 +351,11 @@ typedef struct {
     size_t fail;
 } test_env;
 
-static enum theft_progress_callback_res
-gildnrv_prog_cb(const struct theft_progress_info *info, void *venv) {
+static enum theft_hook_res
+gildnrv_hook_cb(const struct theft_hook_info *info, void *venv) {
     test_env *env = (test_env *)venv;
-    if (info->type == THEFT_PROGRESS_TYPE_TRIAL_POST) {
-        const struct theft_progress_trial_post *post = &info->u.trial_post;
+    if (info->type == THEFT_HOOK_TYPE_TRIAL_POST) {
+        const struct theft_hook_trial_post *post = &info->u.trial_post;
         if (post->result == THEFT_TRIAL_FAIL) {
             printf("f");
             env->fail++;
@@ -363,7 +363,7 @@ gildnrv_prog_cb(const struct theft_progress_info *info, void *venv) {
             printf(".");
         }
     }
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST generated_int_list_does_not_repeat_values() {
@@ -376,7 +376,7 @@ TEST generated_int_list_does_not_repeat_values() {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
-        .progress_cb = gildnrv_prog_cb,
+        .hook_cb = gildnrv_hook_cb,
         .trials = 1000,
         .seed = 12345,
         .env = &env,
@@ -440,11 +440,11 @@ prop_gen_list_unique_pair(list *a, list *b) {
     return THEFT_TRIAL_PASS;
 }
 
-static enum theft_progress_callback_res
-prog_cb(const struct theft_progress_info *info, void *env) {
+static enum theft_hook_res
+hook_cb(const struct theft_hook_info *info, void *env) {
     test_env *e = (test_env *)env;
 
-    if (info->type == THEFT_PROGRESS_TYPE_TRIAL_POST) {
+    if (info->type == THEFT_HOOK_TYPE_TRIAL_POST) {
         if ((info->u.trial_post.trial_id % 100) == 0) {
             printf(".");
             e->dots++;
@@ -459,7 +459,7 @@ prog_cb(const struct theft_progress_info *info, void *env) {
         }
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST two_generated_lists_do_not_match() {
@@ -478,7 +478,7 @@ TEST two_generated_lists_do_not_match() {
         .fun = prop_gen_list_unique_pair,
         .type_info = { &list_info, &list_info },
         .trials = 10000,
-        .progress_cb = prog_cb,
+        .hook_cb = hook_cb,
         .env = &env,
         .seed = (theft_seed)(tv.tv_sec ^ tv.tv_usec)
     };
@@ -495,11 +495,11 @@ typedef struct {
     size_t fail;
 } always_seed_env;
 
-static enum theft_progress_callback_res
-always_prog_cb(const struct theft_progress_info *info, void *venv) {
+static enum theft_hook_res
+always_hook_cb(const struct theft_hook_info *info, void *venv) {
     always_seed_env *env = (always_seed_env *)venv;
 
-    if (info->type == THEFT_PROGRESS_TYPE_TRIAL_POST) {
+    if (info->type == THEFT_HOOK_TYPE_TRIAL_POST) {
         if ((info->u.trial_post.trial_id % 100) == 0) {
             printf(".");
         }
@@ -515,13 +515,13 @@ always_prog_cb(const struct theft_progress_info *info, void *venv) {
         if (info->u.trial_post.result == THEFT_TRIAL_FAIL) {
             env->fail = true;
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_RUN_POST) {
+    } else if (info->type == THEFT_HOOK_TYPE_RUN_POST) {
         const struct theft_run_report *report = &info->u.run_post.report;
         printf("\n -- PASS %zd, FAIL %zd, SKIP %zd, DUP %zd\n",
             report->pass, report->fail, report->skip, report->dup);
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 /* Or, the optional always_seed fields could be wrapped in a macro... */
@@ -548,7 +548,7 @@ TEST always_seeds_must_be_run() {
         .seed = 0x600dd06,
         ALWAYS_SEEDS(always_seeds),
         .env = &env,
-        .progress_cb = always_prog_cb,
+        .hook_cb = always_hook_cb,
     };
     res = theft_run(t, &cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
@@ -710,14 +710,14 @@ static struct theft_type_info bool_info = {
     .hash = bool_hash,
 };
 
-static enum theft_progress_callback_res
-save_report_cb(const struct theft_progress_info *info, void *env) {
+static enum theft_hook_res
+save_report_cb(const struct theft_hook_info *info, void *env) {
     struct theft_run_report *report = (struct theft_run_report *)env;
 
-    if (info->type == THEFT_PROGRESS_TYPE_RUN_POST) {
+    if (info->type == THEFT_HOOK_TYPE_RUN_POST) {
         memcpy(report, &info->u.run_post.report, sizeof(*report));
     }
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST overconstrained_state_spaces_should_be_detected(void) {
@@ -731,7 +731,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
         .fun = prop_bool_tautology,
         .type_info = { &bool_info },
         .trials = 100,
-        .progress_cb = save_report_cb,
+        .hook_cb = save_report_cb,
         .env = (void *)&report,
     };
 
@@ -757,15 +757,15 @@ static struct theft_type_info never_run_info = {
     .alloc = never_run_alloc,
 };
 
-static enum theft_progress_callback_res
-error_in_gen_args_pre(const struct theft_progress_info *info, void *env) {
-    if (info->type == THEFT_PROGRESS_TYPE_GEN_ARGS_PRE) {
+static enum theft_hook_res
+error_in_gen_args_pre(const struct theft_hook_info *info, void *env) {
+    if (info->type == THEFT_HOOK_TYPE_GEN_ARGS_PRE) {
         theft_seed *seed = (theft_seed *)env;
         *seed = info->u.gen_args_pre.trial_seed;
-        return THEFT_PROGRESS_ERROR;
+        return THEFT_HOOK_ERROR;
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 static enum theft_trial_res should_never_run(void *x) {
@@ -782,7 +782,7 @@ TEST save_seed_and_error_before_generating_args(void) {
     struct theft_run_config cfg = {
         .fun = should_never_run,
         .type_info = { &never_run_info },
-        .progress_cb = error_in_gen_args_pre,
+        .hook_cb = error_in_gen_args_pre,
         .seed = 0xf005ba11,
         .env = (void *)&seed,
     };
@@ -801,18 +801,18 @@ static enum theft_trial_res always_pass(void *x) {
     return THEFT_TRIAL_PASS;
 }
 
-static enum theft_progress_callback_res
-halt_before_third(const struct theft_progress_info *info, void *env) {
-    if (info->type == THEFT_PROGRESS_TYPE_TRIAL_PRE) {
+static enum theft_hook_res
+halt_before_third(const struct theft_hook_info *info, void *env) {
+    if (info->type == THEFT_HOOK_TYPE_TRIAL_PRE) {
         if (info->u.gen_args_pre.trial_id == 2) {
-            return THEFT_PROGRESS_HALT;
+            return THEFT_HOOK_HALT;
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_RUN_POST) {
+    } else if (info->type == THEFT_HOOK_TYPE_RUN_POST) {
         struct theft_run_report *report = (struct theft_run_report *)env;
         memcpy(report, &info->u.run_post.report, sizeof(*report));
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST gen_pre_halt(void) {
@@ -823,7 +823,7 @@ TEST gen_pre_halt(void) {
     struct theft_run_config cfg = {
         .fun = always_pass,
         .type_info = { &uint_type_info },
-        .progress_cb = halt_before_third,
+        .hook_cb = halt_before_third,
         .env = (void *)&report,
     };
 
@@ -904,12 +904,12 @@ struct shrink_test_env {
     size_t reruns;
 };
 
-static enum theft_progress_callback_res
-halt_after_third_shrink(const struct theft_progress_info *info, void *venv) {
+static enum theft_hook_res
+halt_after_third_shrink(const struct theft_hook_info *info, void *venv) {
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
 
-    if (info->type == THEFT_PROGRESS_TYPE_SHRINK_PRE) {
-        const struct theft_progress_shrink_pre *shrink_pre = &info->u.shrink_pre;
+    if (info->type == THEFT_HOOK_TYPE_SHRINK_PRE) {
+        const struct theft_hook_shrink_pre *shrink_pre = &info->u.shrink_pre;
         printf("shrink_pre: trial %zd, seed %" PRIx64 "\n",
             shrink_pre->trial_id, shrink_pre->trial_seed);
         printf("    shrink_count %zd, succ %zd, fail %zd\n",
@@ -919,12 +919,12 @@ halt_after_third_shrink(const struct theft_progress_info *info, void *venv) {
         printf("    BEFORE: %u\n", *pnum);
         if (shrink_pre->successful_shrinks == 3) {
             env->shrinks = 3;
-            return THEFT_PROGRESS_HALT;
+            return THEFT_HOOK_HALT;
         } else if (shrink_pre->successful_shrinks > 3) {
             env->fail = true;
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_SHRINK_POST) {
-        const struct theft_progress_shrink_post *shrink_post = &info->u.shrink_post;
+    } else if (info->type == THEFT_HOOK_TYPE_SHRINK_POST) {
+        const struct theft_hook_shrink_post *shrink_post = &info->u.shrink_post;
         printf("shrink_post: trial %zd, seed %" PRIx64 "\n",
             shrink_post->trial_id, shrink_post->trial_seed);
         printf("    shrink_count %zd, succ %zd, fail %zd\n",
@@ -935,7 +935,7 @@ halt_after_third_shrink(const struct theft_progress_info *info, void *venv) {
             *pnum, shrink_post->done);
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST only_shrink_three_times(void) {
@@ -946,7 +946,7 @@ TEST only_shrink_three_times(void) {
     struct theft_run_config cfg = {
         .fun = prop_uint_is_lte_12345,
         .type_info = { &shrink_test_uint_type_info },
-        .progress_cb = halt_after_third_shrink,
+        .hook_cb = halt_after_third_shrink,
         .trials = 1,
         .env = (void *)&env,
     };
@@ -960,12 +960,12 @@ TEST only_shrink_three_times(void) {
     PASS();
 }
 
-static enum theft_progress_callback_res
-shrink_all_the_way(const struct theft_progress_info *info, void *venv) {
+static enum theft_hook_res
+shrink_all_the_way(const struct theft_hook_info *info, void *venv) {
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
 
-    if (info->type == THEFT_PROGRESS_TYPE_SHRINK_POST) {
-        const struct theft_progress_shrink_post *shrink_post = &info->u.shrink_post;
+    if (info->type == THEFT_HOOK_TYPE_SHRINK_POST) {
+        const struct theft_hook_shrink_post *shrink_post = &info->u.shrink_post;
         if (shrink_post->done) {
             uint32_t *pnum = (uint32_t *)shrink_post->arg;
             env->local_minimum = *pnum;
@@ -975,23 +975,23 @@ shrink_all_the_way(const struct theft_progress_info *info, void *venv) {
                 shrink_post->successful_shrinks,
                 shrink_post->failed_shrinks);
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_SHRINK_TRIAL_POST) {
-        const struct theft_progress_shrink_trial_post *shrink_trial_post;
+    } else if (info->type == THEFT_HOOK_TYPE_SHRINK_TRIAL_POST) {
+        const struct theft_hook_shrink_trial_post *shrink_trial_post;
         shrink_trial_post = &info->u.shrink_trial_post;
         uint32_t *pnum = (uint32_t *)shrink_trial_post->args[0];
         if (*pnum == 12346 && env->reruns < 3) {
             env->reruns++;
-            return THEFT_PROGRESS_REPEAT;
+            return THEFT_HOOK_REPEAT;
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_TRIAL_POST) {
+    } else if (info->type == THEFT_HOOK_TYPE_TRIAL_POST) {
         uint32_t *pnum = (uint32_t *)info->u.trial_post.args[0];
         if (*pnum == 12346 && env->reruns < 33) {
             env->reruns += 10;
-            return THEFT_PROGRESS_REPEAT;
+            return THEFT_HOOK_REPEAT;
         }
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST save_local_minimum_and_re_run(void) {
@@ -1002,7 +1002,7 @@ TEST save_local_minimum_and_re_run(void) {
     struct theft_run_config cfg = {
         .fun = prop_uint_is_lte_12345,
         .type_info = { &shrink_test_uint_type_info },
-        .progress_cb = shrink_all_the_way,
+        .hook_cb = shrink_all_the_way,
         .trials = 1,
         .env = (void *)&env,
     };
@@ -1022,29 +1022,29 @@ struct repeat_once_env {
     bool fail;
 };
 
-static enum theft_progress_callback_res
-repeat_once_prog_cb(const struct theft_progress_info *info, void *venv) {
+static enum theft_hook_res
+repeat_once_hook_cb(const struct theft_hook_info *info, void *venv) {
     struct repeat_once_env *env = (struct repeat_once_env *)venv;
-    if (info->type == THEFT_PROGRESS_TYPE_TRIAL_POST) {
-        const struct theft_progress_trial_post *post = &info->u.trial_post;
+    if (info->type == THEFT_HOOK_TYPE_TRIAL_POST) {
+        const struct theft_hook_trial_post *post = &info->u.trial_post;
         if (post->result == THEFT_TRIAL_FAIL) {
             env->fail = true;
             env->local_minimum_runs++;
             if (env->local_minimum_runs > 2) {
                 /* Shouldn't get here, but don't repeat forever */
-                return THEFT_PROGRESS_ERROR;
+                return THEFT_HOOK_ERROR;
             } else {
-                return THEFT_PROGRESS_REPEAT_ONCE;
+                return THEFT_HOOK_REPEAT_ONCE;
             }
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_TRIAL_PRE) {
+    } else if (info->type == THEFT_HOOK_TYPE_TRIAL_PRE) {
         /* Only run one failing trial. */
         if (env->fail) {
-            return THEFT_PROGRESS_HALT;
+            return THEFT_HOOK_HALT;
         }
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST repeat_local_minimum_once(void) {
@@ -1057,7 +1057,7 @@ TEST repeat_local_minimum_once(void) {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
-        .progress_cb = repeat_once_prog_cb,
+        .hook_cb = repeat_once_hook_cb,
         .trials = 1000,
         .seed = 12345,
         .env = &env,
@@ -1077,12 +1077,12 @@ struct repeat_shrink_once_env {
     bool fail;
 };
 
-static enum theft_progress_callback_res
-repeat_first_successful_shrink_then_halt_prog_cb(const struct theft_progress_info *info,
+static enum theft_hook_res
+repeat_first_successful_shrink_then_halt_hook_cb(const struct theft_hook_info *info,
                                                  void *venv) {
     struct repeat_shrink_once_env *env = (struct repeat_shrink_once_env *)venv;
-    if (info->type == THEFT_PROGRESS_TYPE_SHRINK_TRIAL_POST) {
-        const struct theft_progress_shrink_trial_post *post = &info->u.shrink_trial_post;
+    if (info->type == THEFT_HOOK_TYPE_SHRINK_TRIAL_POST) {
+        const struct theft_hook_shrink_trial_post *post = &info->u.shrink_trial_post;
         if (post->result == THEFT_TRIAL_FAIL) {
             env->fail = true;
             if (env->last_arg == post->args[0]) {
@@ -1094,22 +1094,22 @@ repeat_first_successful_shrink_then_halt_prog_cb(const struct theft_progress_inf
 
             if (env->shrink_repeats > 1) {
                 /* Shouldn't get here, but don't repeat forever */
-                return THEFT_PROGRESS_ERROR;
+                return THEFT_HOOK_ERROR;
             } else {
-                return THEFT_PROGRESS_REPEAT_ONCE;
+                return THEFT_HOOK_REPEAT_ONCE;
             }
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_TRIAL_PRE) {
+    } else if (info->type == THEFT_HOOK_TYPE_TRIAL_PRE) {
         if (env->last_arg != NULL) {
-            return THEFT_PROGRESS_HALT;
+            return THEFT_HOOK_HALT;
         }
-    } else if (info->type == THEFT_PROGRESS_TYPE_SHRINK_PRE) {
+    } else if (info->type == THEFT_HOOK_TYPE_SHRINK_PRE) {
         if (env->last_arg != NULL) {
-            return THEFT_PROGRESS_HALT;
+            return THEFT_HOOK_HALT;
         }
     }
 
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }
 
 TEST repeat_first_successful_shrink_once_then_halt(void) {
@@ -1122,7 +1122,7 @@ TEST repeat_first_successful_shrink_once_then_halt(void) {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
-        .progress_cb = repeat_first_successful_shrink_then_halt_prog_cb,
+        .hook_cb = repeat_first_successful_shrink_then_halt_hook_cb,
         .trials = 1000,
         .seed = 12345,
         .env = &env,
@@ -1146,7 +1146,7 @@ SUITE(integration) {
     RUN_TEST(always_seeds_must_be_run);
     RUN_TEST(overconstrained_state_spaces_should_be_detected);
 
-    /* Tests for various progress_cb functionality */
+    /* Tests for hook_cb functionality */
     RUN_TEST(save_seed_and_error_before_generating_args);
     RUN_TEST(gen_pre_halt);
     RUN_TEST(only_shrink_three_times);

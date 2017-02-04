@@ -19,8 +19,8 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
         return THEFT_RUN_ERROR_MISSING_CALLBACK;
     }
 
-    theft_progress_cb *cb = cfg->progress_cb
-      ? cfg->progress_cb : default_progress_cb;
+    theft_hook_cb *cb = cfg->hook_cb
+      ? cfg->hook_cb : default_hook_cb;
 
     struct theft_run_info run_info = {
         .name = cfg->name,
@@ -32,7 +32,7 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
         .always_seed_count = (cfg->always_seeds == NULL
             ? 0 : cfg->always_seed_count),
         .always_seeds = cfg->always_seeds,
-        .progress_cb = cb,
+        .hook_cb = cb,
         .env = cfg->env,
     };
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
@@ -46,15 +46,15 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
         t->bloom = theft_bloom_init(t->requested_bloom_bits);
     }
 
-    struct theft_progress_info progress_info = {
+    struct theft_hook_info hook_info = {
         .prop_name = run_info.name,
         .total_trials = run_info.trial_count,
         .run_seed = run_info.run_seed,
 
-        .type = THEFT_PROGRESS_TYPE_RUN_PRE,
+        .type = THEFT_HOOK_TYPE_RUN_PRE,
         /* RUN_PRE has no other info in the union */
     };
-    if (cb(&progress_info, run_info.env) != THEFT_PROGRESS_CONTINUE) {
+    if (cb(&hook_info, run_info.env) != THEFT_HOOK_CONTINUE) {
         return THEFT_RUN_ERROR;
     }
 
@@ -63,7 +63,7 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
 
     for (size_t trial = 0; trial < limit; trial++) {
         void *args[THEFT_MAX_ARITY];
-        enum run_step_res res = run_step(t, &run_info, &progress_info,
+        enum run_step_res res = run_step(t, &run_info, &hook_info,
             trial, args, &seed);
         theft_trial_free_args(&run_info, args);
 
@@ -80,12 +80,12 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
         }
     }
 
-    progress_info = (struct theft_progress_info) {
+    hook_info = (struct theft_hook_info) {
         .prop_name = run_info.name,
         .total_trials = run_info.trial_count,
         .run_seed = run_info.run_seed,
 
-        .type = THEFT_PROGRESS_TYPE_RUN_POST,
+        .type = THEFT_HOOK_TYPE_RUN_POST,
         .u.run_post.report = {
             .pass = run_info.pass,
             .fail = run_info.fail,
@@ -94,7 +94,7 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
         },
     };
 
-    if (cb(&progress_info, run_info.env) != THEFT_PROGRESS_CONTINUE) {
+    if (cb(&hook_info, run_info.env) != THEFT_HOOK_CONTINUE) {
         return THEFT_RUN_ERROR;
     }
 
@@ -107,7 +107,7 @@ theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
 
 static enum run_step_res
 run_step(struct theft *t, struct theft_run_info *run_info,
-        struct theft_progress_info *progress_info,
+        struct theft_hook_info *hook_info,
         size_t trial, void **args, theft_seed *seed) {
     memset(args, 0x00, THEFT_MAX_ARITY * sizeof(args[0]));
 
@@ -127,29 +127,29 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         .args = args
     };
 
-    *progress_info = (struct theft_progress_info) {
+    *hook_info = (struct theft_hook_info) {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .run_seed = run_info->run_seed,
 
-        .type = THEFT_PROGRESS_TYPE_GEN_ARGS_PRE,
+        .type = THEFT_HOOK_TYPE_GEN_ARGS_PRE,
         .u.gen_args_pre = {
             .trial_id = trial,
             .trial_seed = trial_info.seed,
             .arity = run_info->arity
         },
     };
-    enum theft_progress_callback_res cres;
-    cres = run_info->progress_cb(progress_info, run_info->env);
+    enum theft_hook_res cres;
+    cres = run_info->hook_cb(hook_info, run_info->env);
 
     switch (cres) {
-    case THEFT_PROGRESS_CONTINUE:
+    case THEFT_HOOK_CONTINUE:
         break;
-    case THEFT_PROGRESS_HALT:
+    case THEFT_HOOK_HALT:
         return RUN_STEP_HALT;
     default:
         assert(false);
-    case THEFT_PROGRESS_ERROR:
+    case THEFT_HOOK_ERROR:
         return RUN_STEP_GEN_ERROR;
     }
 
@@ -157,11 +157,11 @@ run_step(struct theft *t, struct theft_run_info *run_info,
 
     enum all_gen_res_t gres = gen_all_args(t, run_info,
         *seed, args, run_info->env);
-    *progress_info = (struct theft_progress_info) {
+    *hook_info = (struct theft_hook_info) {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .run_seed = *seed,
-        .type = THEFT_PROGRESS_TYPE_TRIAL_POST,
+        .type = THEFT_HOOK_TYPE_TRIAL_POST,
         .u.trial_post = {
             .trial_id = trial,
             .trial_seed = trial_info.seed,
@@ -174,27 +174,27 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     case ALL_GEN_SKIP:
         /* skip generating these args */
         run_info->skip++;
-        progress_info->u.trial_post.result = THEFT_TRIAL_SKIP;
-        cres = run_info->progress_cb(progress_info, run_info->env);
+        hook_info->u.trial_post.result = THEFT_TRIAL_SKIP;
+        cres = run_info->hook_cb(hook_info, run_info->env);
         break;
     case ALL_GEN_DUP:
         /* skip these args -- probably already tried */
         run_info->dup++;
-        progress_info->u.trial_post.result = THEFT_TRIAL_DUP;
-        cres = run_info->progress_cb(progress_info, run_info->env);
+        hook_info->u.trial_post.result = THEFT_TRIAL_DUP;
+        cres = run_info->hook_cb(hook_info, run_info->env);
         break;
     default:
     case ALL_GEN_ERROR:
         /* Error while generating args */
-        progress_info->u.trial_post.result = THEFT_TRIAL_ERROR;
-        cres = run_info->progress_cb(progress_info, run_info->env);
+        hook_info->u.trial_post.result = THEFT_TRIAL_ERROR;
+        cres = run_info->hook_cb(hook_info, run_info->env);
         return RUN_STEP_GEN_ERROR;
     case ALL_GEN_OK:
-        *progress_info = (struct theft_progress_info) {
+        *hook_info = (struct theft_hook_info) {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
             .run_seed = run_info->run_seed,
-            .type = THEFT_PROGRESS_TYPE_TRIAL_PRE,
+            .type = THEFT_HOOK_TYPE_TRIAL_PRE,
             .u.trial_pre = {
                 .trial_id = trial,
                 .trial_seed = trial_info.seed,
@@ -202,8 +202,8 @@ run_step(struct theft *t, struct theft_run_info *run_info,
                 .args = args,
             },
         };
-        cres = run_info->progress_cb(progress_info, run_info->env);
-        if (cres == THEFT_PROGRESS_HALT) {
+        cres = run_info->hook_cb(hook_info, run_info->env);
+        if (cres == THEFT_HOOK_HALT) {
             return RUN_STEP_HALT;
         }
         if (!theft_trial_run(t, run_info, &trial_info, &cres)) {
@@ -272,9 +272,9 @@ gen_all_args(struct theft *t, struct theft_run_info *run_info,
     return ALL_GEN_OK;
 }
 
-static enum theft_progress_callback_res
-default_progress_cb(const struct theft_progress_info *info, void *env) {
+static enum theft_hook_res
+default_hook_cb(const struct theft_hook_info *info, void *env) {
     (void)info;
     (void)env;
-    return THEFT_PROGRESS_CONTINUE;
+    return THEFT_HOOK_CONTINUE;
 }

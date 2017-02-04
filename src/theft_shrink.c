@@ -60,12 +60,12 @@ attempt_to_shrink_arg(struct theft *t,
         enum theft_shrink_res sres;
         void *candidate = NULL;
 
-        enum theft_progress_callback_res cres;
-        cres = pre_shrink_progress(run_info, trial_info,
+        enum theft_hook_res cres;
+        cres = pre_shrink_hook(run_info, trial_info,
             arg_i, cur, tactic);
-        if (cres == THEFT_PROGRESS_HALT) {
+        if (cres == THEFT_HOOK_HALT) {
             return SHRINK_HALT;
-        } else if (cres != THEFT_PROGRESS_CONTINUE) {
+        } else if (cres != THEFT_HOOK_CONTINUE) {
             return SHRINK_ERROR;
         }
 
@@ -73,10 +73,10 @@ attempt_to_shrink_arg(struct theft *t,
 
         trial_info->shrink_count++;
 
-        cres = post_shrink_progress(run_info, trial_info, arg_i,
+        cres = post_shrink_hook(run_info, trial_info, arg_i,
             sres == THEFT_SHRINK_OK ? candidate : cur,
             tactic, sres == THEFT_SHRINK_NO_MORE_TACTICS);
-        if (cres != THEFT_PROGRESS_CONTINUE) {
+        if (cres != THEFT_HOOK_CONTINUE) {
             return SHRINK_ERROR;
         }
 
@@ -114,17 +114,17 @@ attempt_to_shrink_arg(struct theft *t,
                 trial_info->failed_shrinks++;
             }
 
-            cres = post_shrink_trial_progress(run_info, trial_info,
+            cres = post_shrink_trial_hook(run_info, trial_info,
                 arg_i, args, tactic, res);
-            if (cres == THEFT_PROGRESS_REPEAT) {
+            if (cres == THEFT_HOOK_REPEAT) {
                 repeated = true;
                 continue;  // loop and run again
-            } else if (cres == THEFT_PROGRESS_REPEAT_ONCE && !repeated) {
+            } else if (cres == THEFT_HOOK_REPEAT_ONCE && !repeated) {
                 repeated = true;
                 continue;
-            } else if (cres == THEFT_PROGRESS_REPEAT_ONCE && repeated) {
+            } else if (cres == THEFT_HOOK_REPEAT_ONCE && repeated) {
                 break;
-            } else if (cres == THEFT_PROGRESS_CONTINUE) {
+            } else if (cres == THEFT_HOOK_CONTINUE) {
                 break;
             } else {
                 return SHRINK_ERROR;
@@ -150,16 +150,16 @@ attempt_to_shrink_arg(struct theft *t,
     return SHRINK_DEAD_END;
 }
 
-static enum theft_progress_callback_res
-pre_shrink_progress(struct theft_run_info *run_info,
+static enum theft_hook_res
+pre_shrink_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic) {
-    struct theft_progress_info progress_info = {
+    struct theft_hook_info hook_info = {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .run_seed = run_info->run_seed,
 
-        .type = THEFT_PROGRESS_TYPE_SHRINK_PRE,
+        .type = THEFT_HOOK_TYPE_SHRINK_PRE,
         .u.shrink_pre = {
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
@@ -172,19 +172,19 @@ pre_shrink_progress(struct theft_run_info *run_info,
             .tactic = tactic,
         },
     };
-    return run_info->progress_cb(&progress_info, run_info->env);
+    return run_info->hook_cb(&hook_info, run_info->env);
 }
 
-static enum theft_progress_callback_res
-post_shrink_progress(struct theft_run_info *run_info,
+static enum theft_hook_res
+post_shrink_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic, bool done) {
-    struct theft_progress_info progress_info = {
+    struct theft_hook_info hook_info = {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .run_seed = run_info->run_seed,
 
-        .type = THEFT_PROGRESS_TYPE_SHRINK_POST,
+        .type = THEFT_HOOK_TYPE_SHRINK_POST,
         .u.shrink_post = {
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
@@ -198,20 +198,20 @@ post_shrink_progress(struct theft_run_info *run_info,
             .done = done,
         },
     };
-    return run_info->progress_cb(&progress_info, run_info->env);
+    return run_info->hook_cb(&hook_info, run_info->env);
 }
 
-static enum theft_progress_callback_res
-post_shrink_trial_progress(struct theft_run_info *run_info,
+static enum theft_hook_res
+post_shrink_trial_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void **args, uint32_t last_tactic,
         enum theft_trial_res result) {
-    struct theft_progress_info progress_info = {
+    struct theft_hook_info hook_info = {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .run_seed = run_info->run_seed,
 
-        .type = THEFT_PROGRESS_TYPE_SHRINK_TRIAL_POST,
+        .type = THEFT_HOOK_TYPE_SHRINK_TRIAL_POST,
         .u.shrink_trial_post = {
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
@@ -225,6 +225,6 @@ post_shrink_trial_progress(struct theft_run_info *run_info,
             .result = result,
         },
     };
-    return run_info->progress_cb(&progress_info, run_info->env);
+    return run_info->hook_cb(&hook_info, run_info->env);
 
 }

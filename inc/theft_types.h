@@ -117,31 +117,31 @@ struct theft_type_info {
     theft_print_cb *print;      /* fprintf instance */
 };
 
-/* Type tags for the info given to the progress callback. */
-enum theft_progress_callback_type {
+/* Type tags for the info given to the hook callback. */
+enum theft_hook_type {
     /* Before the start of a run (group of trials). */
-    THEFT_PROGRESS_TYPE_RUN_PRE,
+    THEFT_HOOK_TYPE_RUN_PRE,
 
     /* After the whole run has completed, with overall results. */
-    THEFT_PROGRESS_TYPE_RUN_POST,
+    THEFT_HOOK_TYPE_RUN_POST,
 
     /* Before generating the argument(s) for a trial. */
-    THEFT_PROGRESS_TYPE_GEN_ARGS_PRE,
+    THEFT_HOOK_TYPE_GEN_ARGS_PRE,
 
     /* Before running the trial, with the generated argument(s). */
-    THEFT_PROGRESS_TYPE_TRIAL_PRE,
+    THEFT_HOOK_TYPE_TRIAL_PRE,
 
     /* After running the trial, with the arguments and result. */
-    THEFT_PROGRESS_TYPE_TRIAL_POST,
+    THEFT_HOOK_TYPE_TRIAL_POST,
 
     /* Before attempting to shrink with the next tactic. */
-    THEFT_PROGRESS_TYPE_SHRINK_PRE,
+    THEFT_HOOK_TYPE_SHRINK_PRE,
 
     /* After attempting to shrink, with the new instance. */
-    THEFT_PROGRESS_TYPE_SHRINK_POST,
+    THEFT_HOOK_TYPE_SHRINK_POST,
 
     /* After re-running the trial with shrunken argument(s), with its result. */
-    THEFT_PROGRESS_TYPE_SHRINK_TRIAL_POST,
+    THEFT_HOOK_TYPE_SHRINK_TRIAL_POST,
 };
 
 /* Overall trial pass/fail/skip/duplicate counts after a run. */
@@ -152,29 +152,29 @@ struct theft_run_report {
     size_t dup;
 };
 
-/* structs contained within theft_progress_info's tagged union, below. */
-struct theft_progress_run_post {
+/* structs contained within theft_hook_info's tagged union, below. */
+struct theft_hook_run_post {
     struct theft_run_report report;
 };
-struct theft_progress_gen_args_pre {
+struct theft_hook_gen_args_pre {
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
 };
-struct theft_progress_trial_pre {
+struct theft_hook_trial_pre {
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     void **args;
 };
-struct theft_progress_trial_post {
+struct theft_hook_trial_post {
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     void **args;
     enum theft_trial_res result;
 };
-struct theft_progress_shrink_pre {
+struct theft_hook_shrink_pre {
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -185,7 +185,7 @@ struct theft_progress_shrink_pre {
     void *arg;
     uint32_t tactic;
 };
-struct theft_progress_shrink_post {
+struct theft_hook_shrink_post {
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -198,7 +198,7 @@ struct theft_progress_shrink_post {
     /* Did shrink() indicate that we're at a local minimum? */
     bool done;
 };
-struct theft_progress_shrink_trial_post {
+struct theft_hook_shrink_trial_post {
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -211,57 +211,57 @@ struct theft_progress_shrink_trial_post {
     enum theft_trial_res result;
 };
 
-/* Info given to the progress callback.
+/* Info given to the hook callback.
  * The union is tagged by the TYPE field. */
-struct theft_progress_info {
+struct theft_hook_info {
     /* Fields that are always set. */
     const char *prop_name;
     size_t total_trials;
     theft_seed run_seed;
 
     /* Tagged union. */
-    enum theft_progress_callback_type type;
+    enum theft_hook_type type;
     union {
         // run_pre has no other fields
-        struct theft_progress_run_post run_post;
-        struct theft_progress_gen_args_pre gen_args_pre;
-        struct theft_progress_trial_pre trial_pre;
-        struct theft_progress_trial_post trial_post;
-        struct theft_progress_shrink_pre shrink_pre;
-        struct theft_progress_shrink_post shrink_post;
-        struct theft_progress_shrink_trial_post shrink_trial_post;
+        struct theft_hook_run_post run_post;
+        struct theft_hook_gen_args_pre gen_args_pre;
+        struct theft_hook_trial_pre trial_pre;
+        struct theft_hook_trial_post trial_post;
+        struct theft_hook_shrink_pre shrink_pre;
+        struct theft_hook_shrink_post shrink_post;
+        struct theft_hook_shrink_trial_post shrink_trial_post;
     } u;
 };
 
 /* Whether to keep running trials after N failures/skips/etc. */
-enum theft_progress_callback_res {
-    THEFT_PROGRESS_ERROR,       /* error, cancel entire run */
-    THEFT_PROGRESS_CONTINUE,    /* continue current step */
+enum theft_hook_res {
+    THEFT_HOOK_ERROR,       /* error, cancel entire run */
+    THEFT_HOOK_CONTINUE,    /* continue current step */
 
     /* Halt the current step, but continue. This could be used to halt
      * shrinking when it hasn't made any progress for a while, or to
      * halt a run when there have been too many failed trials.
      *
      * Only valid in GEN_ARGS_PRE, TRIAL_PRE and SHRINK_PRE. */
-    THEFT_PROGRESS_HALT,
+    THEFT_HOOK_HALT,
 
     /* Repeat the current step. This could be used to re-run the
      * property function with the same argument instances, but with more
      * logging, breakpoints added, etc.
      *
      * Only valid in TRIAL_POST, SHRINK_TRIAL_POST. */
-    THEFT_PROGRESS_REPEAT,
+    THEFT_HOOK_REPEAT,
 
     /* Same as REPEAT, but only once. This is so the theft caller
      * doesn't need to track repeated calls to avoid infinite loops. */
-    THEFT_PROGRESS_REPEAT_ONCE,
+    THEFT_HOOK_REPEAT_ONCE,
 };
 
 /* Handle test results.
  * Can be used to halt after too many failures, print '.' after
  * every N trials, etc. */
-typedef enum theft_progress_callback_res
-theft_progress_cb(const struct theft_progress_info *info, void *env);
+typedef enum theft_hook_res
+theft_hook_cb(const struct theft_hook_info *info, void *env);
 
 /* Result from a trial run. */
 enum theft_run_res {
@@ -294,9 +294,10 @@ struct theft_run_config {
     /* Number of trials to run. Defaults to THEFT_DEF_TRIALS. */
     size_t trials;
 
-    /* Progress callback, used to display progress in
-     * slow-running tests, halt early under certain conditions, etc. */
-    theft_progress_cb *progress_cb;
+    /* Hook callback, called in several contexts to report on progress,
+     * halt shrinking early, repeat trials with different logging, etc.
+     * See struct theft_hook_info above for details. */
+    theft_hook_cb *hook_cb;
 
     /* Environment pointer. This is completely opaque to theft itself,
      * but will be passed along to all callbacks. */

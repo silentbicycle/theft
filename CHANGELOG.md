@@ -5,6 +5,7 @@
 ### API Changes
 
 The `theft_progress_cb` callback's role has significantly expanded.
+Rename it and its related types to `theft_hook_cb` throughout.
 Instead of only being called with the result after each trial, it is
 called in several contexts, and is passed a tagged union with details
 specific to that context. This hook supports many useful test-specific

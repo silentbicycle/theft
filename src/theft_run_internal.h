@@ -14,7 +14,7 @@ enum run_step_res {
 };
 static enum run_step_res
 run_step(struct theft *t, struct theft_run_info *run_info,
-    struct theft_progress_info *progress_info,
+    struct theft_hook_info *hook_info,
     size_t trial, void **args, theft_seed *seed);
 
 static bool
@@ -25,7 +25,7 @@ static enum all_gen_res_t
 gen_all_args(struct theft *t, struct theft_run_info *info,
     theft_seed seed, void *args[THEFT_MAX_ARITY], void *env);
 
-static enum theft_progress_callback_res
-default_progress_cb(const struct theft_progress_info *info, void *env);
+static enum theft_hook_res
+default_hook_cb(const struct theft_hook_info *info, void *env);
 
 #endif
