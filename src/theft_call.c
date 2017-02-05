@@ -58,8 +58,9 @@ static void
 get_arg_hash_buffer(theft_hash *buffer,
         struct theft_run_info *run_info, void **args) {
     for (int i = 0; i < run_info->arity; i++) {
-        buffer[i] = run_info->type_info[i]->hash(args[i], run_info->env);
-    }    
+        struct theft_type_info *ti = run_info->type_info[i];
+        buffer[i] = ti->hash(args[i], ti->env);
+    }
 }
 
 /* Check if this combination of argument instances has been called. */
@@ -79,4 +80,3 @@ void theft_call_mark_called(struct theft *t,
     theft_bloom_mark(t->bloom, (uint8_t *)buffer,
         run_info->arity * sizeof(theft_hash));
 }
-

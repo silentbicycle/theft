@@ -14,6 +14,13 @@ number of unsuccessful shrinks, or re-running a failed trial (with
 arguments shrunken to a local minima) after adjusting logging or adding
 breakpoints.
 
+`struct theft_type_info` now has a `void *env` field, and that
+(rather than the `void *env` associated with the `theft_hook_cb`)
+will be passed to its callbacks. It can be NULL, or the same as the
+`hook_cb`'s environment. This allows type-specific details, such as
+limits, to be passed to the callbacks. This makes reuse of the
+`type_info` callbacks easier.
+
 Added `theft_random_bits()`, which returns less than the full 64 bits
 from the random number generator, and buffers the rest for future
 requests. This also tells theft how much of the random bit stream is

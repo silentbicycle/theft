@@ -115,6 +115,9 @@ struct theft_type_info {
     theft_hash_cb *hash;        /* instance -> hash */
     theft_shrink_cb *shrink;    /* shrink instance */
     theft_print_cb *print;      /* fprintf instance */
+
+    /* Optional environment, passed to the callbacks above. */
+    void *env;
 };
 
 /* Type tags for the info given to the hook callback. */

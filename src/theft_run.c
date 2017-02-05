@@ -156,7 +156,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     theft_set_seed(t, *seed);
 
     enum all_gen_res_t gres = gen_all_args(t, run_info,
-        *seed, args, run_info->env);
+        *seed, args);
     *hook_info = (struct theft_hook_info) {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
@@ -244,14 +244,14 @@ check_all_args(uint8_t arity, struct theft_run_config *cfg,
 /* Attempt to instantiate arguments, starting with the current seed. */
 static enum all_gen_res_t
 gen_all_args(struct theft *t, struct theft_run_info *run_info,
-        theft_seed seed, void *args[THEFT_MAX_ARITY], void *env) {
+        theft_seed seed, void *args[THEFT_MAX_ARITY]) {
     for (int i = 0; i < run_info->arity; i++) {
         struct theft_type_info *ti = run_info->type_info[i];
         void *p = NULL;
-        enum theft_alloc_res res = ti->alloc(t, seed, env, &p);
+        enum theft_alloc_res res = ti->alloc(t, seed, ti->env, &p);
         if (res == THEFT_ALLOC_SKIP || res == THEFT_ALLOC_ERROR) {
             for (int j = 0; j < i; j++) {
-                ti->free(args[j], env);
+                ti->free(args[j], ti->env);
             }
             if (res == THEFT_ALLOC_SKIP) {
                 return ALL_GEN_SKIP;

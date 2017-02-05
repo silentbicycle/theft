@@ -69,7 +69,7 @@ attempt_to_shrink_arg(struct theft *t,
             return SHRINK_ERROR;
         }
 
-        sres = ti->shrink(cur, tactic, run_info->env, &candidate);
+        sres = ti->shrink(cur, tactic, ti->env, &candidate);
 
         trial_info->shrink_count++;
 
@@ -95,7 +95,7 @@ attempt_to_shrink_arg(struct theft *t,
         args[arg_i] = candidate;
         if (t->bloom) {
             if (theft_call_check_called(t, run_info, args)) {
-                if (ti->free) { ti->free(candidate, run_info->env); }
+                if (ti->free) { ti->free(candidate, ti->env); }
                 args[arg_i] = cur;
                 continue;
             } else {
@@ -136,10 +136,10 @@ attempt_to_shrink_arg(struct theft *t,
         case THEFT_TRIAL_SKIP:
             /* revert */
             args[arg_i] = cur;
-            if (ti->free) { ti->free(candidate, run_info->env); }
+            if (ti->free) { ti->free(candidate, ti->env); }
             break;
         case THEFT_TRIAL_FAIL:
-            if (ti->free) { ti->free(cur, run_info->env); }
+            if (ti->free) { ti->free(cur, ti->env); }
             return SHRINK_OK;
         default:
         case THEFT_TRIAL_ERROR:

@@ -65,9 +65,9 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
 void theft_trial_free_args(struct theft_run_info *run_info,
         void **args) {
     for (int i = 0; i < run_info->arity; i++) {
-        theft_free_cb *free_cb = run_info->type_info[i]->free;
-        if (free_cb && args[i] != NULL) {
-            free_cb(args[i], run_info->env);
+        struct theft_type_info *ti = run_info->type_info[i];
+        if (ti->free && args[i] != NULL) {
+            ti->free(args[i], ti->env);
         }
     }
 }
@@ -84,10 +84,10 @@ report_on_failure(struct theft *t,
     fprintf(t->out, "    Trial %u, Seed 0x%016" PRIx64 "\n",
         trial_info->trial, (uint64_t)trial_info->seed);
     for (int i = 0; i < arity; i++) {
-        theft_print_cb *print = run_info->type_info[i]->print;
-        if (print) {
+        struct theft_type_info *ti = run_info->type_info[i];
+        if (ti->print) {
             fprintf(t->out, "    Argument %d:\n", i);
-            print(t->out, trial_info->args[i], run_info->env);
+            ti->print(t->out, trial_info->args[i], ti->env);
             fprintf(t->out, "\n");
         }
     }
