@@ -46,7 +46,7 @@ theft_free_cb(void *instance, void *env);
 /* Hash an instance. Used to skip combinations of arguments which
  * have probably already been checked. */
 typedef theft_hash
-theft_hash_cb(void *instance, void *env);
+theft_hash_cb(const void *instance, void *env);
 
 /* Attempt to shrink an instance to a simpler instance.
  *
@@ -81,7 +81,7 @@ theft_shrink_cb(struct theft *t, const void *instance, uint32_t tactic,
 /* Print INSTANCE to output stream F.
  * Used for displaying counter-examples. Can be NULL. */
 typedef void
-theft_print_cb(FILE *f, void *instance, void *env);
+theft_print_cb(FILE *f, const void *instance, void *env);
 
 /* Result from a single trial. */
 enum theft_trial_res {

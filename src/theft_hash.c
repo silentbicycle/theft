@@ -15,7 +15,8 @@ void theft_hash_init(struct theft_hasher *h) {
 }
 
 /* Sink more data into an incremental hash. */
-void theft_hash_sink(struct theft_hasher *h, uint8_t *data, size_t bytes) {
+void theft_hash_sink(struct theft_hasher *h,
+        const uint8_t *data, size_t bytes) {
     assert(h);
     assert(data);
     if (h == NULL || data == NULL) { return; }
@@ -35,7 +36,7 @@ theft_hash theft_hash_done(struct theft_hasher *h) {
 }
 
 /* Hash a buffer in one pass. (Wraps the above functions.) */
-theft_hash theft_hash_onepass(uint8_t *data, size_t bytes) {
+theft_hash theft_hash_onepass(const uint8_t *data, size_t bytes) {
     assert(data);
     struct theft_hasher h;
     theft_hash_init(&h);

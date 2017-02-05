@@ -8,7 +8,7 @@
 
 /* Actually run the trials, with all arguments made explicit. */
 enum theft_run_res
-theft_run_trials(struct theft *t, struct theft_run_config *cfg) {
+theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     const uint8_t arity = infer_arity(cfg);
     if (arity == 0) {
         return THEFT_RUN_ERROR_BAD_ARGS;
@@ -217,7 +217,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
 }
 
 static uint8_t
-infer_arity(struct theft_run_config *cfg) {
+infer_arity(const struct theft_run_config *cfg) {
     for (uint8_t i = 0; i < THEFT_MAX_ARITY; i++) {
         if (cfg->type_info[i] == NULL) {
             return i;
@@ -228,7 +228,7 @@ infer_arity(struct theft_run_config *cfg) {
 
 /* Check if all argument info structs have all required callbacks. */
 static bool
-check_all_args(uint8_t arity, struct theft_run_config *cfg,
+check_all_args(uint8_t arity, const struct theft_run_config *cfg,
         bool *all_hashable) {
     bool ah = true;
     for (int i = 0; i < arity; i++) {

@@ -56,16 +56,17 @@ void theft_set_output_stream(struct theft *t, FILE *out);
  * Configuration is specified in CFG; many fields are optional.
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
-theft_run(struct theft *t, struct theft_run_config *cfg);
+theft_run(struct theft *t, const struct theft_run_config *cfg);
 
 /* Hash a buffer in one pass. (Wraps the below functions.) */
-theft_hash theft_hash_onepass(uint8_t *data, size_t bytes);
+theft_hash theft_hash_onepass(const uint8_t *data, size_t bytes);
 
 /* Initialize/reset a hasher for incremental hashing. */
 void theft_hash_init(struct theft_hasher *h);
 
 /* Sink more data into an incremental hash. */
-void theft_hash_sink(struct theft_hasher *h, uint8_t *data, size_t bytes);
+void theft_hash_sink(struct theft_hasher *h,
+    const uint8_t *data, size_t bytes);
 
 /* Finish hashing and get the result. */
 theft_hash theft_hash_done(struct theft_hasher *h);

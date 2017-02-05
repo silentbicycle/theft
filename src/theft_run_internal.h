@@ -4,7 +4,7 @@
 #include "theft_types_internal.h"
 
 static uint8_t
-infer_arity(struct theft_run_config *cfg);
+infer_arity(const struct theft_run_config *cfg);
 
 enum run_step_res {
     RUN_STEP_OK,
@@ -18,7 +18,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     size_t trial, void **args, theft_seed *seed);
 
 static bool
-check_all_args(uint8_t arity, struct theft_run_config *cfg,
+check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     bool *all_hashable);
 
 static enum all_gen_res_t

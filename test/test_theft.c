@@ -28,7 +28,7 @@ static void uint_free(void *p, void *env) {
     free(p);
 }
 
-static void uint_print(FILE *f, void *p, void *env) {
+static void uint_print(FILE *f, const void *p, void *env) {
     (void)env;
     fprintf(f, "%u", *(uint32_t *)p);
 }
@@ -133,7 +133,7 @@ list_alloc(struct theft *t, void *env, void **output) {
     return THEFT_ALLOC_OK;
 }
 
-static theft_hash list_hash(void *instance, void *env) {
+static theft_hash list_hash(const void *instance, void *env) {
     list *l = (list *)instance;
     struct theft_hasher h;
     theft_hash_init(&h);
@@ -274,7 +274,7 @@ list_shrink(struct theft *t, const void *instance, uint32_t tactic,
     }
 }
 
-static void list_print(FILE *f, void *instance, void *env) {
+static void list_print(FILE *f, const void *instance, void *env) {
     fprintf(f, "(");
     list *l = (list *)instance;
     while (l) {
@@ -699,7 +699,7 @@ static void bool_free(void *instance, void *env) {
     free(instance);
 }
 
-static theft_hash bool_hash(void *instance, void *env) {
+static theft_hash bool_hash(const void *instance, void *env) {
     bool *bp = (bool *)instance;
     bool b = *bp;
     (void)env;

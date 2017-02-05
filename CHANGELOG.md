@@ -35,6 +35,13 @@ The `theft_shrink_cb` callback now has the `struct theft *t` handle
 passed to it as an extra argument -- this is so shrink callbacks
 can use its random number generator.
 
+Some arguments to the following functions have been made `const`:
+    - theft_run
+    - theft_print_cb
+    - theft_hash_cb
+    - theft_hash_onepass
+    - theft_hash_sink
+
 The following enum types in the API are no longer typedef'd:
     - enum theft_trial_res
     - enum theft_run_res
