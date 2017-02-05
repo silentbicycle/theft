@@ -69,7 +69,7 @@ attempt_to_shrink_arg(struct theft *t,
             return SHRINK_ERROR;
         }
 
-        sres = ti->shrink(cur, tactic, ti->env, &candidate);
+        sres = ti->shrink(t, cur, tactic, ti->env, &candidate);
 
         trial_info->shrink_count++;
 

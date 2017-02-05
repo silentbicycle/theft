@@ -207,8 +207,9 @@ split_list_copy(list *l, bool first_half, list **output) {
 }
 
 static enum theft_shrink_res
-list_shrink(const void *instance, uint32_t tactic, void *env,
-        void **output) {
+list_shrink(struct theft *t, const void *instance, uint32_t tactic,
+        void *env, void **output) {
+    (void)t;
     list *l = (list *)instance;
     if (l == NULL) { return THEFT_SHRINK_NO_MORE_TACTICS; }
 
@@ -848,8 +849,9 @@ prop_uint_is_lte_12345(void *arg) {
 }
 
 static enum theft_shrink_res
-uint_shrink(const void *instance, uint32_t tactic, void *env,
-        void **output) {
+uint_shrink(struct theft *t, const void *instance, uint32_t tactic,
+        void *env, void **output) {
+    (void)t;
     (void)env;
     const uint32_t *pnum = (const uint32_t *)instance;
     uint32_t *res = malloc(sizeof(*pnum));

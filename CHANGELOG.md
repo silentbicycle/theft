@@ -31,6 +31,10 @@ directly. Instead, `theft_random(t)` or `theft_random_bits(t, BITS)`
 should be used. This tells theft how much of the random bit stream is
 being consumed.
 
+The `theft_shrink_cb` callback now has the `struct theft *t` handle
+passed to it as an extra argument -- this is so shrink callbacks
+can use its random number generator.
+
 The following enum types in the API are no longer typedef'd:
     - enum theft_trial_res
     - enum theft_run_res
