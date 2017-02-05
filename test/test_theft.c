@@ -14,10 +14,10 @@ TEST alloc_and_free() {
 }
 
 static enum theft_alloc_res
-uint_alloc(struct theft *t, theft_seed s, void *env, void **output) {
+uint_alloc(struct theft *t, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
     if (n == NULL) { return THEFT_ALLOC_ERROR; }
-    *n = (uint32_t)(s & 0xFFFFFFFF);
+    *n = (uint32_t)(theft_random(t) & 0xFFFFFFFF);
     (void)t; (void)env;
     *output = n;
     return THEFT_ALLOC_OK;
@@ -97,8 +97,7 @@ static void list_unpack_seed(theft_hash seed,
 }
 
 static enum theft_alloc_res
-list_alloc(struct theft *t, theft_seed seed, void *env,
-        void **output) {
+list_alloc(struct theft *t, void *env, void **output) {
     (void)env;
     list *l = NULL;             /* empty */
 
@@ -106,6 +105,7 @@ list_alloc(struct theft *t, theft_seed seed, void *env,
     uint32_t upper = 0;
     int len = 0;
 
+    theft_seed seed = theft_random(t);
     list_unpack_seed(seed, &lower, &upper);
 
     while (upper >= (uint32_t)(0x40000000 | (1 << len))) {
@@ -560,14 +560,14 @@ TEST always_seeds_must_be_run() {
     PASS();
 }
 
-#define EXPECTED_SEED 0x15a600d64b175eedL
+#define EXPECTED_SEED 0x15a600d64b175eedLL
 
 static enum theft_alloc_res
-seed_cmp_alloc(struct theft *t, theft_seed seed, void *env,
-        void **output) {
+seed_cmp_alloc(struct theft *t, void *env, void **output) {
     bool *res = malloc(sizeof(*res));
     (void)env;
     (void)t;
+    theft_seed seed = theft_random(t);
 
     theft_seed r1 = theft_random(t);
 
@@ -626,12 +626,12 @@ TEST seeds_should_not_be_truncated(void) {
 }
 
 static enum theft_alloc_res
-seed_alloc(struct theft *t, theft_seed seed, void *env, void **output) {
+seed_alloc(struct theft *t, void *env, void **output) {
     theft_seed *res = malloc(sizeof(*res));
     if (res == NULL) { return THEFT_ALLOC_ERROR; }
     (void)env;
     (void)t;
-    *res = seed;
+    *res = theft_random(t);
     *output = res;
     return THEFT_ALLOC_OK;
 }
@@ -682,9 +682,10 @@ prop_bool_tautology(bool *bp) {
 }
 
 static enum theft_alloc_res
-bool_alloc(struct theft *t, theft_seed seed, void *env, void **output) {
+bool_alloc(struct theft *t, void *env, void **output) {
     bool *bp = malloc(sizeof(*bp));
     if (bp == NULL) { return THEFT_ALLOC_ERROR; }
+    theft_seed seed = theft_random(t);
     *bp = (seed & 0x01 ? true : false);
     (void)env;
     (void)t;
@@ -744,9 +745,8 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
 }
 
 static enum theft_alloc_res
-never_run_alloc(struct theft *t, theft_seed seed, void *env, void **output) {
+never_run_alloc(struct theft *t, void *env, void **output) {
     (void)t;
-    (void)seed;
     (void)env;
     (void)output;
     *output = NULL;
@@ -873,11 +873,10 @@ uint_shrink(const void *instance, uint32_t tactic, void *env,
 }
 
 static enum theft_alloc_res
-shrink_test_uint_alloc(struct theft *t, theft_seed s, void *env,
-        void **output) {
+shrink_test_uint_alloc(struct theft *t, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
     if (n == NULL) { return THEFT_ALLOC_ERROR; }
-    uint32_t value = (s & 0xFFFFFFFF);
+    uint32_t value = (theft_random(t) & 0xFFFFFFFF);
     /* Make sure the value is large enough that we can test
      * cancelling shrinking early. */
     if (value < 100000) {

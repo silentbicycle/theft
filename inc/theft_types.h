@@ -23,12 +23,12 @@ struct theft_config {
     uint8_t bloom_bits;
 };
 
-/* Allocate and return an instance of the type, based on a known
- * pseudo-random number seed. To get additional seeds, use
+/* Allocate and return an instance of the type, based on a pseudo-random
+ * number stream with a known seed. To get random numbers, use
  * theft_random(t) or theft_random_bits(t, bit_count); this stream of
  * numbers will be deterministic, so if the alloc callback is
  * constructed appropriately, an identical instance can be constructed
- * later from the same initial seed.
+ * later from the same initial seed and environment.
  *
  * The allocated instance should be written into *instance. */
 enum theft_alloc_res {
@@ -37,7 +37,7 @@ enum theft_alloc_res {
     THEFT_ALLOC_ERROR,
 };
 typedef enum theft_alloc_res
-theft_alloc_cb(struct theft *t, theft_seed seed, void *env, void **instance);
+theft_alloc_cb(struct theft *t, void *env, void **instance);
 
 /* Free an instance. */
 typedef void

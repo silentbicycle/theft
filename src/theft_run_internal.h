@@ -23,7 +23,7 @@ check_all_args(uint8_t arity, struct theft_run_config *cfg,
 
 static enum all_gen_res_t
 gen_all_args(struct theft *t, struct theft_run_info *info,
-    theft_seed seed, void *args[THEFT_MAX_ARITY]);
+    void *args[THEFT_MAX_ARITY]);
 
 static enum theft_hook_res
 default_hook_cb(const struct theft_hook_info *info, void *env);

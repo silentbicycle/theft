@@ -23,9 +23,13 @@ limits, to be passed to the callbacks. This makes reuse of the
 
 Added `theft_random_bits()`, which returns less than the full 64 bits
 from the random number generator, and buffers the rest for future
-requests. This also tells theft how much of the random bit stream is
-being used. (`theft_random()` can still be used to get 64 bits at a
+requests. (`theft_random()` can still be used to get 64 bits at a
 time.)
+
+The `theft_alloc_cb` callback no longer has a random seed passed to it
+directly. Instead, `theft_random(t)` or `theft_random_bits(t, BITS)`
+should be used. This tells theft how much of the random bit stream is
+being consumed.
 
 The following enum types in the API are no longer typedef'd:
     - enum theft_trial_res

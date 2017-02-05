@@ -109,9 +109,8 @@ uint64_t theft_mt_random(struct theft_mt *mt) {
 }
 
 /* Generate a random number on [0,1]-real-interval. */
-double theft_mt_random_double(struct theft_mt *mt)
-{
-    return (genrand64_int64(mt) >> 11) * (1.0/9007199254740991.0);
+double theft_mt_uint64_to_double(uint64_t x) {
+    return (x >> 11) * (1.0/9007199254740991.0);
 }
 
 /* generates a random number on [0, 2^64-1]-interval */

@@ -24,7 +24,7 @@ void theft_mt_reset(struct theft_mt *mt, uint64_t seed);
 /* Get a 64-bit random number. */
 uint64_t theft_mt_random(struct theft_mt *mt);
 
-/* Generate a random number on [0,1]-real-interval. */
-double theft_mt_random_double(struct theft_mt *mt);
+/* Convert a uint64_t to a number on the [0,1]-real-interval. */
+double theft_mt_uint64_to_double(uint64_t x);
 
 #endif

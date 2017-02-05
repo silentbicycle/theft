@@ -153,10 +153,10 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         return RUN_STEP_GEN_ERROR;
     }
 
-    theft_set_seed(t, *seed);
+    /* Set seed for this trial */
+    theft_set_seed(t, trial_info.seed);
 
-    enum all_gen_res_t gres = gen_all_args(t, run_info,
-        *seed, args);
+    enum all_gen_res_t gres = gen_all_args(t, run_info, args);
     *hook_info = (struct theft_hook_info) {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
@@ -211,8 +211,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         }
     }
 
-    /* Restore last known seed and generate next. */
-    theft_set_seed(t, *seed);
+    /* Update seed for next trial */
     *seed = theft_random(t);
     return RUN_STEP_OK;
 }
@@ -244,11 +243,11 @@ check_all_args(uint8_t arity, struct theft_run_config *cfg,
 /* Attempt to instantiate arguments, starting with the current seed. */
 static enum all_gen_res_t
 gen_all_args(struct theft *t, struct theft_run_info *run_info,
-        theft_seed seed, void *args[THEFT_MAX_ARITY]) {
+        void *args[THEFT_MAX_ARITY]) {
     for (int i = 0; i < run_info->arity; i++) {
         struct theft_type_info *ti = run_info->type_info[i];
         void *p = NULL;
-        enum theft_alloc_res res = ti->alloc(t, seed, ti->env, &p);
+        enum theft_alloc_res res = ti->alloc(t, ti->env, &p);
         if (res == THEFT_ALLOC_SKIP || res == THEFT_ALLOC_ERROR) {
             for (int j = 0; j < i; j++) {
                 ti->free(args[j], ti->env);
@@ -261,7 +260,6 @@ gen_all_args(struct theft *t, struct theft_run_info *run_info,
         } else {
             args[i] = p;
         }
-        seed = theft_random(t);
     }
 
     /* check bloom filter */

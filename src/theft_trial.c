@@ -15,6 +15,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     void **args = trial_info->args;
     assert(args);
     assert(trial_info->arity > 0);
+
     if (t->bloom) { theft_call_mark_called(t, run_info, args); }
     enum theft_trial_res tres = theft_call(run_info, args);
 
