@@ -14,7 +14,7 @@ enum theft_builtin_type_info {
      * If env is non-NULL, it will be cast to
      * a pointer of this type and dereferenced
      * for a limit. */
-    //THEFT_BUILTIN_uint,  // platform-specific
+    THEFT_BUILTIN_uint,  // platform-specific
     THEFT_BUILTIN_uint8_t,
     THEFT_BUILTIN_uint16_t,
     THEFT_BUILTIN_uint32_t,
