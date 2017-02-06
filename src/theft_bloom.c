@@ -112,6 +112,9 @@ uint8_t theft_bloom_recommendation(int trials) {
     #define TRIAL_MULTIPILER 14
     uint8_t res = DEFAULT_BLOOM_BITS;
 
+    /* Double the number of trials, to account for some shrinking. */
+    trials *= 2;
+
     const uint8_t min = THEFT_BLOOM_BITS_MIN - LOG2_BITS_PER_BYTE;
     const uint8_t max = THEFT_BLOOM_BITS_MAX - LOG2_BITS_PER_BYTE;
 

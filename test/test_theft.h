@@ -5,5 +5,7 @@
 #include "theft.h"
 
 SUITE_EXTERN(prng);
+SUITE_EXTERN(autoshrink);
+SUITE_EXTERN(integration);
 
 #endif

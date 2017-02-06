@@ -116,6 +116,9 @@ struct theft_type_info {
     theft_shrink_cb *shrink;    /* shrink instance */
     theft_print_cb *print;      /* fprintf instance */
 
+    /* TODO comment */
+    bool autoshrink;
+    
     /* Optional environment, passed to the callbacks above. */
     void *env;
 };

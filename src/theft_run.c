@@ -3,6 +3,8 @@
 #include "theft_bloom.h"
 #include "theft_call.h"
 #include "theft_trial.h"
+#include "theft_autoshrink.h"
+
 #include <string.h>
 #include <assert.h>
 
@@ -37,6 +39,12 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     };
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
 
+    theft_seed seed = run_info.run_seed;
+    theft_set_seed(t, seed);
+    if (!wrap_any_autoshrinks(t, &run_info)) {
+        return THEFT_RUN_ERROR;
+    }
+
     /* If all arguments are hashable, then attempt to use
      * a bloom filter to avoid redundant checking. */
     if (all_hashable) {
@@ -59,7 +67,6 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     }
 
     size_t limit = run_info.trial_count;
-    theft_seed seed = run_info.run_seed;
 
     for (size_t trial = 0; trial < limit; trial++) {
         void *args[THEFT_MAX_ARITY];
@@ -97,6 +104,8 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     if (cb(&hook_info, run_info.env) != THEFT_HOOK_CONTINUE) {
         return THEFT_RUN_ERROR;
     }
+
+    free_any_autoshrink_wrappers(&run_info);
 
     if (run_info.fail > 0) {
         return THEFT_RUN_FAIL;
@@ -234,7 +243,7 @@ check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     for (int i = 0; i < arity; i++) {
         const struct theft_type_info *ti = cfg->type_info[i];
         if (ti->alloc == NULL) { return false; }
-        if (ti->hash == NULL) { ah = false; }
+        if (ti->hash == NULL && !ti->autoshrink) { ah = false; }
     }
     *all_hashable = ah;
     return true;
@@ -275,4 +284,37 @@ default_hook_cb(const struct theft_hook_info *info, void *env) {
     (void)info;
     (void)env;
     return THEFT_HOOK_CONTINUE;
+}
+
+static bool wrap_any_autoshrinks(struct theft *t,
+        struct theft_run_info *info) {
+    for (uint8_t i = 0; i < info->arity; i++) {
+        struct theft_type_info *ti = info->type_info[i];
+        if (ti->autoshrink) {
+            struct theft_type_info *new_ti = calloc(1, sizeof(*new_ti));
+            if (new_ti == NULL) {
+                return false;
+            }
+            if (!theft_autoshrink_wrap(t, ti, new_ti)) {
+                return false;   /* alloc fail */
+            }
+
+            info->type_info[i] = new_ti;
+        }
+    }
+
+    return true;
+}
+
+static void free_any_autoshrink_wrappers(struct theft_run_info *info) {
+    for (uint8_t i = 0; i < info->arity; i++) {
+        struct theft_type_info *ti = info->type_info[i];
+        if (ti->autoshrink) {
+            struct theft_autoshrink_env *env =
+              (struct theft_autoshrink_env *)ti->env;
+            assert(env->tag == AUTOSHRINK_ENV_TAG);
+            free(env);
+            free(ti);
+        }
+    }
 }

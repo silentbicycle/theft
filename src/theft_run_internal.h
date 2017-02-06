@@ -28,4 +28,9 @@ gen_all_args(struct theft *t, struct theft_run_info *info,
 static enum theft_hook_res
 default_hook_cb(const struct theft_hook_info *info, void *env);
 
+static bool wrap_any_autoshrinks(struct theft *t,
+    struct theft_run_info *info);
+
+static void free_any_autoshrink_wrappers(struct theft_run_info *info);
+
 #endif

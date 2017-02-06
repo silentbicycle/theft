@@ -4,7 +4,8 @@ SRC =		src
 TEST =		test
 INC =		inc
 VENDOR =	vendor
-OPTIMIZE = 	-O3
+#OPTIMIZE = 	-O3
+OPTIMIZE = 	-O0
 WARN = 		-Wall -Wextra -pedantic
 CDEFS +=
 CINCS += 	-I${INC} -I${VENDOR}
@@ -19,6 +20,7 @@ TEST_CFLAGS += 	${CFLAGS} -Wno-tautological-compare -Wno-type-limits
 TEST_LDFLAGS +=	${LDFLAGS}
 
 OBJS= 		${BUILD}/theft.o \
+		${BUILD}/theft_autoshrink.o \
 		${BUILD}/theft_bloom.o \
 		${BUILD}/theft_call.o \
 		${BUILD}/theft_hash.o \
@@ -29,7 +31,9 @@ OBJS= 		${BUILD}/theft.o \
 		${BUILD}/theft_trial.o \
 
 TEST_OBJS=	${BUILD}/test_theft.o \
+		${BUILD}/test_theft_autoshrink.o \
 		${BUILD}/test_theft_prng.o \
+		${BUILD}/test_theft_integration.o \
 
 
 # Basic targets
@@ -48,14 +52,19 @@ ${BUILD}/lib${PROJECT}.a: ${OBJS}
 ${BUILD}/test_${PROJECT}: ${OBJS} ${TEST_OBJS}
 	${CC} -o $@ ${OBJS} ${TEST_OBJS} ${TEST_CFLAGS} ${TEST_LDFLAGS}
 
-${BUILD}/%.o: ${SRC}/%.c ${INC}/* | ${BUILD}
+${BUILD}/%.o: ${SRC}/%.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	${CC} -c -o $@ ${CFLAGS} $<
 
-${BUILD}/%.o: ${TEST}/%.c ${INC}/* | ${BUILD}
+${BUILD}/%.o: ${TEST}/%.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	${CC} -c -o $@ ${TEST_CFLAGS} $<
 
-${BUILD}/TAGS: ${SRC}/*.c ${INC}/* | ${BUILD}
+${BUILD}/TAGS: ${SRC}/*.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
+
+${SRC}/*.c: Makefile
+${INT}/*.c: Makefile
+${TEST}/*.c: Makefile
+
 
 ${BUILD}:
 	mkdir ${BUILD}

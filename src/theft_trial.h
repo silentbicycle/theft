@@ -7,7 +7,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     enum theft_hook_res *cres);
 
 void
-theft_trial_free_args(struct theft_run_info *info,
+theft_trial_free_args(struct theft_run_info *run_info,
     void **args);
 
 #endif

@@ -1,6 +1,7 @@
 #include "theft_shrink_internal.h"
 
 #include "theft_call.h"
+#include "theft_autoshrink.h"
 #include <assert.h>
 
 /* Attempt to simplify all arguments, breadth first. Continue as long as
@@ -106,7 +107,10 @@ attempt_to_shrink_arg(struct theft *t,
         enum theft_trial_res res;
         bool repeated = false;
         for (;;) {
-            res = theft_call(run_info, args);
+            void *real_args[THEFT_MAX_ARITY];
+            theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
+
+            res = theft_call(run_info, real_args);
 
             if (res == THEFT_TRIAL_FAIL && !repeated) {
                 trial_info->successful_shrinks++;

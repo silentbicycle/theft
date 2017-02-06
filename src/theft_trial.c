@@ -5,6 +5,7 @@
 
 #include "theft_call.h"
 #include "theft_shrink.h"
+#include "theft_autoshrink.h"
 
 /* Now that arguments have been generated, run the trial and update
  * counters, call cb with results, etc. */
@@ -12,12 +13,16 @@ bool
 theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         enum theft_hook_res *cres) {
-    void **args = trial_info->args;
-    assert(args);
+    assert(trial_info->args);
     assert(trial_info->arity > 0);
 
-    if (t->bloom) { theft_call_mark_called(t, run_info, args); }
-    enum theft_trial_res tres = theft_call(run_info, args);
+    /* Get the actual arguments, which may be boxed when autoshrinking. */
+    void *real_args[THEFT_MAX_ARITY];
+    theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
+
+    if (t->bloom) { theft_call_mark_called(t, run_info, trial_info->args); }
+    
+    enum theft_trial_res tres = theft_call(run_info, real_args);
 
     struct theft_hook_info hook_info = {
         .prop_name = run_info->name,
@@ -29,7 +34,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
             .arity = run_info->arity,
-            .args = args,
+            .args = real_args,
             .result = tres,
         },
     };
@@ -56,7 +61,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         /* user callback should not return this; fall through */
     case THEFT_TRIAL_ERROR:
         *cres = run_info->hook_cb(&hook_info, run_info->env);
-        theft_trial_free_args(run_info, args);
+        theft_trial_free_args(run_info, real_args);
         return false;
     }
 
