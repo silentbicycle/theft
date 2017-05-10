@@ -21,8 +21,8 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         return THEFT_RUN_ERROR_MISSING_CALLBACK;
     }
 
-    theft_hook_cb *cb = cfg->hook_cb
-      ? cfg->hook_cb : default_hook_cb;
+    theft_hook_cb *cb = cfg->hook
+      ? cfg->hook : default_hook_cb;
 
     struct theft_run_info run_info = {
         .name = cfg->name,
@@ -34,7 +34,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         .always_seed_count = (cfg->always_seeds == NULL
             ? 0 : cfg->always_seed_count),
         .always_seeds = cfg->always_seeds,
-        .hook_cb = cb,
+        .hook = cb,
         .env = cfg->env,
     };
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
@@ -149,7 +149,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         },
     };
     enum theft_hook_res cres;
-    cres = run_info->hook_cb(hook_info, run_info->env);
+    cres = run_info->hook(hook_info, run_info->env);
 
     switch (cres) {
     case THEFT_HOOK_CONTINUE:
@@ -184,19 +184,19 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         /* skip generating these args */
         run_info->skip++;
         hook_info->u.trial_post.result = THEFT_TRIAL_SKIP;
-        cres = run_info->hook_cb(hook_info, run_info->env);
+        cres = run_info->hook(hook_info, run_info->env);
         break;
     case ALL_GEN_DUP:
         /* skip these args -- probably already tried */
         run_info->dup++;
         hook_info->u.trial_post.result = THEFT_TRIAL_DUP;
-        cres = run_info->hook_cb(hook_info, run_info->env);
+        cres = run_info->hook(hook_info, run_info->env);
         break;
     default:
     case ALL_GEN_ERROR:
         /* Error while generating args */
         hook_info->u.trial_post.result = THEFT_TRIAL_ERROR;
-        cres = run_info->hook_cb(hook_info, run_info->env);
+        cres = run_info->hook(hook_info, run_info->env);
         return RUN_STEP_GEN_ERROR;
     case ALL_GEN_OK:
         *hook_info = (struct theft_hook_info) {
@@ -211,7 +211,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
                 .args = args,
             },
         };
-        cres = run_info->hook_cb(hook_info, run_info->env);
+        cres = run_info->hook(hook_info, run_info->env);
         if (cres == THEFT_HOOK_HALT) {
             return RUN_STEP_HALT;
         }

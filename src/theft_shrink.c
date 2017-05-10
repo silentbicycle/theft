@@ -176,7 +176,7 @@ pre_shrink_hook(struct theft_run_info *run_info,
             .tactic = tactic,
         },
     };
-    return run_info->hook_cb(&hook_info, run_info->env);
+    return run_info->hook(&hook_info, run_info->env);
 }
 
 static enum theft_hook_res
@@ -202,7 +202,7 @@ post_shrink_hook(struct theft_run_info *run_info,
             .done = done,
         },
     };
-    return run_info->hook_cb(&hook_info, run_info->env);
+    return run_info->hook(&hook_info, run_info->env);
 }
 
 static enum theft_hook_res
@@ -229,6 +229,6 @@ post_shrink_trial_hook(struct theft_run_info *run_info,
             .result = result,
         },
     };
-    return run_info->hook_cb(&hook_info, run_info->env);
+    return run_info->hook(&hook_info, run_info->env);
 
 }
