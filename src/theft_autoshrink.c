@@ -42,7 +42,7 @@ theft_autoshrink_bit_pool_random(struct theft_autoshrink_bit_pool *pool,
     assert(bit_count <= 64);
 
     if (pool->consumed == pool->size) {
-        return 0;
+        return 0;   // saturate at 0
     } else if (pool->consumed + bit_count >= pool->size) {
         bit_count = pool->size - pool->consumed;
     }
@@ -221,8 +221,7 @@ autoshrink_hash(const void *instance, void *venv) {
         return env->user_type_info.hash(pool->instance,
             env->user_type_info.env);
     } else {
-        /* TODO: it's not sure that only hashing consumed is a good idea here */
-        //size_t pool_bytes = pool->size / 8 + ((pool->size % 8) == 0 ? 0 : 1);
+        /* FIXME: only hash consumed bits of last byte */
         size_t pool_bytes = pool->consumed / 8 + ((pool->consumed % 8) == 0 ? 0 : 1);
         return theft_hash_onepass(pool->bits, pool_bytes);
     }
@@ -334,7 +333,7 @@ static void drop_bits(struct theft *t, uint8_t bits,
             if (draw == 0) {
                 drop_or_keep = -bits;
                 if (bi >= 2*src->consumed) {
-                    bits = -1024;
+                    drop_or_keep = -1024;
                 }
             } else {
                 drop_or_keep = draw * bits;
@@ -375,7 +374,7 @@ static void mask_bits(struct theft *t, uint8_t bits,
             if (draw == 0) {
                 mask_count = -bits;
                 if (bi >= 2*src->consumed) {
-                    bits = -1024;
+                    mask_count = -1024;
                 }
             } else {
                 mask_count = draw * bits/8;
@@ -424,9 +423,12 @@ autoshrink_print(FILE *f, const void *instance, void *venv) {
         env->user_type_info.print(f, pool->instance,
             env->user_type_info.env);
     } /*else*/ {
-        fprintf(f, "\n-- autoshrink_bit_pool[%zd bits] --\n", pool->size);
+        // TODO: make printing this configurable
+        fprintf(f, "\n-- autoshrink_bit_pool[%zd bits, %zd consumed] --\n",
+            pool->size, pool->consumed);
         const uint8_t *bits = pool->bits;
-        const size_t byte_count = pool->size / 8 + (pool->size % 8 == 0 ? 0 : 1);
+        assert(pool->size >= pool->consumed);
+        const size_t byte_count = pool->consumed / 8 + (pool->consumed % 8 == 0 ? 0 : 1);
         for (size_t i = 0; i < byte_count; i++) {
             const uint8_t byte = bits[i];
             fprintf(f, "%02x ", byte);
