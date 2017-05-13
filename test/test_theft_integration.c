@@ -1013,7 +1013,8 @@ TEST save_local_minimum_and_re_run(void) {
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
-    ASSERT_EQ_FMT(33, env.reruns, "%zd");
+    ASSERT_EQ_FMTm("three trial-post and three shrink-post hook runs",
+        33, env.reruns, "%zd");
     ASSERT_EQ_FMT(12346, env.local_minimum, "%zd");
     PASS();
 }
