@@ -14,8 +14,9 @@
 
 static uint64_t mask(uint8_t bits);
 
-/* (Re-)initialize the random number generator with a specific seed. */
-void theft_set_seed(struct theft *t, uint64_t seed) {
+/* (Re-)initialize the random number generator with a specific seed.
+ * This stops using the current bit pool. */
+void theft_random_set_seed(struct theft *t, uint64_t seed) {
     theft_random_stop_using_bit_pool(t);
     t->seed = seed;
     t->prng_buf = seed;
@@ -69,7 +70,10 @@ uint64_t theft_random_bits(struct theft *t, uint8_t bit_count) {
     return res;
 }
 
-/* Get a random 64-bit integer from the test runner's PRNG. */
+/* Get a random 64-bit integer from the test runner's PRNG.
+ *
+ * NOTE: This is equivalent to `theft_random_bits(t, 64)`, and
+ * will be removed in a future release. */
 theft_seed theft_random(struct theft *t) {
     return theft_random_bits(t, 8*sizeof(uint64_t));
 }

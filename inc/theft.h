@@ -35,11 +35,11 @@ struct theft *theft_init(const struct theft_config *cfg);
 /* Free a property-test runner. */
 void theft_free(struct theft *t);
 
-/* (Re-)initialize the random number generator with a specific seed. */
-void theft_set_seed(struct theft *t, uint64_t seed);
-
-/* Get a random 64-bit integer from the test runner's PRNG. */
-theft_hash theft_random(struct theft *t);
+/* Get a random 64-bit integer from the test runner's PRNG.
+ *
+ * NOTE: This is equivalent to `theft_random_bits(t, 64)`, and
+ * will be removed in a future release. */
+uint64_t theft_random(struct theft *t);
 
 /* Get BITS random bits from the test runner's PRNG.
  * Bits can be retrieved at most 64 at a time. */

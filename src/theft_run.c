@@ -3,6 +3,7 @@
 #include "theft_bloom.h"
 #include "theft_call.h"
 #include "theft_trial.h"
+#include "theft_random.h"
 #include "theft_autoshrink.h"
 
 #include <string.h>
@@ -40,7 +41,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
 
     theft_seed seed = run_info.run_seed;
-    theft_set_seed(t, seed);
+    theft_random_set_seed(t, seed);
     if (!wrap_any_autoshrinks(t, &run_info)) {
         return THEFT_RUN_ERROR;
     }
@@ -163,7 +164,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     }
 
     /* Set seed for this trial */
-    theft_set_seed(t, trial_info.seed);
+    theft_random_set_seed(t, trial_info.seed);
 
     enum all_gen_res_t gres = gen_all_args(t, run_info, args);
     *hook_info = (struct theft_hook_info) {

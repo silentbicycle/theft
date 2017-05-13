@@ -1,4 +1,36 @@
 #include "test_theft.h"
+#include "theft_random.h"
+
+TEST prng_should_return_same_series_from_same_seeds() {
+    theft_seed seeds[8];
+    theft_seed values[8][8];
+
+    struct theft *t = theft_init(NULL);
+
+    /* Set for deterministic start */
+    theft_random_set_seed(t, 0xabad5eed);
+    for (int i = 0; i < 8; i++) {
+        seeds[i] = theft_random(t);
+    }
+
+    /* Populate value tables. */
+    for (int s = 0; s < 8; s++) {
+        theft_random_set_seed(t, seeds[s]);
+        for (int i = 0; i < 8; i++) {
+            values[s][i] = theft_random(t);
+        }
+    }
+
+    /* Check values. */
+    for (int s = 0; s < 8; s++) {
+        theft_random_set_seed(t, seeds[s]);
+        for (int i = 0; i < 8; i++) {
+            ASSERT_EQ(values[s][i], theft_random(t));
+        }
+    }
+    theft_free(t);
+    PASS();
+}
 
 TEST basic(uint64_t limit) {
     struct theft_run_config cfg;
@@ -6,10 +38,10 @@ TEST basic(uint64_t limit) {
     struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t num = theft_random(t);
 
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t num2 = theft_random(t);
 
         ASSERT_EQ_FMT(num, num2, "%llx");
@@ -25,10 +57,10 @@ TEST bit_sampling_two_bytes(uint64_t limit) {
     struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint16_t a = (uint16_t)(theft_random(t) & 0xFFFF);
 
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t b0 = 0;
 
         for (uint8_t i = 0; i < 2; i++) {
@@ -50,11 +82,11 @@ TEST bit_sampling_bytes(uint64_t limit) {
     struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t a0 = theft_random(t);
         uint64_t a1 = theft_random(t);
 
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t b0 = 0;
 
         for (uint8_t i = 0; i < 8; i++) {
@@ -82,11 +114,11 @@ TEST bit_sampling_odd_sizes(uint64_t limit) {
     struct theft *t = theft_init(NULL);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t a0 = theft_random(t);
         uint64_t a1 = theft_random(t);
 
-        theft_set_seed(t, seed);
+        theft_random_set_seed(t, seed);
         uint64_t b_11 = theft_random_bits(t, 11);
         uint64_t b_13 = theft_random_bits(t, 13);
         uint64_t b_15 = theft_random_bits(t, 15);
@@ -112,11 +144,37 @@ TEST bit_sampling_odd_sizes(uint64_t limit) {
     PASS();
 }
 
+TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
+    uint64_t seed = 0x15a600d64b175eedLL;
+    uint64_t values[3];
+
+    struct theft *t = theft_init(NULL);
+
+    theft_random_set_seed(t, seed);
+    values[0] = theft_random_bits(t, 64);
+
+    theft_random_set_seed(t, seed | 0xFFFFFFFF00000000L);
+    values[1] = theft_random_bits(t, 64);
+
+    theft_random_set_seed(t, seed &~ 0xFFFFFFFF00000000L);
+    values[2] = theft_random_bits(t, 64);
+
+    ASSERT(values[0] != values[1]);
+    ASSERT(values[0] != values[2]);
+
+    theft_free(t);
+    PASS();
+}
+
 SUITE(prng) {
+    RUN_TEST(prng_should_return_same_series_from_same_seeds);
+
     for (size_t limit = 100; limit < 100000; limit *= 10) {
         RUN_TESTp(basic, limit);
         RUN_TESTp(bit_sampling_two_bytes, limit);
         RUN_TESTp(bit_sampling_bytes, limit);
         RUN_TESTp(bit_sampling_odd_sizes, limit);
     }
+
+    RUN_TEST(seed_with_upper_32_bits_masked_should_produce_different_value);
 }

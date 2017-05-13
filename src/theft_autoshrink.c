@@ -110,7 +110,7 @@ theft_autoshrink_init_bit_pool(struct theft *t,
         return NULL;
     }
 
-    theft_set_seed(t, seed);
+    theft_random_set_seed(t, seed);
     for (size_t i = 0; i < size / 8; i++) {
         res->bits[i] = theft_random_bits(t, 8);
     }
