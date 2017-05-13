@@ -64,7 +64,7 @@ TEST generated_unsigned_ints_are_positive() {
             .name = "generated_unsigned_ints_are_positive",
             .fun = is_pos,
             .type_info = { &uint_type_info },
-            .hook = guiap_hook_cb,
+            .hook_cb = guiap_hook_cb,
         });
     ASSERT_EQm("generated_unsigned_ints_are_positive",
         THEFT_RUN_PASS, res);
@@ -322,7 +322,7 @@ TEST generated_int_list_with_cons_is_longer() {
         .name = __func__,
         .fun = prop_gen_cons,
         .type_info = { &list_info },
-        .hook = gilwcil_hook_cb,
+        .hook_cb = gilwcil_hook_cb,
     };
     res = theft_run(t, &cfg);
 
@@ -377,7 +377,7 @@ TEST generated_int_list_does_not_repeat_values() {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
-        .hook = gildnrv_hook_cb,
+        .hook_cb = gildnrv_hook_cb,
         .trials = 1000,
         .seed = 12345,
         .env = &env,
@@ -479,7 +479,7 @@ TEST two_generated_lists_do_not_match() {
         .fun = prop_gen_list_unique_pair,
         .type_info = { &list_info, &list_info },
         .trials = 10000,
-        .hook = hook_cb,
+        .hook_cb = hook_cb,
         .env = &env,
         .seed = (theft_seed)(tv.tv_sec ^ tv.tv_usec)
     };
@@ -549,7 +549,7 @@ TEST always_seeds_must_be_run() {
         .seed = 0x600dd06,
         ALWAYS_SEEDS(always_seeds),
         .env = &env,
-        .hook = always_hook_cb,
+        .hook_cb = always_hook_cb,
     };
     res = theft_run(t, &cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
@@ -733,7 +733,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
         .fun = prop_bool_tautology,
         .type_info = { &bool_info },
         .trials = 100,
-        .hook = save_report_cb,
+        .hook_cb = save_report_cb,
         .env = (void *)&report,
     };
 
@@ -783,7 +783,7 @@ TEST save_seed_and_error_before_generating_args(void) {
     struct theft_run_config cfg = {
         .fun = should_never_run,
         .type_info = { &never_run_info },
-        .hook = error_in_gen_args_pre,
+        .hook_cb = error_in_gen_args_pre,
         .seed = 0xf005ba11,
         .env = (void *)&seed,
     };
@@ -824,7 +824,7 @@ TEST gen_pre_halt(void) {
     struct theft_run_config cfg = {
         .fun = always_pass,
         .type_info = { &uint_type_info },
-        .hook = halt_before_third,
+        .hook_cb = halt_before_third,
         .env = (void *)&report,
     };
 
@@ -947,7 +947,7 @@ TEST only_shrink_three_times(void) {
     struct theft_run_config cfg = {
         .fun = prop_uint_is_lte_12345,
         .type_info = { &shrink_test_uint_type_info },
-        .hook = halt_after_third_shrink,
+        .hook_cb = halt_after_third_shrink,
         .trials = 1,
         .env = (void *)&env,
     };
@@ -1003,7 +1003,7 @@ TEST save_local_minimum_and_re_run(void) {
     struct theft_run_config cfg = {
         .fun = prop_uint_is_lte_12345,
         .type_info = { &shrink_test_uint_type_info },
-        .hook = shrink_all_the_way,
+        .hook_cb = shrink_all_the_way,
         .trials = 1,
         .env = (void *)&env,
     };
@@ -1059,7 +1059,7 @@ TEST repeat_local_minimum_once(void) {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
-        .hook = repeat_once_hook_cb,
+        .hook_cb = repeat_once_hook_cb,
         .trials = 1000,
         .seed = 12345,
         .env = &env,
@@ -1124,7 +1124,7 @@ TEST repeat_first_successful_shrink_once_then_halt(void) {
         .name = __func__,
         .fun = prop_gen_list_unique,
         .type_info = { &list_info },
-        .hook = repeat_first_successful_shrink_then_halt_hook_cb,
+        .hook_cb = repeat_first_successful_shrink_then_halt_hook_cb,
         .trials = 1000,
         .seed = 12345,
         .env = &env,

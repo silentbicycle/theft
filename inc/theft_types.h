@@ -303,7 +303,7 @@ struct theft_run_config {
     /* Hook callback, called in several contexts to report on progress,
      * halt shrinking early, repeat trials with different logging, etc.
      * See struct theft_hook_info above for details. */
-    theft_hook_cb *hook;
+    theft_hook_cb *hook_cb;
 
     /* Environment pointer. This is completely opaque to theft itself,
      * but will be passed along to all callbacks. */

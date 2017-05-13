@@ -50,7 +50,7 @@ struct theft_run_info {
     const theft_seed *always_seeds;   /* seeds to always run */
 
     /* Progress callback. */
-    theft_hook_cb *hook;
+    theft_hook_cb *hook_cb;
     /* User environment for all callbacks. */
     void *env;
 

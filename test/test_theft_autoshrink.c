@@ -161,7 +161,7 @@ TEST ll_prop(size_t seed, const char *name, theft_propfun *prop) {
         .name = name,
         .fun = prop,
         .type_info = { &ll_info },
-        .hook = hook,
+        .hook_cb = hook,
         .env = &env,
         .trials = 50000,
         .seed = seed,
