@@ -4,6 +4,8 @@
 #include "greatest.h"
 #include "theft.h"
 
+#include <assert.h>
+
 SUITE_EXTERN(prng);
 SUITE_EXTERN(autoshrink);
 SUITE_EXTERN(integration);
