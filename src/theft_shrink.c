@@ -112,11 +112,16 @@ attempt_to_shrink_arg(struct theft *t,
 
             res = theft_call(run_info, real_args);
 
-            if (res == THEFT_TRIAL_FAIL && !repeated) {
-                trial_info->successful_shrinks++;
-            } else {
-                trial_info->failed_shrinks++;
+            if (!repeated) {
+                if (res == THEFT_TRIAL_FAIL) {
+                    trial_info->successful_shrinks++;
+                } else {
+                    trial_info->failed_shrinks++;
+                }
             }
+
+            if (0) fprintf(stdout, "THEFT SHRINK TRIAL -- %s\n",
+                res == THEFT_TRIAL_FAIL ? "FAIL" : "PASS");
 
             cres = post_shrink_trial_hook(run_info, trial_info,
                 arg_i, args, tactic, res);

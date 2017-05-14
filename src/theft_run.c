@@ -244,7 +244,9 @@ check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     for (int i = 0; i < arity; i++) {
         const struct theft_type_info *ti = cfg->type_info[i];
         if (ti->alloc == NULL) { return false; }
-        if (ti->hash == NULL && !ti->autoshrink) { ah = false; }
+        if (ti->hash == NULL && !ti->autoshrink_config.enable) {
+            ah = false;
+        }
     }
     *all_hashable = ah;
     return true;
@@ -291,7 +293,7 @@ static bool wrap_any_autoshrinks(struct theft *t,
         struct theft_run_info *info) {
     for (uint8_t i = 0; i < info->arity; i++) {
         struct theft_type_info *ti = info->type_info[i];
-        if (ti->autoshrink) {
+        if (ti->autoshrink_config.enable) {
             struct theft_type_info *new_ti = calloc(1, sizeof(*new_ti));
             if (new_ti == NULL) {
                 return false;
@@ -310,7 +312,7 @@ static bool wrap_any_autoshrinks(struct theft *t,
 static void free_any_autoshrink_wrappers(struct theft_run_info *info) {
     for (uint8_t i = 0; i < info->arity; i++) {
         struct theft_type_info *ti = info->type_info[i];
-        if (ti->autoshrink) {
+        if (ti->autoshrink_config.enable) {
             struct theft_autoshrink_env *env =
               (struct theft_autoshrink_env *)ti->env;
             assert(env->tag == AUTOSHRINK_ENV_TAG);

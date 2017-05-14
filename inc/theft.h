@@ -44,6 +44,9 @@ uint64_t theft_random(struct theft *t);
 /* Get BITS random bits from the test runner's PRNG.
  * Bits can be retrieved at most 64 at a time. */
 uint64_t theft_random_bits(struct theft *t, uint8_t bits);
+// TODO
+//void theft_random_bits_bulk(struct theft *t, uint64_t bits, uint8_t *buf);
+
 
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t);

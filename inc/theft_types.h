@@ -104,6 +104,24 @@ enum theft_trial_res {
  *  or THEFT_TRIAL_ERROR if the whole run should be halted. */
 typedef enum theft_trial_res theft_propfun( /* arguments unconstrained */ );
 
+/* When printing an autoshrink bit pool, should just the user's print
+ * callback be used (if available), or should it also print the raw
+ * bit pool and/or the request sizes and values? */
+enum theft_autoshrink_print_mode {
+    THEFT_AUTOSHRINK_PRINT_USER = 0x00,
+    THEFT_AUTOSHRINK_PRINT_BIT_POOL = 0x01,
+    THEFT_AUTOSHRINK_PRINT_REQUESTS = 0x02,
+    THEFT_AUTOSHRINK_PRINT_ALL = 0x03,
+};
+
+struct theft_autoshrink_config {
+    // For all of these, leaving them as 0 will use the default.
+    bool enable;
+    size_t pool_size;
+    enum theft_autoshrink_print_mode print_mode;
+    size_t max_failed_shrinks;
+};
+
 /* Callbacks used for testing with random instances of a type.
  * For more information, see comments on their typedefs. */
 struct theft_type_info {
@@ -116,8 +134,7 @@ struct theft_type_info {
     theft_shrink_cb *shrink;    /* shrink instance */
     theft_print_cb *print;      /* fprintf instance */
 
-    /* TODO comment */
-    bool autoshrink;
+    struct theft_autoshrink_config autoshrink_config;
     
     /* Optional environment, passed to the callbacks above. */
     void *env;

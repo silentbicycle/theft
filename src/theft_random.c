@@ -42,7 +42,7 @@ uint64_t theft_random_bits(struct theft *t, uint8_t bit_count) {
         t->bits_available, bit_count, t->prng_buf);
 
     if (t->bit_pool) {
-        return theft_autoshrink_bit_pool_random(t->bit_pool, bit_count);
+        return theft_autoshrink_bit_pool_random(t->bit_pool, bit_count, true);
     }
 
     uint64_t res = 0;
