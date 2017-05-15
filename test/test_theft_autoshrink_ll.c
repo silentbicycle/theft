@@ -1,6 +1,8 @@
 #include "test_theft.h"
 #include "test_theft_autoshrink_ll.h"
 
+static void
+ll_free(void *instance, void *env);
 static void ll_print(FILE *f, const void *instance, void *env);
 
 /* Generate a linked list of uint8_t values. Before each
@@ -15,6 +17,7 @@ ll_alloc(struct theft *t, void *env, void **instance) {
     while (theft_random_bits(t, 3) != 0x00) {
         struct ll *link = calloc(1, sizeof(struct ll));
         if (link == NULL) {
+            ll_free(res, NULL);
             return THEFT_ALLOC_ERROR;
         }
 

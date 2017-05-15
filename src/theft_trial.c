@@ -12,7 +12,7 @@
 bool
 theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
-        enum theft_hook_res *cres) {
+        enum theft_hook_trial_post_res *tpres) {
     assert(trial_info->args);
     assert(trial_info->arity > 0);
 
@@ -23,44 +23,46 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     if (t->bloom) { theft_call_mark_called(t, run_info, trial_info->args); }
     
     enum theft_trial_res tres = theft_call(run_info, real_args);
+    theft_hook_trial_post_cb *trial_post =
+      (run_info->hooks.trial_post == NULL
+          ? def_trial_post_cb
+          : run_info->hooks.trial_post);
 
-    struct theft_hook_info hook_info = {
+    struct theft_hook_trial_post_info hook_info = {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .run_seed = run_info->run_seed,
-
-        .type = THEFT_HOOK_TYPE_TRIAL_POST,
-        .u.trial_post = {
-            .trial_id = trial_info->trial,
-            .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
-            .args = real_args,
-            .result = tres,
-        },
+        .trial_id = trial_info->trial,
+        .trial_seed = trial_info->seed,
+        .arity = run_info->arity,
+        .args = real_args,
+        .result = tres,
     };
 
     switch (tres) {
     case THEFT_TRIAL_PASS:
         run_info->pass++;
-        *cres = run_info->hook_cb(&hook_info, run_info->env);
+        *tpres = trial_post(&hook_info, run_info->hooks.env);
         break;
     case THEFT_TRIAL_FAIL:
         if (theft_shrink(t, run_info, trial_info) != SHRINK_OK) {
-            hook_info.u.trial_post.result = THEFT_TRIAL_ERROR;
-            *cres = run_info->hook_cb(&hook_info, run_info->env);
+            hook_info.result = THEFT_TRIAL_ERROR;
+            /* FIXME: hook_info.args are stale here! */
+            *tpres = trial_post(&hook_info, run_info->hooks.env);
             return false;
         }
         run_info->fail++;
-        *cres = report_on_failure(t, run_info, trial_info, &hook_info);
+        *tpres = report_on_failure(t, run_info, trial_info,
+            &hook_info, trial_post);
         break;
     case THEFT_TRIAL_SKIP:
         run_info->skip++;
-        *cres = run_info->hook_cb(&hook_info, run_info->env);
+        *tpres = trial_post(&hook_info, run_info->hooks.env);
         break;
     case THEFT_TRIAL_DUP:
         /* user callback should not return this; fall through */
     case THEFT_TRIAL_ERROR:
-        *cres = run_info->hook_cb(&hook_info, run_info->env);
+        *tpres = trial_post(&hook_info, run_info->hooks.env);
         theft_trial_free_args(run_info, real_args);
         return false;
     }
@@ -79,11 +81,12 @@ void theft_trial_free_args(struct theft_run_info *run_info,
 }
 
 /* Print info about a failure. */
-static enum theft_hook_res
+static enum theft_hook_trial_post_res
 report_on_failure(struct theft *t,
         struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
-        struct theft_hook_info *hook_info) {
+        struct theft_hook_trial_post_info *hook_info,
+        theft_hook_trial_post_cb *trial_post) {
     int arity = run_info->arity;
     fprintf(t->out, "\n\n -- Counter-Example: %s\n",
         run_info->name ? run_info-> name : "");
@@ -98,23 +101,30 @@ report_on_failure(struct theft *t,
         }
     }
 
-    enum theft_hook_res res;
-    res = run_info->hook_cb(hook_info, run_info->env);
-    if (res == THEFT_HOOK_REPEAT_ONCE) {
-        res = THEFT_HOOK_REPEAT;
+    enum theft_hook_trial_post_res res;
+    res = trial_post(hook_info, run_info->hooks.env);
+    if (res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
+        res = THEFT_HOOK_TRIAL_POST_REPEAT;
     }
-    while (res == THEFT_HOOK_REPEAT) {
+    while (res == THEFT_HOOK_TRIAL_POST_REPEAT) {
         enum theft_trial_res tres = theft_call(run_info, trial_info->args);
         if (tres == THEFT_TRIAL_FAIL) {
-            res = run_info->hook_cb(hook_info, run_info->env);
+            res = trial_post(hook_info, run_info->hooks.env);
         } else if (tres == THEFT_TRIAL_PASS) {
             fprintf(t->out, "Warning: Failed property passed when re-run.\n");
-            res = THEFT_HOOK_ERROR;
+            res = THEFT_HOOK_TRIAL_POST_ERROR;
         } else if (tres == THEFT_TRIAL_ERROR) {
-            return THEFT_HOOK_ERROR;
+            return THEFT_HOOK_TRIAL_POST_ERROR;
         } else {
-            return THEFT_HOOK_CONTINUE;
+            return THEFT_HOOK_TRIAL_POST_CONTINUE;
         }
     }
     return res;
+}
+
+enum theft_hook_trial_post_res
+def_trial_post_cb(const struct theft_hook_trial_post_info *info, void *udata) {
+    (void)info;
+    (void)udata;
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }

@@ -4,7 +4,7 @@
 bool
 theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     struct theft_trial_info *trial_info,
-    enum theft_hook_res *cres);
+    enum theft_hook_trial_post_res *tpres);
 
 void
 theft_trial_free_args(struct theft_run_info *run_info,

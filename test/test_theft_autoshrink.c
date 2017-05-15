@@ -891,19 +891,22 @@ struct hook_env {
     size_t failures;
 };
 
-static enum theft_hook_res
-hook(const struct theft_hook_info *info, void *penv) {
+static enum theft_hook_trial_pre_res
+trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
+    (void)info;
     struct hook_env *env = (struct hook_env *)penv;
+    return env->failures == 5
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
 
-    if (info->type == THEFT_HOOK_TYPE_TRIAL_POST &&
-        info->u.trial_post.result == THEFT_TRIAL_FAIL) {
+static enum theft_hook_trial_post_res
+trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) {
+    struct hook_env *env = (struct hook_env *)penv;
+    if (info->result == THEFT_TRIAL_FAIL) {
         env->failures++;
-    } else if (info->type == THEFT_HOOK_TYPE_TRIAL_PRE) {
-        if (env->failures == 5) {
-            return THEFT_HOOK_HALT;
-        }
     }
-    return THEFT_HOOK_CONTINUE;
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
 TEST ll_prop(size_t seed, const char *name, theft_propfun *prop) {
@@ -916,8 +919,11 @@ TEST ll_prop(size_t seed, const char *name, theft_propfun *prop) {
         .name = name,
         .fun = prop,
         .type_info = { &ll_info },
-        .hook_cb = hook,
-        .env = &env,
+        .hooks = {
+            .trial_post = trial_post_hook,
+            .trial_pre = trial_pre_hook,
+            .env = &env,
+        },
         .trials = 50000,
         .seed = seed,
     };
@@ -944,8 +950,11 @@ TEST ia_prop(size_t seed, const char *name, theft_propfun *prop) {
         .name = name,
         .fun = prop,
         .type_info = { &ia_info },
-        .hook_cb = hook,
-        .env = &env,
+        .hooks = {
+            .trial_post = trial_post_hook,
+            .trial_pre = trial_pre_hook,
+            .env = &env,
+        },
         .trials = 50000,
         .seed = seed,
     };

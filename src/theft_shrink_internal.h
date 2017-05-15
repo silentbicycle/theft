@@ -8,17 +8,17 @@ attempt_to_shrink_arg(struct theft *t,
     struct theft_run_info *run_info,
     struct theft_trial_info *trial_info, uint8_t arg_i);
 
-static enum theft_hook_res
+static enum theft_hook_shrink_pre_res
 pre_shrink_hook(struct theft_run_info *run_info,
     struct theft_trial_info *trial_info,
     uint8_t arg_index, void *arg, uint32_t tactic);
 
-static enum theft_hook_res
+static enum theft_hook_shrink_post_res
 post_shrink_hook(struct theft_run_info *run_info,
     struct theft_trial_info *trial_info,
     uint8_t arg_index, void *arg, uint32_t tactic, bool done);
 
-static enum theft_hook_res
+static enum theft_hook_shrink_trial_post_res
 post_shrink_trial_hook(struct theft_run_info *run_info,
     struct theft_trial_info *trial_info,
     uint8_t arg_index, void **args, uint32_t last_tactic,

@@ -409,7 +409,7 @@ static void drop_from_bit_pool(struct theft *t,
 
     /* Always drop at least one, unless to_drop is DO_NOT_DROP. */
     size_t to_drop = prng(32, env->udata);
-    if (to_drop != DO_NOT_DROP) {
+    if (to_drop != DO_NOT_DROP && orig->request_count > 0) {
         to_drop %= orig->request_count;
     }
 

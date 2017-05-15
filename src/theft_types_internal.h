@@ -49,10 +49,18 @@ struct theft_run_info {
     const size_t always_seed_count;   /* number of seeds */
     const theft_seed *always_seeds;   /* seeds to always run */
 
-    /* Progress callback. */
-    theft_hook_cb *hook_cb;
-    /* User environment for all callbacks. */
-    void *env;
+    /* Progress callbacks. */
+    struct {
+        theft_hook_run_pre_cb *run_pre;
+        theft_hook_run_post_cb *run_post;
+        theft_hook_gen_args_pre_cb *gen_args_pre;
+        theft_hook_trial_pre_cb *trial_pre;
+        theft_hook_trial_post_cb *trial_post;
+        theft_hook_shrink_pre_cb *shrink_pre;
+        theft_hook_shrink_post_cb *shrink_post;
+        theft_hook_shrink_trial_post_cb *shrink_trial_post;
+        void *env;
+    } hooks;
 
     /* Counters passed to hook callback */
     size_t pass;

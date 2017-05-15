@@ -14,7 +14,6 @@ enum run_step_res {
 };
 static enum run_step_res
 run_step(struct theft *t, struct theft_run_info *run_info,
-    struct theft_hook_info *hook_info,
     size_t trial, void **args, theft_seed *seed);
 
 static bool
@@ -25,12 +24,11 @@ static enum all_gen_res_t
 gen_all_args(struct theft *t, struct theft_run_info *info,
     void *args[THEFT_MAX_ARITY]);
 
-static enum theft_hook_res
-default_hook_cb(const struct theft_hook_info *info, void *env);
-
 static bool wrap_any_autoshrinks(struct theft *t,
     struct theft_run_info *info);
 
 static void free_any_autoshrink_wrappers(struct theft_run_info *info);
+
+static theft_hook_trial_post_cb def_trial_post_cb;
 
 #endif

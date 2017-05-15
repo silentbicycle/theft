@@ -61,12 +61,12 @@ attempt_to_shrink_arg(struct theft *t,
         enum theft_shrink_res sres;
         void *candidate = NULL;
 
-        enum theft_hook_res cres;
-        cres = pre_shrink_hook(run_info, trial_info,
+        enum theft_hook_shrink_pre_res shrink_pre_res;
+        shrink_pre_res = pre_shrink_hook(run_info, trial_info,
             arg_i, cur, tactic);
-        if (cres == THEFT_HOOK_HALT) {
+        if (shrink_pre_res == THEFT_HOOK_SHRINK_PRE_HALT) {
             return SHRINK_HALT;
-        } else if (cres != THEFT_HOOK_CONTINUE) {
+        } else if (shrink_pre_res != THEFT_HOOK_SHRINK_PRE_CONTINUE) {
             return SHRINK_ERROR;
         }
 
@@ -74,10 +74,11 @@ attempt_to_shrink_arg(struct theft *t,
 
         trial_info->shrink_count++;
 
-        cres = post_shrink_hook(run_info, trial_info, arg_i,
+        enum theft_hook_shrink_post_res shrink_post_res;
+        shrink_post_res = post_shrink_hook(run_info, trial_info, arg_i,
             sres == THEFT_SHRINK_OK ? candidate : cur,
             tactic, sres == THEFT_SHRINK_NO_MORE_TACTICS);
-        if (cres != THEFT_HOOK_CONTINUE) {
+        if (shrink_post_res != THEFT_HOOK_SHRINK_POST_CONTINUE) {
             return SHRINK_ERROR;
         }
 
@@ -123,17 +124,18 @@ attempt_to_shrink_arg(struct theft *t,
             if (0) fprintf(stdout, "THEFT SHRINK TRIAL -- %s\n",
                 res == THEFT_TRIAL_FAIL ? "FAIL" : "PASS");
 
-            cres = post_shrink_trial_hook(run_info, trial_info,
+            enum theft_hook_shrink_trial_post_res stpres;
+            stpres = post_shrink_trial_hook(run_info, trial_info,
                 arg_i, args, tactic, res);
-            if (cres == THEFT_HOOK_REPEAT) {
+            if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT) {
                 repeated = true;
                 continue;  // loop and run again
-            } else if (cres == THEFT_HOOK_REPEAT_ONCE && !repeated) {
+            } else if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT_ONCE && !repeated) {
                 repeated = true;
                 continue;
-            } else if (cres == THEFT_HOOK_REPEAT_ONCE && repeated) {
+            } else if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT_ONCE && repeated) {
                 break;
-            } else if (cres == THEFT_HOOK_CONTINUE) {
+            } else if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE) {
                 break;
             } else {
                 return SHRINK_ERROR;
@@ -159,17 +161,15 @@ attempt_to_shrink_arg(struct theft *t,
     return SHRINK_DEAD_END;
 }
 
-static enum theft_hook_res
+static enum theft_hook_shrink_pre_res
 pre_shrink_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic) {
-    struct theft_hook_info hook_info = {
-        .prop_name = run_info->name,
-        .total_trials = run_info->trial_count,
-        .run_seed = run_info->run_seed,
-
-        .type = THEFT_HOOK_TYPE_SHRINK_PRE,
-        .u.shrink_pre = {
+    if (run_info->hooks.shrink_pre != NULL) {
+        struct theft_hook_shrink_pre_info hook_info = {
+            .prop_name = run_info->name,
+            .total_trials = run_info->trial_count,
+            .run_seed = run_info->run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
             .arity = run_info->arity,
@@ -179,22 +179,22 @@ pre_shrink_hook(struct theft_run_info *run_info,
             .arg_index = arg_index,
             .arg = arg,
             .tactic = tactic,
-        },
-    };
-    return run_info->hook_cb(&hook_info, run_info->env);
+        };
+        return run_info->hooks.shrink_pre(&hook_info, run_info->hooks.env);
+    } else {
+        return THEFT_HOOK_SHRINK_PRE_CONTINUE;
+    }
 }
 
-static enum theft_hook_res
+static enum theft_hook_shrink_post_res
 post_shrink_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic, bool done) {
-    struct theft_hook_info hook_info = {
-        .prop_name = run_info->name,
-        .total_trials = run_info->trial_count,
-        .run_seed = run_info->run_seed,
-
-        .type = THEFT_HOOK_TYPE_SHRINK_POST,
-        .u.shrink_post = {
+    if (run_info->hooks.shrink_post != NULL) {
+        struct theft_hook_shrink_post_info hook_info = {
+            .prop_name = run_info->name,
+            .total_trials = run_info->trial_count,
+            .run_seed = run_info->run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
             .arity = run_info->arity,
@@ -205,23 +205,23 @@ post_shrink_hook(struct theft_run_info *run_info,
             .arg = arg,
             .tactic = tactic,
             .done = done,
-        },
-    };
-    return run_info->hook_cb(&hook_info, run_info->env);
+        };
+        return run_info->hooks.shrink_post(&hook_info, run_info->hooks.env);
+    } else {
+        return THEFT_HOOK_SHRINK_POST_CONTINUE;
+    }
 }
 
-static enum theft_hook_res
+static enum theft_hook_shrink_trial_post_res
 post_shrink_trial_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void **args, uint32_t last_tactic,
         enum theft_trial_res result) {
-    struct theft_hook_info hook_info = {
-        .prop_name = run_info->name,
-        .total_trials = run_info->trial_count,
-        .run_seed = run_info->run_seed,
-
-        .type = THEFT_HOOK_TYPE_SHRINK_TRIAL_POST,
-        .u.shrink_trial_post = {
+    if (run_info->hooks.shrink_trial_post != NULL) {
+        struct theft_hook_shrink_trial_post_info hook_info = {
+            .prop_name = run_info->name,
+            .total_trials = run_info->trial_count,
+            .run_seed = run_info->run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
             .arity = run_info->arity,
@@ -232,8 +232,10 @@ post_shrink_trial_hook(struct theft_run_info *run_info,
             .args = args,
             .tactic = last_tactic,
             .result = result,
-        },
-    };
-    return run_info->hook_cb(&hook_info, run_info->env);
-
+        };
+        return run_info->hooks.shrink_trial_post(&hook_info,
+            run_info->hooks.env);
+    } else {
+        return THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE;
+    }
 }

@@ -135,36 +135,9 @@ struct theft_type_info {
     theft_print_cb *print;      /* fprintf instance */
 
     struct theft_autoshrink_config autoshrink_config;
-    
+
     /* Optional environment, passed to the callbacks above. */
     void *env;
-};
-
-/* Type tags for the info given to the hook callback. */
-enum theft_hook_type {
-    /* Before the start of a run (group of trials). */
-    THEFT_HOOK_TYPE_RUN_PRE,
-
-    /* After the whole run has completed, with overall results. */
-    THEFT_HOOK_TYPE_RUN_POST,
-
-    /* Before generating the argument(s) for a trial. */
-    THEFT_HOOK_TYPE_GEN_ARGS_PRE,
-
-    /* Before running the trial, with the generated argument(s). */
-    THEFT_HOOK_TYPE_TRIAL_PRE,
-
-    /* After running the trial, with the arguments and result. */
-    THEFT_HOOK_TYPE_TRIAL_POST,
-
-    /* Before attempting to shrink with the next tactic. */
-    THEFT_HOOK_TYPE_SHRINK_PRE,
-
-    /* After attempting to shrink, with the new instance. */
-    THEFT_HOOK_TYPE_SHRINK_POST,
-
-    /* After re-running the trial with shrunken argument(s), with its result. */
-    THEFT_HOOK_TYPE_SHRINK_TRIAL_POST,
 };
 
 /* Overall trial pass/fail/skip/duplicate counts after a run. */
@@ -175,29 +148,113 @@ struct theft_run_report {
     size_t dup;
 };
 
-/* structs contained within theft_hook_info's tagged union, below. */
-struct theft_hook_run_post {
+
+/*********
+ * Hooks *
+ *********/
+
+/* Pre-run hook: called before the start of a run (group of trials). */
+enum theft_hook_run_pre_res {
+    THEFT_HOOK_RUN_PRE_ERROR,
+    THEFT_HOOK_RUN_PRE_CONTINUE,
+};
+struct theft_hook_run_pre_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
+};
+typedef enum theft_hook_run_pre_res
+theft_hook_run_pre_cb(const struct theft_hook_run_pre_info *info,
+    void *env);
+
+/* Post-run hook: called after the whole run has completed,
+ * with overall results. */
+enum theft_hook_run_post_res {
+    THEFT_HOOK_RUN_POST_ERROR,
+    THEFT_HOOK_RUN_POST_CONTINUE,
+};
+struct theft_hook_run_post_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     struct theft_run_report report;
 };
-struct theft_hook_gen_args_pre {
+typedef enum theft_hook_run_post_res
+theft_hook_run_post_cb(const struct theft_hook_run_post_info *info,
+    void *env);
+
+/* Pre-argument generation hook: called before an individual trial's
+ * argument(s) are generated. */
+enum theft_hook_gen_args_pre_res {
+    THEFT_HOOK_GEN_ARGS_PRE_ERROR,
+    THEFT_HOOK_GEN_ARGS_PRE_CONTINUE,
+    THEFT_HOOK_GEN_ARGS_PRE_HALT,
+};
+struct theft_hook_gen_args_pre_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
 };
-struct theft_hook_trial_pre {
+typedef enum theft_hook_gen_args_pre_res
+theft_hook_gen_args_pre_cb(const struct theft_hook_gen_args_pre_info *info,
+    void *env);
+
+/* Pre-trial hook: called before running the trial, with the initially
+ * generated argument(s). */
+enum theft_hook_trial_pre_res {
+    THEFT_HOOK_TRIAL_PRE_ERROR,
+    THEFT_HOOK_TRIAL_PRE_CONTINUE,
+    THEFT_HOOK_TRIAL_PRE_HALT,
+};
+struct theft_hook_trial_pre_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     void **args;
 };
-struct theft_hook_trial_post {
+typedef enum theft_hook_trial_pre_res
+theft_hook_trial_pre_cb(const struct theft_hook_trial_pre_info *info,
+    void *env);
+
+/* Post-trial hook: called after the trial is run, with the arguments
+ * and result.*/
+enum theft_hook_trial_post_res {
+    THEFT_HOOK_TRIAL_POST_ERROR,
+    THEFT_HOOK_TRIAL_POST_CONTINUE,
+    THEFT_HOOK_TRIAL_POST_REPEAT,
+    THEFT_HOOK_TRIAL_POST_REPEAT_ONCE,
+};
+struct theft_hook_trial_post_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     void **args;
     enum theft_trial_res result;
 };
-struct theft_hook_shrink_pre {
+typedef enum theft_hook_trial_post_res
+theft_hook_trial_post_cb(const struct theft_hook_trial_post_info *info,
+    void *env);
+
+/* Pre-shrinking hook: called before each shrinking attempt.
+ * Returning HALT will keep shrinking from going any further. */
+enum theft_hook_shrink_pre_res {
+    THEFT_HOOK_SHRINK_PRE_ERROR,
+    THEFT_HOOK_SHRINK_PRE_CONTINUE,
+    THEFT_HOOK_SHRINK_PRE_HALT,
+};
+struct theft_hook_shrink_pre_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -208,7 +265,19 @@ struct theft_hook_shrink_pre {
     void *arg;
     uint32_t tactic;
 };
-struct theft_hook_shrink_post {
+typedef enum theft_hook_shrink_pre_res
+theft_hook_shrink_pre_cb(const struct theft_hook_shrink_pre_info *info,
+    void *env);
+
+/* Post-shrinking hook: called after attempting to shrink. */
+enum theft_hook_shrink_post_res {
+    THEFT_HOOK_SHRINK_POST_ERROR,
+    THEFT_HOOK_SHRINK_POST_CONTINUE,
+};
+struct theft_hook_shrink_post_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -221,7 +290,23 @@ struct theft_hook_shrink_post {
     /* Did shrink() indicate that we're at a local minimum? */
     bool done;
 };
-struct theft_hook_shrink_trial_post {
+typedef enum theft_hook_shrink_post_res
+theft_hook_shrink_post_cb(const struct theft_hook_shrink_post_info *info,
+    void *env);
+
+/* Post-trial-shrinking hook: called after running a trial with
+ * shrunken arguments. Returning REPEAT will run the trial again
+ * with the same argument(s). */
+enum theft_hook_shrink_trial_post_res {
+    THEFT_HOOK_SHRINK_TRIAL_POST_ERROR,
+    THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE,
+    THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT,
+    THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT_ONCE,
+};
+struct theft_hook_shrink_trial_post_info {
+    const char *prop_name;
+    size_t total_trials;
+    theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -233,58 +318,14 @@ struct theft_hook_shrink_trial_post {
     uint32_t tactic;
     enum theft_trial_res result;
 };
+typedef enum theft_hook_shrink_trial_post_res
+theft_hook_shrink_trial_post_cb(const struct theft_hook_shrink_trial_post_info *info,
+    void *env);
 
-/* Info given to the hook callback.
- * The union is tagged by the TYPE field. */
-struct theft_hook_info {
-    /* Fields that are always set. */
-    const char *prop_name;
-    size_t total_trials;
-    theft_seed run_seed;
 
-    /* Tagged union. */
-    enum theft_hook_type type;
-    union {
-        // run_pre has no other fields
-        struct theft_hook_run_post run_post;
-        struct theft_hook_gen_args_pre gen_args_pre;
-        struct theft_hook_trial_pre trial_pre;
-        struct theft_hook_trial_post trial_post;
-        struct theft_hook_shrink_pre shrink_pre;
-        struct theft_hook_shrink_post shrink_post;
-        struct theft_hook_shrink_trial_post shrink_trial_post;
-    } u;
-};
-
-/* Whether to keep running trials after N failures/skips/etc. */
-enum theft_hook_res {
-    THEFT_HOOK_ERROR,       /* error, cancel entire run */
-    THEFT_HOOK_CONTINUE,    /* continue current step */
-
-    /* Halt the current step, but continue. This could be used to halt
-     * shrinking when it hasn't made any progress for a while, or to
-     * halt a run when there have been too many failed trials.
-     *
-     * Only valid in GEN_ARGS_PRE, TRIAL_PRE and SHRINK_PRE. */
-    THEFT_HOOK_HALT,
-
-    /* Repeat the current step. This could be used to re-run the
-     * property function with the same argument instances, but with more
-     * logging, breakpoints added, etc.
-     *
-     * Only valid in TRIAL_POST, SHRINK_TRIAL_POST. */
-    THEFT_HOOK_REPEAT,
-
-    /* Same as REPEAT, but only once. This is so the theft caller
-     * doesn't need to track repeated calls to avoid infinite loops. */
-    THEFT_HOOK_REPEAT_ONCE,
-};
-
-/* Handle test results.
- * Can be used to halt after too many failures, print '.' after
- * every N trials, etc. */
-typedef enum theft_hook_res
-theft_hook_cb(const struct theft_hook_info *info, void *env);
+/*****************
+ * Configuration *
+ *****************/
 
 /* Result from a trial run. */
 enum theft_run_res {
@@ -317,14 +358,24 @@ struct theft_run_config {
     /* Number of trials to run. Defaults to THEFT_DEF_TRIALS. */
     size_t trials;
 
-    /* Hook callback, called in several contexts to report on progress,
-     * halt shrinking early, repeat trials with different logging, etc.
-     * See struct theft_hook_info above for details. */
-    theft_hook_cb *hook_cb;
-
-    /* Environment pointer. This is completely opaque to theft itself,
-     * but will be passed along to all callbacks. */
-    void *env;
+    /* These functions are called in several contexts to report on
+     * progress, halt shrinking early, repeat trials with different
+     * logging, etc.
+     *
+     * See their function pointer typedefs above for details. */
+    struct {
+        theft_hook_run_pre_cb *run_pre;
+        theft_hook_run_post_cb *run_post;
+        theft_hook_gen_args_pre_cb *gen_args_pre;
+        theft_hook_trial_pre_cb *trial_pre;
+        theft_hook_trial_post_cb *trial_post;
+        theft_hook_shrink_pre_cb *shrink_pre;
+        theft_hook_shrink_post_cb *shrink_post;
+        theft_hook_shrink_trial_post_cb *shrink_trial_post;
+        /* Environment pointer. This is completely opaque to theft
+         * itself, but will be passed to all callbacks. */
+        void *env;
+    } hooks;
 
     /* Struct to populate with more detailed test results. */
     struct theft_trial_report *report;
