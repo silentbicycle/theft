@@ -4,6 +4,12 @@
 
 ### API Changes
 
+There is now support for generic shrinking. To use this, set
+`.autoshrink_config.enable = true` on the `theft_type_info`
+struct. This requires the `theft_alloc_cb` to be written so
+`theft_random_bits()` giving smaller random values will
+generate simpler instances.
+
 The `theft_progress_cb` callback's role has significantly expanded.
 Rename it and its related types to `theft_hook_cb` throughout.
 Instead of only being called with the result after each trial, it is
