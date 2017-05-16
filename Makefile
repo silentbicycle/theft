@@ -4,8 +4,12 @@ SRC =		src
 TEST =		test
 INC =		inc
 VENDOR =	vendor
-#OPTIMIZE = 	-O3
-OPTIMIZE = 	-O0
+COVERAGE =	-fprofile-arcs -ftest-coverage
+PROFILE =	-pg
+OPTIMIZE = 	-O3
+#OPTIMIZE = 	-O0 ${COVERAGE}
+#OPTIMIZE = 	-O0 ${PROFILE}
+
 WARN = 		-Wall -Wextra -pedantic
 CDEFS +=
 CINCS += 	-I${INC} -I${VENDOR}
@@ -71,6 +75,12 @@ ${TEST}/*.c: Makefile
 ${BUILD}:
 	mkdir ${BUILD}
 
+profile:
+	gprof build/test_theft
+
+coverage:
+	ls -1 src/*.c | sed -e "s#src/#build/#" | xargs -n1 gcov
+
 # Installation
 PREFIX ?=	/usr/local
 INSTALL ?= 	install
@@ -91,3 +101,5 @@ uninstall:
 
 # Other dependencies
 ${BUILD}/theft.o: Makefile ${INC}/*.h
+
+.PHONY: all test clean tags coverage profile install uninstall
