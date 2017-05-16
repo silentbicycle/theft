@@ -1,5 +1,7 @@
 #include "test_theft.h"
 
+#include "theft_mt.h"
+
 #include <sys/time.h>
 #include <assert.h>
 #include <inttypes.h>
@@ -530,11 +532,11 @@ TEST seeds_should_not_be_truncated(void) {
 
 static enum theft_alloc_res
 seed_alloc(struct theft *t, void *env, void **output) {
-    theft_seed *res = malloc(sizeof(*res));
+    uint64_t *res = malloc(sizeof(*res));
     if (res == NULL) { return THEFT_ALLOC_ERROR; }
     (void)env;
     (void)t;
-    *res = theft_random(t);
+    *res = theft_random_bits(t, 64);
     *output = res;
     return THEFT_ALLOC_OK;
 }
@@ -549,9 +551,11 @@ static struct theft_type_info seed_info = {
     .free = seed_free,
 };
 
+static uint64_t expected_value = 0;
+
 static enum theft_trial_res
-prop_expected_seed_is_generated(theft_seed *s) {
-    if (*s == EXPECTED_SEED) {
+prop_expected_seed_is_used(theft_seed *s) {
+    if (*s == expected_value) {
         return THEFT_TRIAL_PASS;
     } else {
         return THEFT_TRIAL_FAIL;
@@ -561,8 +565,12 @@ prop_expected_seed_is_generated(theft_seed *s) {
 TEST expected_seed_should_be_used_first(void) {
     struct theft *t = theft_init(NULL);
 
+    struct theft_mt *mt = theft_mt_init(EXPECTED_SEED);
+    expected_value = theft_mt_random(mt);
+    theft_mt_free(mt);
+
     struct theft_run_config cfg = {
-        .fun = prop_expected_seed_is_generated,
+        .fun = prop_expected_seed_is_used,
         .type_info = { &seed_info },
         .trials = 1,
         .seed = EXPECTED_SEED,

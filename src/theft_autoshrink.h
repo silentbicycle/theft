@@ -12,6 +12,9 @@ struct theft_autoshrink_bit_pool {
     /* Bits will always be rounded up to a multiple of 64 bits,
      * and be aligned as a uint64_t. */
     uint8_t *bits;
+    bool shrinking;
+    size_t bits_filled;
+    size_t bits_ceil;
     size_t size;  // in bits, not bytes
 
     /* The most recently generated instance, if any. */
@@ -24,8 +27,11 @@ struct theft_autoshrink_bit_pool {
     uint32_t *requests;
 };
 
-
-#define DEF_POOL_SIZE (32 * 1024LU)
+/* How large should the default autoshrink bit pool be?
+ * The pool will be filled and grown on demand, but an
+ * excessively small initial pool will lead to several
+ * reallocs in quick succession. */
+#define DEF_POOL_SIZE (4 * 8*sizeof(uint64_t))
 
 /* FIXME: make this configurable and determine a reasonable default */
 #define DEF_REQUESTS_CEIL2 4
@@ -87,15 +93,12 @@ struct change_info {
 bool theft_autoshrink_wrap(struct theft *t,
     struct theft_type_info *type_info, struct theft_type_info *wrapper);
 
-/* struct theft_autoshrink_bit_pool *
- * theft_autoshrink_init_bit_pool(struct theft *t,
- *     size_t size, theft_seed seed); */
-
 void theft_autoshrink_free_bit_pool(struct theft *t,
     struct theft_autoshrink_bit_pool *pool);
 
 uint64_t
-theft_autoshrink_bit_pool_random(struct theft_autoshrink_bit_pool *pool,
+theft_autoshrink_bit_pool_random(struct theft *t,
+    struct theft_autoshrink_bit_pool *pool,
     uint8_t bit_count, bool save_request);
 
 void

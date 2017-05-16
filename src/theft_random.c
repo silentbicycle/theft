@@ -13,8 +13,9 @@ static uint64_t mask(uint8_t bits);
 void theft_random_set_seed(struct theft *t, uint64_t seed) {
     theft_random_stop_using_bit_pool(t);
     t->seed = seed;
-    t->prng_buf = seed;
-    t->bits_available = 64;
+    t->prng_buf = 0;
+    t->bits_available = 0;
+
     theft_mt_reset(t->mt, seed);
     LOG(2, "%s: SET_SEED: %" PRIx64 "\n", __func__, seed);
 }
@@ -36,7 +37,7 @@ uint64_t theft_random_bits(struct theft *t, uint8_t bit_count) {
         t->bits_available, bit_count, t->prng_buf);
 
     if (t->bit_pool) {
-        return theft_autoshrink_bit_pool_random(t->bit_pool, bit_count, true);
+        return theft_autoshrink_bit_pool_random(t, t->bit_pool, bit_count, true);
     }
 
     uint64_t res = 0;
