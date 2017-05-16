@@ -6,6 +6,14 @@
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
 #define DEFAULT_THEFT_SEED 0xa600d64b175eedLL
 
+#define THEFT_LOG_LEVEL 0
+#define LOG(LEVEL, ...)                                               \
+    do {                                                              \
+        if (LEVEL <= THEFT_LOG_LEVEL) {                               \
+            printf(__VA_ARGS__);                                      \
+        }                                                             \
+    } while(0)
+
 struct theft {
     FILE *out;
     theft_seed seed;

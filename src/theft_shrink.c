@@ -121,7 +121,7 @@ attempt_to_shrink_arg(struct theft *t,
                 }
             }
 
-            if (0) fprintf(stdout, "THEFT SHRINK TRIAL -- %s\n",
+            LOG(2, "THEFT SHRINK TRIAL -- %s\n",
                 res == THEFT_TRIAL_FAIL ? "FAIL" : "PASS");
 
             enum theft_hook_shrink_trial_post_res stpres;

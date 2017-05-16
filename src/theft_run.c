@@ -47,6 +47,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
 
     theft_seed seed = run_info.run_seed;
+    LOG(3, "%s: SETTING RUN SEED TO 0x%016lx\n", __func__, seed);
     theft_random_set_seed(t, seed);
     if (!wrap_any_autoshrinks(t, &run_info)) {
         return THEFT_RUN_ERROR;
@@ -79,6 +80,8 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         void *args[THEFT_MAX_ARITY];
         enum run_step_res res = run_step(t, &run_info,
             trial, args, &seed);
+        LOG(3, "  -- trial %zd/%zd, new seed 0x%016lx\n",
+            trial, limit, seed);
         theft_trial_free_args(&run_info, args);
 
         switch (res) {
@@ -170,6 +173,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     }
 
     /* Set seed for this trial */
+    LOG(3, "%s: SETTING TRIAL SEED TO 0x%016lx\n", __func__, trial_info.seed);
     theft_random_set_seed(t, trial_info.seed);
 
     enum all_gen_res_t gres = gen_all_args(t, run_info, args);
@@ -195,12 +199,14 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     switch (gres) {
     case ALL_GEN_SKIP:
         /* skip generating these args */
+        LOG(3, "gen -- skip\n");
         run_info->skip++;
         hook_info.result = THEFT_TRIAL_SKIP;
         pres = post_cb(&hook_info, hook_env);
         break;
     case ALL_GEN_DUP:
         /* skip these args -- probably already tried */
+        LOG(3, "gen -- dup\n");
         run_info->dup++;
         hook_info.result = THEFT_TRIAL_DUP;
         pres = post_cb(&hook_info, hook_env);
@@ -208,10 +214,12 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     default:
     case ALL_GEN_ERROR:
         /* Error while generating args */
+        LOG(1, "gen -- error\n");
         hook_info.result = THEFT_TRIAL_ERROR;
         pres = post_cb(&hook_info, hook_env);
         return RUN_STEP_GEN_ERROR;
     case ALL_GEN_OK:
+        LOG(4, "gen -- ok\n");
         if (run_info->hooks.trial_pre != NULL) {
             struct theft_hook_trial_pre_info info = {
                 .prop_name = run_info->name,
@@ -236,6 +244,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
 
     /* Update seed for next trial */
     *seed = theft_random(t);
+    LOG(3, "end of trial, new seed is 0x%016lx\n", *seed);
     return RUN_STEP_OK;
 }
 
