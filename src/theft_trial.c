@@ -47,10 +47,16 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     case THEFT_TRIAL_FAIL:
         if (theft_shrink(t, run_info, trial_info) != SHRINK_OK) {
             hook_info.result = THEFT_TRIAL_ERROR;
-            /* FIXME: hook_info.args are stale here! */
+            /* We may not have a valid reference to the arguments
+             * anymore, so remove the stale pointers. */
+            for (size_t i = 0; i < trial_info->arity; i++) {
+                hook_info.args[i] = NULL;
+            }
             *tpres = trial_post(&hook_info, run_info->hooks.env);
             return false;
         }
+
+        theft_autoshrink_get_real_args(run_info, hook_info.args, trial_info->args);
         run_info->fail++;
         *tpres = report_on_failure(t, run_info, trial_info,
             &hook_info, trial_post);

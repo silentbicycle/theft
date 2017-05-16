@@ -889,11 +889,12 @@ shrink_all_the_way_shrink_post(const struct theft_hook_shrink_post_info *info,
     if (info->done) {
         uint32_t *pnum = (uint32_t *)info->arg;
         env->local_minimum = *pnum;
-        printf("Saving local minimum %u after %zd shrinks (succ %zd, fail %zd)\n",
+        printf("Saving local minimum %u after %zd shrinks (succ %zd, fail %zd) -- %p\n",
             env->local_minimum,
             info->shrink_count,
             info->successful_shrinks,
-            info->failed_shrinks);
+            info->failed_shrinks,
+            (void *)info->arg);
     }
     return THEFT_HOOK_SHRINK_POST_CONTINUE;
 }
@@ -902,7 +903,6 @@ static enum theft_hook_trial_post_res
 shrink_all_the_way_trial_post(const struct theft_hook_trial_post_info *info, void *venv) {
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
     uint32_t *pnum = (uint32_t *)info->args[0];
-    //fprintf(stderr, "trial_post: pnum %u\n", *pnum);
     if (*pnum == 12346 && env->reruns < 33) {
         env->reruns += 10;
         return THEFT_HOOK_TRIAL_POST_REPEAT;
@@ -932,7 +932,6 @@ TEST save_local_minimum_and_re_run(void) {
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
-    SKIPm("FIXME: args in *info are stale due to shrinking");
     ASSERT_EQ_FMTm("three trial-post and three shrink-post hook runs",
         33, env.reruns, "%zd");
     ASSERT_EQ_FMT(12346, env.local_minimum, "%zd");
