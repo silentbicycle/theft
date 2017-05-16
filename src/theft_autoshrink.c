@@ -104,14 +104,14 @@ alloc_bit_pool(size_t size, size_t request_ceil) {
     uint32_t *requests = NULL;
     struct theft_autoshrink_bit_pool *res = NULL;
 
-    size_t alloc_size = get_aligned_size(size, 32);
-    assert((alloc_size % 32) == 0);
+    size_t alloc_size = get_aligned_size(size, 64);
+    assert((alloc_size % 64) == 0);
 
-    /* Ensure that the allocation size is aligned to 32 bits, so we can
-     * work in 32-bit steps later on. */
+    /* Ensure that the allocation size is aligned to 64 bits, so we can
+     * work in 64-bit steps later on. */
     LOG("Allocating alloc_size %zd => %zd bytes\n",
-        alloc_size, (alloc_size/32) * sizeof(uint32_t));
-    uint32_t *aligned_bits = calloc(alloc_size/32, sizeof(uint32_t));
+        alloc_size, (alloc_size/64) * sizeof(uint64_t));
+    uint64_t *aligned_bits = calloc(alloc_size/64, sizeof(uint64_t));
     bits = (uint8_t *)aligned_bits;
     if (bits == NULL) { goto fail; }
 
@@ -149,8 +149,10 @@ init_bit_pool(struct theft *t, size_t size,
     }
 
     theft_random_set_seed(t, seed);
-    for (size_t i = 0; i < size / 8; i++) {
-        res->bits[i] = theft_random_bits(t, 8);
+    uint64_t *bits64 = (uint64_t *)res->bits;
+    const size_t limit = (size / 64) + ((size % 64) == 0 ? 0 : 1);
+    for (size_t i = 0; i < limit; i++) {
+        bits64[i] = theft_random_bits(t, 64);
     }
     return res;
 }

@@ -8,6 +8,9 @@
 
 struct theft_autoshrink_bit_pool {
     uint8_t tag;
+
+    /* Bits will always be rounded up to a multiple of 64 bits,
+     * and be aligned as a uint64_t. */
     uint8_t *bits;
     size_t size;  // in bits, not bytes
 
