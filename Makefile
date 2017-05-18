@@ -3,6 +3,7 @@ BUILD =		build
 SRC =		src
 TEST =		test
 INC =		inc
+SCRIPTS =	scripts
 VENDOR =	vendor
 COVERAGE =	-fprofile-arcs -ftest-coverage
 PROFILE =	-pg
@@ -12,7 +13,7 @@ OPTIMIZE = 	-O3
 
 WARN = 		-Wall -Wextra -pedantic
 CDEFS +=
-CINCS += 	-I${INC} -I${VENDOR}
+CINCS += 	-I${INC} -I${VENDOR} -I${BUILD}
 CFLAGS += 	-std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE} ${CINCS}
 LDFLAGS +=
 
@@ -75,11 +76,18 @@ ${TEST}/*.c: Makefile
 ${BUILD}:
 	mkdir ${BUILD}
 
-profile:
+profile: test
 	gprof build/test_theft
 
-coverage:
+coverage: test
 	ls -1 src/*.c | sed -e "s#src/#build/#" | xargs -n1 gcov
+	@echo moving coverage files to ${BUILD}
+	mv *.gcov ${BUILD}
+
+${BUILD}/theft_autoshrink.o: ${BUILD}/bits_lut.h | ${BUILD}
+
+${BUILD}/bits_lut.h: | ${BUILD}
+	${SCRIPTS}/mk_bits_lut > $@
 
 # Installation
 PREFIX ?=	/usr/local

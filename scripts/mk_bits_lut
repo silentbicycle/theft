@@ -1,0 +1,23 @@
+#!/usr/bin/awk -f
+
+function bit_count(byte,  b, t) {
+    t = 0
+    for (b = 0x01; b <= 0x80; b *= 2) {
+        if (and(byte, b)) { t++ }
+    }
+    return t
+}
+
+BEGIN {
+    printf("static uint8_t bits_lut[256] = {\n");
+
+    for (i = 0; i < 256; i++) {
+        if ((i % 8) == 0) { printf("    ") }
+        printf("0x%02x, ", bit_count(i))
+        if ((i % 8) == 7) { printf("\n") }
+    }
+
+    printf("};\n");
+    exit 0
+}
+

@@ -9,8 +9,6 @@
 #define LOG2_BITS_PER_BYTE 3
 #define HASH_COUNT 4
 
-static uint8_t get_bits_set_count(uint8_t counts[256], uint8_t byte);
-
 /* Initialize a bloom filter. */
 struct theft_bloom *theft_bloom_init(uint8_t bit_size2) {
     size_t sz = 1 << (bit_size2 - LOG2_BITS_PER_BYTE);
@@ -61,16 +59,15 @@ bool theft_bloom_check(struct theft_bloom *b, uint8_t *data, size_t data_size) {
 /* Free the bloom filter. */
 void theft_bloom_free(struct theft_bloom *b) { free(b); }
 
+#include "bits_lut.h"
+
 /* Dump the bloom filter's contents. (Debugging.) */
 void theft_bloom_dump(struct theft_bloom *b) {
-    uint8_t counts[256];
-    memset(counts, 0xFF, sizeof(counts));
-
     size_t total = 0;
     uint16_t row_total = 0;
     
     for (size_t i = 0; i < b->size; i++) {
-        uint8_t count = get_bits_set_count(counts, b->bits[i]);
+        uint8_t count = bits_lut[b->bits[i]];
         total += count;
         row_total += count;
         #if DEBUG_BLOOM_FILTER > 1
@@ -133,16 +130,4 @@ uint8_t theft_bloom_recommendation(int trials) {
     #endif
 
     return res;
-}
-
-/* Check a byte->bits set table, and lazily populate it. */
-static uint8_t get_bits_set_count(uint8_t counts[256], uint8_t byte) {
-    uint8_t v = counts[byte];
-    if (v != 0xFF) { return v; }
-    uint8_t t = 0;
-    for (uint8_t i = 0; i < 8; i++) {
-        if (byte & (1 << i)) { t++; }
-    }
-    counts[byte] = t;
-    return t;
 }
