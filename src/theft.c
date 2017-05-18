@@ -57,6 +57,7 @@ theft_run(const struct theft_run_config *cfg) {
     }
 
     if (t == NULL || cfg == NULL || cfg->fun == NULL) {
+        theft_free(t);
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
 

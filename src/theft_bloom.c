@@ -120,6 +120,7 @@ void theft_bloom_dump(struct theft_bloom *b) {
             "larger bloom_bits value recommended.\n",
             (size_t)((100 * total) / (8 * size)));
     }
+    (void)last_row_total;
 }
 
 /* Recommend a bloom filter size for a given number of trials. */

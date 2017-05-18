@@ -59,9 +59,11 @@ theft_autoshrink_bit_pool_random(struct theft *t,
             pool->consumed, bit_count, pool->bits_ceil);
         if (pool->consumed + bit_count > pool->bits_ceil) {
             size_t nceil = 2*pool->bits_ceil;
+            LOG(1, "growing pool: from bits %p, ceil %zd, ",
+                (void *)pool->bits, pool->bits_ceil);
             uint64_t *nbits = realloc(pool->bits, nceil/(64/sizeof(uint64_t)));
-            LOG(1, "growing pool: bits %p, ceil %zd, nbits %p, nceil %zd\n",
-                (void *)pool->bits, pool->bits_ceil, (void *)nbits, nceil);
+            LOG(1, "nbits %p, nceil %zd\n",
+                (void *)nbits, nceil);
             if (nbits == NULL) {
                 assert(false);   // alloc fail
                 return 0;
