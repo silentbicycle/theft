@@ -9,7 +9,7 @@
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
 
 TEST alloc_and_free() {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     theft_free(t);
     PASS();
@@ -50,13 +50,13 @@ static enum theft_trial_res is_pos(uint32_t *n) {
 }
 
 TEST generated_unsigned_ints_are_positive() {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     enum theft_run_res res;
 
     /* The configuration struct can be passed in as an argument literal,
      * though you have to cast it. */
-    res = theft_run(t, &(struct theft_run_config){
+    res = theft_run(&(struct theft_run_config){
             .name = "generated_unsigned_ints_are_positive",
             .fun = is_pos,
             .type_info = { &uint_type_info },
@@ -305,14 +305,14 @@ static enum theft_trial_res prop_gen_cons(list *l) {
 }
 
 TEST generated_int_list_with_cons_is_longer() {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
         .fun = prop_gen_cons,
         .type_info = { &list_info },
     };
-    res = theft_run(t, &cfg);
+    res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_PASS, res);
     theft_free(t);
@@ -354,7 +354,7 @@ gildnrv_trial_post_hook(const struct theft_hook_trial_post_info *info, void *pen
 
 TEST generated_int_list_does_not_repeat_values() {
     /* This test is expected to fail, with meaningful counter-examples. */
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     struct test_env env = { .fail = false };
 
@@ -371,7 +371,7 @@ TEST generated_int_list_does_not_repeat_values() {
     };
 
     enum theft_run_res res;
-    res = theft_run(t, &cfg);
+    res = theft_run(&cfg);
     ASSERT_EQ_FMTm("should find counter-examples", THEFT_RUN_FAIL, res, "%d");
     ASSERT(env.fail > 0);
     theft_free(t);
@@ -425,7 +425,7 @@ TEST two_generated_lists_do_not_match() {
     struct timeval tv;
     if (-1 == gettimeofday(&tv, NULL)) { FAIL(); }
 
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
     ASSERT(t);
     enum theft_run_res res;
     struct theft_run_config cfg = {
@@ -439,7 +439,7 @@ TEST two_generated_lists_do_not_match() {
         },
         .seed = (theft_seed)(tv.tv_sec ^ tv.tv_usec)
     };
-    res = theft_run(t, &cfg);
+    res = theft_run(&cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
     ASSERT(env.fail > 0);
     theft_free(t);
@@ -496,7 +496,7 @@ TEST always_seeds_must_be_run() {
     always_seed_env env;
     memset(&env, 0, sizeof(env));
 
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
@@ -511,7 +511,7 @@ TEST always_seeds_must_be_run() {
             .env = &env,
         },
     };
-    res = theft_run(t, &cfg);
+    res = theft_run(&cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
     ASSERT(env.fail > 0);
     theft_free(t);
@@ -563,7 +563,7 @@ prop_expected_seed_is_used(theft_seed *s) {
 }
 
 TEST expected_seed_should_be_used_first(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     struct theft_mt *mt = theft_mt_init(EXPECTED_SEED);
     expected_value = theft_mt_random(mt);
@@ -576,7 +576,7 @@ TEST expected_seed_should_be_used_first(void) {
         .seed = EXPECTED_SEED,
     };
 
-    enum theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(&cfg);
     ASSERT_EQ(THEFT_RUN_PASS, res);
     theft_free(t);
     PASS();
@@ -630,7 +630,7 @@ save_report_run_post(const struct theft_hook_run_post_info *info, void *env) {
 }
 
 TEST overconstrained_state_spaces_should_be_detected(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     struct theft_run_report report = {
         .pass = 0,
@@ -646,7 +646,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
         },
     };
 
-    enum theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(&cfg);
     theft_free(t);
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT_EQ(2, report.fail);
@@ -681,7 +681,7 @@ static enum theft_trial_res should_never_run(void *x) {
 }
 
 TEST save_seed_and_error_before_generating_args(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     theft_seed seed = 0;
 
@@ -695,7 +695,7 @@ TEST save_seed_and_error_before_generating_args(void) {
         .seed = 0xf005ba11,
     };
 
-    enum theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(&cfg);
     theft_free(t);
 
     ASSERT_EQ(THEFT_RUN_ERROR, res);
@@ -727,7 +727,7 @@ halt_before_third_run_post(const struct theft_hook_run_post_info *info, void *en
 }
 
 TEST gen_pre_halt(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     struct theft_run_report report = { .pass = 0 };
 
@@ -741,7 +741,7 @@ TEST gen_pre_halt(void) {
         },
     };
 
-    enum theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(&cfg);
     theft_free(t);
 
     ASSERT_EQ(THEFT_RUN_PASS, res);
@@ -854,7 +854,7 @@ halt_after_third_shrink_shrink_post(const struct theft_hook_shrink_post_info *in
 }
 
 TEST only_shrink_three_times(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     struct shrink_test_env env = { .shrinks = 0 };
 
@@ -869,7 +869,7 @@ TEST only_shrink_three_times(void) {
         },
     };
 
-    enum theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(&cfg);
     theft_free(t);
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
@@ -919,7 +919,7 @@ shrink_all_the_way_trial_post(const struct theft_hook_trial_post_info *info, voi
 }
 
 TEST save_local_minimum_and_re_run(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     struct shrink_test_env env = { .shrinks = 0 };
 
@@ -935,7 +935,7 @@ TEST save_local_minimum_and_re_run(void) {
         .trials = 1,
     };
 
-    enum theft_run_res res = theft_run(t, &cfg);
+    enum theft_run_res res = theft_run(&cfg);
     theft_free(t);
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
@@ -981,7 +981,7 @@ repeat_once_trial_post(const struct theft_hook_trial_post_info *info,
 }
 
 TEST repeat_local_minimum_once(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
 
     struct repeat_once_env env = { .fail = false };
@@ -999,7 +999,7 @@ TEST repeat_local_minimum_once(void) {
         .seed = 12345,
     };
 
-    res = theft_run(t, &cfg);
+    res = theft_run(&cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
     ASSERT(env.fail);
     ASSERT_EQ_FMT(2, env.local_minimum_runs, "%u");
@@ -1060,7 +1060,7 @@ repeat_first_successful_shrink_then_halt_shrink_pre(const struct theft_hook_shri
 }
 
 TEST repeat_first_successful_shrink_once_then_halt(void) {
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
     enum theft_run_res res;
 
     struct repeat_shrink_once_env env = { .fail = false };
@@ -1079,7 +1079,7 @@ TEST repeat_first_successful_shrink_once_then_halt(void) {
         .seed = 12345,
     };
 
-    res = theft_run(t, &cfg);
+    res = theft_run(&cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
     ASSERT(env.fail);
     ASSERT_EQ_FMT(1, env.shrink_repeats, "%u");

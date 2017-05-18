@@ -8,22 +8,20 @@
 #include "theft_bloom.h"
 #include "theft_mt.h"
 
-static struct theft_config default_config = {
-    .bloom_bits = 0,
-};
+/* Forward references.
+ * These functions are not static because some tests
+ * need to construct theft instances. */
+struct theft *theft_init(uint8_t bloom_bits);
+void theft_free(struct theft *t);
 
 /* Initialize a theft test runner, with the configuration
  * in CFG. If CFG is NULL, a default will be used.
  *
  * Returns a NULL if malloc fails or the provided configuration
  * is invalid. */
-struct theft *theft_init(const struct theft_config *cfg) {
-    if (cfg == NULL) {
-        cfg = &default_config;
-    }
-
-    if ((cfg->bloom_bits != 0 && (cfg->bloom_bits < THEFT_BLOOM_BITS_MIN))
-        || (cfg->bloom_bits > THEFT_BLOOM_BITS_MAX)) {
+struct theft *theft_init(uint8_t bloom_bits) {
+    if ((bloom_bits != 0 && (bloom_bits < THEFT_BLOOM_BITS_MIN))
+        || (bloom_bits > THEFT_BLOOM_BITS_MAX)) {
         return NULL;
     }
 
@@ -37,7 +35,7 @@ struct theft *theft_init(const struct theft_config *cfg) {
         return NULL;
     } else {
         t->out = stdout;
-        t->requested_bloom_bits = cfg->bloom_bits;
+        t->requested_bloom_bits = bloom_bits;
         return t;
     }
 }
@@ -52,12 +50,19 @@ void theft_set_output_stream(struct theft *t, FILE *out) {
  * Configuration is specified in CFG; many fields are optional.
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
-theft_run(struct theft *t, const struct theft_run_config *cfg) {
+theft_run(const struct theft_run_config *cfg) {
+    struct theft *t = theft_init(cfg->bloom_bits);
+    if (t == NULL) {
+        return THEFT_RUN_ERROR;
+    }
+
     if (t == NULL || cfg == NULL || cfg->fun == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
 
-    return theft_run_trials(t, cfg);
+    enum theft_run_res res = theft_run_trials(t, cfg);
+    theft_free(t);
+    return res;
 }
 
 /* Free a property-test runner. */

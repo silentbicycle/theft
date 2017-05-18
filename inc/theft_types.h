@@ -14,15 +14,6 @@ struct theft_mt;                /* mersenne twister PRNG */
 /* Opaque struct handle for property-test runner. */
 struct theft;
 
-struct theft_config {
-    /* The number of bits to use for the bloom filter, which
-     * detects combinations of arguments that have already
-     * been tested. If 0, a default size will be chosen
-     * based on the trial count. (This will only be used if
-     * all property types have hash callbacks defined.) */
-    uint8_t bloom_bits;
-};
-
 /* Allocate and return an instance of the type, based on a pseudo-random
  * number stream with a known seed. To get random numbers, use
  * theft_random(t) or theft_random_bits(t, bit_count); this stream of
@@ -344,6 +335,15 @@ enum theft_run_res {
     THEFT_RUN_ERROR_MISSING_CALLBACK = -2,
 };
 
+/* Default number of trials to run. */
+#define THEFT_DEF_TRIALS 100
+
+/* Min and max bits used to determine bloom filter size.
+ * (A larger value uses more memory, but reduces the odds of an
+ * untested argument combination being falsely skipped.) */
+#define THEFT_BLOOM_BITS_MIN 13 /* 1 KB */
+#define THEFT_BLOOM_BITS_MAX 33 /* 1 GB */
+
 /* Configuration struct for a theft run. */
 struct theft_run_config {
     /* Property function under test, and info about its arguments.
@@ -364,6 +364,13 @@ struct theft_run_config {
 
     /* Number of trials to run. Defaults to THEFT_DEF_TRIALS. */
     size_t trials;
+
+    /* The number of bits to use for the bloom filter, which
+     * detects combinations of arguments that have already
+     * been tested. If 0, a default size will be chosen
+     * based on the trial count. (This will only be used if
+     * all property types have hash callbacks defined.) */
+    uint8_t bloom_bits;
 
     /* These functions are called in several contexts to report on
      * progress, halt shrinking early, repeat trials with different

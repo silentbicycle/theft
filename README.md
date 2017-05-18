@@ -125,8 +125,6 @@ Finally, instantiate a theft test runner and pass it the property and
 type information:
 
 ```c
-    struct theft *t = theft_init(0);   // 0 -> auto-size bloom filter
-
     // Configuration for the property test
     struct theft_cfg cfg = {
         // name of the property, used for failure messages (optional)
@@ -144,8 +142,7 @@ type information:
     };
 
     // Run the property test. Any failures will be printed, with seeds.
-    theft_run_res result = theft_run(t, &cfg);
-    theft_free(t);
+    theft_run_res result = theft_run(&cfg);
     return result == THEFT_RUN_PASS;
 ```
 

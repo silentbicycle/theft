@@ -10,6 +10,11 @@ struct. This requires the `theft_alloc_cb` to be written so
 `theft_random_bits()` giving smaller random values will
 generate simpler instances.
 
+`theft_init` and `theft_free` have been removed from the public API, and
+`theft_run` no longer has a first argument of a `struct theft *t`
+handle. Instead, the theft test runner is allocated and freed inside of
+`theft_run`, reducing boilerplate.
+
 The `theft_progress_cb` callback's role has significantly expanded.
 Rename it and its related types to `theft_hook_cb` throughout.
 Instead of only being called with the result after each trial, it is

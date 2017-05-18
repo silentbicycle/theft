@@ -5,7 +5,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
     theft_seed seeds[8];
     theft_seed values[8][8];
 
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     /* Set for deterministic start */
     theft_random_set_seed(t, 0xabad5eed);
@@ -35,7 +35,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
 TEST basic(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -54,7 +54,7 @@ TEST basic(uint64_t limit) {
 TEST bit_sampling_two_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -79,7 +79,7 @@ TEST bit_sampling_two_bytes(uint64_t limit) {
 TEST bit_sampling_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -111,7 +111,7 @@ TEST bit_sampling_bytes(uint64_t limit) {
 TEST bit_sampling_odd_sizes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -148,7 +148,7 @@ TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
     uint64_t seed = 0x15a600d64b175eedLL;
     uint64_t values[3];
 
-    struct theft *t = theft_init(NULL);
+    struct theft *t = theft_init(0);
 
     theft_random_set_seed(t, seed);
     values[0] = theft_random_bits(t, 64);
