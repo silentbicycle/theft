@@ -2,6 +2,7 @@
 #define THEFT_AUTOSHRINK_H
 
 #include "theft_types_internal.h"
+#include <limits.h>
 
 #define AUTOSHRINK_ENV_TAG 0xa5
 #define AUTOSHRINK_BIT_POOL_TAG 'B'
@@ -12,10 +13,10 @@ struct theft_autoshrink_bit_pool {
     /* Bits will always be rounded up to a multiple of 64 bits,
      * and be aligned as a uint64_t. */
     uint8_t *bits;
-    bool shrinking;
-    size_t bits_filled;
-    size_t bits_ceil;
-    size_t size;  // in bits, not bytes
+    bool shrinking;             /* is this pool shrinking? */
+    size_t bits_filled;         /* how many bits are available */
+    size_t bits_ceil;           /* ceiling for bit buffer */
+    size_t limit;               /* after limit bytes, return 0 */
 
     /* The most recently generated instance, if any. */
     void **instance;
@@ -33,15 +34,22 @@ struct theft_autoshrink_bit_pool {
  * reallocs in quick succession. */
 #define DEF_POOL_SIZE (4 * 8*sizeof(uint64_t))
 
-/* FIXME: make this configurable and determine a reasonable default */
-#define DEF_REQUESTS_CEIL2 4
+/* How large should the buffer for request sizes be by default? */
+#define DEF_REQUESTS_CEIL2 4 /* constrain to a power of 2 */
 #define DEF_REQUESTS_CEIL (1 << DEF_REQUESTS_CEIL2)
-#define DEF_MAX_FAILED_SHRINKS 100
-#define DEF_DROP_TACTICS 8
 
-/* Default: 1/32 odds of dropping */
-#define DEF_DROP_THRESHOLD 1
+/* Default: Decide we've reached a local minimum after
+ * this many unsuccessful shrinks in a row. */
+#define DEF_MAX_FAILED_SHRINKS 100
+
+/* When attempting to drop records, default to odds of
+ * (1+DEF_DROP_THRESHOLD) in (1 << DEF_DROP_BITS). */
+#define DEF_DROP_THRESHOLD 0
 #define DEF_DROP_BITS 5
+
+/* Max number of pooled random bits to give to alloc callback
+ * before returning 0 forever. Default: No limit. */
+#define DEF_POOL_LIMIT ULLONG_MAX
 
 /* Magic value to disable selecting a request to drop in
  * drop_from_bit_pool, because it complicates tests. */
@@ -55,10 +63,10 @@ struct theft_autoshrink_env {
 
     // config
     size_t pool_size;
+    size_t pool_limit;
     enum theft_autoshrink_print_mode print_mode;
     size_t max_failed_shrinks;
     uint32_t max_autoshrinks;  // FIXME: name
-    uint32_t drop_tactics;     // FIXME: name
     uint64_t drop_threshold;   // FIXME: name
     uint8_t drop_bits;         // FIXME: name
 

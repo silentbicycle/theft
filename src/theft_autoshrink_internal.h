@@ -13,8 +13,7 @@ static theft_shrink_cb autoshrink_shrink;
 static theft_print_cb autoshrink_print;
 
 static struct theft_autoshrink_bit_pool *
-init_bit_pool(size_t size, size_t request_ceil);
-static struct theft_autoshrink_bit_pool *alloc_bit_pool(size_t size,
+alloc_bit_pool(size_t size, size_t limit,
     size_t request_ceil);
 
 static enum theft_alloc_res

@@ -114,11 +114,18 @@ enum theft_autoshrink_print_mode {
     THEFT_AUTOSHRINK_PRINT_ALL = 0x03,
 };
 
+/* Configuration for autoshrinking.
+ * For all of these, leaving them as 0 will use the default. */
 struct theft_autoshrink_config {
-    // For all of these, leaving them as 0 will use the default.
-    bool enable;
-    size_t pool_size;
+    bool enable;                /* true: Enable autoshrinking */
+    size_t pool_size;           /* Initial allocation size */
+    /* Max number of random bits usable per trial.
+     * (Default: no limit) */
+    size_t pool_limit;          /* Max number of random bits per trial */
     enum theft_autoshrink_print_mode print_mode;
+
+    /* How many unsuccessful shrinking attempts to try in a row
+     * before deciding a local minimum has been reached. */
     size_t max_failed_shrinks;
 };
 

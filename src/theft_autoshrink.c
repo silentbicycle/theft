@@ -84,10 +84,10 @@ theft_autoshrink_bit_pool_random(struct theft *t,
     /* Only return as many bits as the pool contains. After reaching the
      * end of the pool, just return 0 bits forever and stop tracking
      * requests. */
-    if (pool->consumed == pool->size) {
+    if (pool->consumed == pool->limit) {
         return 0;
-    } else if (pool->consumed + bit_count >= pool->size) {
-        bit_count = pool->size - pool->consumed;
+    } else if (pool->consumed + bit_count >= pool->limit) {
+        bit_count = pool->limit - pool->consumed;
     }
 
     if (save_request) {
@@ -123,7 +123,7 @@ static size_t get_aligned_size(size_t size, uint8_t alignment) {
 }
 
 static struct theft_autoshrink_bit_pool *
-alloc_bit_pool(size_t size, size_t request_ceil) {
+alloc_bit_pool(size_t size, size_t limit, size_t request_ceil) {
     uint8_t *bits = NULL;
     uint32_t *requests = NULL;
     struct theft_autoshrink_bit_pool *res = NULL;
@@ -149,7 +149,7 @@ alloc_bit_pool(size_t size, size_t request_ceil) {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = bits,
         .bits_ceil = alloc_size,
-        .size = size,
+        .limit = limit,
         .request_count = 0,
         .request_ceil = request_ceil,
         .requests = requests,
@@ -161,18 +161,6 @@ fail:
     if (res) { free(res); }
     if (requests) { free(requests); }
     return NULL;
-}
-
-static struct theft_autoshrink_bit_pool *
-init_bit_pool(size_t size, size_t request_ceil) {
-    assert(size);
-    struct theft_autoshrink_bit_pool *res = NULL;
-    res = alloc_bit_pool(size, request_ceil);
-    if (res == NULL) {
-        return NULL;
-    }
-
-    return res;
 }
 
 void theft_autoshrink_free_bit_pool(struct theft *t,
@@ -229,9 +217,11 @@ static enum theft_alloc_res
 autoshrink_alloc(struct theft *t, void *venv, void **instance) {
     CHECK_ENV_CAST(env, venv);
 
-    size_t pool_size = GET_DEF(env->pool_size, DEF_POOL_SIZE);
+    const size_t pool_size = GET_DEF(env->pool_size, DEF_POOL_SIZE);
+    const size_t pool_limit = GET_DEF(env->pool_limit, DEF_POOL_LIMIT);
+
     struct theft_autoshrink_bit_pool *pool =
-      init_bit_pool(pool_size, DEF_REQUESTS_CEIL);
+      alloc_bit_pool(pool_size, pool_limit, DEF_REQUESTS_CEIL);
     if (pool == NULL) {
         return THEFT_ALLOC_ERROR;
     }
@@ -315,8 +305,8 @@ theft_autoshrink_shrink(struct theft *t,
     }
 
     /* Make a copy of the bit pool to shrink */
-    struct theft_autoshrink_bit_pool *copy = alloc_bit_pool(orig->size,
-        orig->request_ceil);
+    struct theft_autoshrink_bit_pool *copy = alloc_bit_pool(
+        orig->bits_filled, orig->limit, orig->request_ceil);
     if (copy == NULL) {
         return THEFT_SHRINK_ERROR;
     }
@@ -325,10 +315,11 @@ theft_autoshrink_shrink(struct theft *t,
         total_consumed += orig->requests[i];
     }
     assert(total_consumed == orig->consumed);
+    copy->limit = orig->limit;
 
     LOG(3, "========== BEFORE (tactic %u)\n", tactic);
     if (THEFT_LOG_LEVEL >= 3) {
-        theft_autoshrink_dump_bit_pool(stdout, orig->size,
+        theft_autoshrink_dump_bit_pool(stdout, orig->limit,
             orig, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
@@ -345,7 +336,7 @@ theft_autoshrink_shrink(struct theft *t,
     }
     LOG(3, "========== AFTER\n");
     if (THEFT_LOG_LEVEL >= 3) {
-        theft_autoshrink_dump_bit_pool(stdout, copy->size,
+        theft_autoshrink_dump_bit_pool(stdout, copy->limit,
             copy, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
@@ -372,8 +363,8 @@ theft_autoshrink_shrink(struct theft *t,
 static void
 truncate_trailing_zero_bytes(struct theft_autoshrink_bit_pool *pool) {
     size_t nsize = 0;
-    const size_t byte_size = (pool->size / 8)
-      + ((pool->size % 8) == 0 ? 0 : 1);
+    const size_t byte_size = (pool->bits_filled / 8)
+      + ((pool->bits_filled % 8) == 0 ? 0 : 1);
     if (byte_size > 0) {
         for (size_t i = byte_size - 1; i > 0; i--) {
             if (pool->bits[i] != 0x00) {
@@ -384,7 +375,10 @@ truncate_trailing_zero_bytes(struct theft_autoshrink_bit_pool *pool) {
     }
     nsize *= 8;
     LOG(1, "Truncating to nsize: %zd\n", nsize);
-    pool->size = nsize;
+    pool->bits_filled = nsize;
+    if (pool->limit > pool->bits_filled) {
+        pool->limit = pool->bits_filled;
+    }
 }
 
 static uint8_t popcount(uint64_t value) {
@@ -472,7 +466,7 @@ static void drop_from_bit_pool(struct theft *t,
         }
     }
 
-    for (size_t bi = src_offset; bi < orig->size; bi++) {
+    for (size_t bi = src_offset; bi < orig->bits_filled; bi++) {
         if (orig->bits[src_byte] & src_bit) {
             copy->bits[dst_byte] |= dst_bit;
         }
@@ -493,11 +487,9 @@ static void drop_from_bit_pool(struct theft *t,
     }
 
     LOG(2, "DROP: %zd -> %zd (%zd requests)\n",
-        orig->size, dst_offset, drop_count);
+        orig->bits_filled, dst_offset, drop_count);
     (void)drop_count;
-    LOG(2, "drop, new pool size SIZE %zd -> %zd\n",
-        copy->size, dst_offset);
-    copy->size = dst_offset;
+    copy->bits_filled = dst_offset;
 }
 
 #define MAX_CHANGES 5
@@ -506,8 +498,9 @@ static void mutate_bit_pool(struct theft *t,
                             struct theft_autoshrink_env *env,
                             const struct theft_autoshrink_bit_pool *orig,
                             struct theft_autoshrink_bit_pool *pool) {
-    const size_t orig_bytes = (orig->size / 8) + ((orig->size % 8) == 0 ? 0 : 1);
+    const size_t orig_bytes = (orig->bits_filled / 8) + ((orig->bits_filled % 8) == 0 ? 0 : 1);
     memcpy(pool->bits, orig->bits, orig_bytes);
+    pool->bits_filled = orig->bits_filled;
 
     autoshrink_prng_fun *prng = get_prng(t, env);
 
@@ -532,8 +525,8 @@ static void mutate_bit_pool(struct theft *t,
     }
 
     /* Truncate half of the unconsumed bits  */
-    size_t nsize = orig->consumed + (orig->size - orig->consumed)/2;
-    pool->size = nsize < pool->size ? nsize : pool->size;
+    size_t nsize = orig->consumed + (orig->bits_filled - orig->consumed)/2;
+    pool->limit = nsize < pool->limit ? nsize : pool->limit;
 
 }
 
@@ -666,7 +659,7 @@ read_bits_at_offset(const struct theft_autoshrink_bit_pool *pool,
     uint8_t bit_i = 0x01 << bit;
 
     for (uint8_t i = 0; i < size; i++) {
-        LOG(5, "byte %zd, size %zd\n", byte, pool->size);
+        LOG(5, "byte %zd, size %zd\n", byte, pool->bits_filled);
         if (pool->bits[byte] & bit_i) {
             acc |= (1LLU << i);
         }
@@ -705,8 +698,8 @@ write_bits_at_offset(struct theft_autoshrink_bit_pool *pool,
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
                                     const struct theft_autoshrink_bit_pool *pool,
                                     enum theft_autoshrink_print_mode print_mode) {
-    fprintf(f, "\n-- autoshrink_bit_pool[%zd bits, %zd consumed, %zd requests] --\n",
-        pool->size, pool->consumed, pool->request_count);
+    fprintf(f, "\n-- autoshrink_bit_pool[%zd bits, %zd consumed, %zd limit, %zd requests] --\n",
+        pool->bits_filled, pool->consumed, pool->limit, pool->request_count);
     bool prev = false;
     if (print_mode & THEFT_AUTOSHRINK_PRINT_BIT_POOL) {
         prev = true;
@@ -738,8 +731,8 @@ void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
         size_t offset = 0;
         for (size_t i = 0; i < pool->request_count; i++) {
             uint32_t req_size = pool->requests[i];
-            if (offset + req_size > pool->size) {
-                req_size = pool->size - offset;
+            if (offset + req_size > pool->bits_filled) {
+                req_size = pool->bits_filled - offset;
             }
             uint64_t bits = read_bits_at_offset(pool, offset, req_size);
             fprintf(f, "0x%lx (%u), ", bits, req_size);
@@ -766,7 +759,7 @@ autoshrink_print(FILE *f, const void *instance, void *venv) {
             env->user_type_info.env);
     }
 
-    assert(pool->size >= pool->consumed);
+    assert(pool->bits_ceil >= pool->consumed);
     theft_autoshrink_dump_bit_pool(f,
         pool->consumed, pool,
         GET_DEF(env->print_mode, THEFT_AUTOSHRINK_PRINT_REQUESTS));

@@ -29,7 +29,7 @@ static int bit_pool_eq(const void *exp, const void *got, void *udata) {
     (void)udata;
     struct theft_autoshrink_bit_pool *a = (struct theft_autoshrink_bit_pool *)exp;
     struct theft_autoshrink_bit_pool *b = (struct theft_autoshrink_bit_pool *)got;
-    if (a->size != b->size) { return 0; }
+    if (a->bits_filled != b->bits_filled) { return 0; }
     if (a->consumed != b->consumed) { return 0; }
     if (a->request_count != b->request_count) { return 0; }
 
@@ -38,7 +38,7 @@ static int bit_pool_eq(const void *exp, const void *got, void *udata) {
             return 0;
         }
     }
-    const size_t limit = (a->size / 8) + ((a->size % 8) == 0 ? 0 : 1);
+    const size_t limit = (a->bits_filled / 8) + ((a->bits_filled % 8) == 0 ? 0 : 1);
     for (size_t i = 0; i < limit; i++) {
         if (a->bits[i] != b->bits[i]) {
             return 0;
@@ -50,7 +50,7 @@ static int bit_pool_eq(const void *exp, const void *got, void *udata) {
 
 static int bit_pool_print(const void *t, void *udata) {
     struct theft_autoshrink_bit_pool *pool = (struct theft_autoshrink_bit_pool *)t;
-    theft_autoshrink_dump_bit_pool(stdout, pool->size, pool,
+    theft_autoshrink_dump_bit_pool(stdout, pool->bits_filled, pool,
         THEFT_AUTOSHRINK_PRINT_ALL);
     (void)udata;
     return 0;
@@ -84,7 +84,8 @@ static uint32_t test_pool_requests[] = { 3, 8, 3, 8, 3, 8, 3, 8, 3, 8, 3 };
 static struct theft_autoshrink_bit_pool test_pool = {
     .tag = AUTOSHRINK_BIT_POOL_TAG,
     .bits = test_pool_bits,
-    .size = TEST_POOL_BIT_COUNT,
+    .bits_filled = TEST_POOL_BIT_COUNT,
+    .limit = TEST_POOL_BIT_COUNT,
     .consumed = TEST_POOL_BIT_COUNT,
     .request_count = sizeof(test_pool_requests)/sizeof(test_pool_requests[0]),
     .request_ceil = 999,
@@ -135,7 +136,7 @@ TEST ll_drop_nothing(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT,
+        .bits_filled = TEST_POOL_BIT_COUNT,
         .consumed = 5 * (3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -196,7 +197,8 @@ TEST ll_drop_nothing_but_do_truncate(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = 8 * sizeof(exp_bits),
+        .bits_filled = 8 * sizeof(exp_bits),
+        .limit = TEST_POOL_BIT_COUNT,
         .consumed = 4 * (3 + 8) + 3 + 1,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -264,7 +266,7 @@ TEST ll_drop_first(void) {
     struct theft_autoshrink_bit_pool expected = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = shrunk_bits,
-        .size = TEST_POOL_BIT_COUNT - (3 + 8),
+        .bits_filled = TEST_POOL_BIT_COUNT - (3 + 8),
         .consumed = 4 * (3 + 8) + 3,
         .request_count = sizeof(shrunk_requests)/sizeof(shrunk_requests[0]),
         .request_ceil = 999,
@@ -328,7 +330,7 @@ TEST ll_drop_third_and_fourth(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT - 2*(3 + 8),
+        .bits_filled = TEST_POOL_BIT_COUNT - 2*(3 + 8),
         .consumed = 3*(3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -393,7 +395,7 @@ TEST ll_drop_last(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT - (3 + 8),
+        .bits_filled = TEST_POOL_BIT_COUNT - (3 + 8),
         .consumed = 4*(3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -436,19 +438,18 @@ TEST ll_mutate_shift(void) {
             { 2, 0 },
         },
     };
-    size_t drop_tactic_count = 5;
+
     struct theft_autoshrink_env env = {
         .tag = AUTOSHRINK_ENV_TAG,
         .user_type_info = ll_info,
         .prng = fake_prng,
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
-        .drop_tactics = drop_tactic_count,
     };
 
     void *output = NULL;
     enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &test_pool, drop_tactic_count, &env, &output);
+    res = theft_autoshrink_shrink(t, &test_pool, 1, &env, &output);
     ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
 
     struct theft_autoshrink_bit_pool *out = (struct theft_autoshrink_bit_pool *)output;
@@ -469,7 +470,7 @@ TEST ll_mutate_shift(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT,
+        .bits_filled = TEST_POOL_BIT_COUNT,
         .consumed = 4 * (3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -503,19 +504,17 @@ TEST ll_mutate_mask(void) {
             { 8, 0x0e },
         },
     };
-    size_t drop_tactic_count = 5;
     struct theft_autoshrink_env env = {
         .tag = AUTOSHRINK_ENV_TAG,
         .user_type_info = ll_info,
         .prng = fake_prng,
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
-        .drop_tactics = drop_tactic_count,
     };
 
     void *output = NULL;
     enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &test_pool, drop_tactic_count, &env, &output);
+    res = theft_autoshrink_shrink(t, &test_pool, 1, &env, &output);
     ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
 
     struct theft_autoshrink_bit_pool *out = (struct theft_autoshrink_bit_pool *)output;
@@ -537,7 +536,7 @@ TEST ll_mutate_mask(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT,
+        .bits_filled = TEST_POOL_BIT_COUNT,
         .consumed = 5 * (3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -569,19 +568,17 @@ TEST ll_mutate_swap(void) {
             { pos_bits, 7 },
         },
     };
-    size_t drop_tactic_count = 5;
     struct theft_autoshrink_env env = {
         .tag = AUTOSHRINK_ENV_TAG,
         .user_type_info = ll_info,
         .prng = fake_prng,
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
-        .drop_tactics = drop_tactic_count,
     };
 
     void *output = NULL;
     enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &test_pool, drop_tactic_count, &env, &output);
+    res = theft_autoshrink_shrink(t, &test_pool, 1, &env, &output);
     ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
 
     struct theft_autoshrink_bit_pool *out = (struct theft_autoshrink_bit_pool *)output;
@@ -603,7 +600,7 @@ TEST ll_mutate_swap(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT,
+        .bits_filled = TEST_POOL_BIT_COUNT,
         .consumed = 5 * (3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -636,19 +633,17 @@ TEST ll_mutate_sub(void) {
             { 8, 0x04 },
         },
     };
-    size_t drop_tactic_count = 5;
     struct theft_autoshrink_env env = {
         .tag = AUTOSHRINK_ENV_TAG,
         .user_type_info = ll_info,
         .prng = fake_prng,
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
-        .drop_tactics = drop_tactic_count,
     };
 
     void *output = NULL;
     enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &test_pool, drop_tactic_count, &env, &output);
+    res = theft_autoshrink_shrink(t, &test_pool, 1, &env, &output);
     ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
 
     struct theft_autoshrink_bit_pool *out = (struct theft_autoshrink_bit_pool *)output;
@@ -670,7 +665,7 @@ TEST ll_mutate_sub(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT,
+        .bits_filled = TEST_POOL_BIT_COUNT,
         .consumed = 5 * (3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -706,19 +701,17 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
             { pos_bits, 7 },
         },
     };
-    size_t drop_tactic_count = 5;
     struct theft_autoshrink_env env = {
         .tag = AUTOSHRINK_ENV_TAG,
         .user_type_info = ll_info,
         .prng = fake_prng,
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
-        .drop_tactics = drop_tactic_count,
     };
 
     void *output = NULL;
     enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &test_pool, drop_tactic_count, &env, &output);
+    res = theft_autoshrink_shrink(t, &test_pool, 1, &env, &output);
     ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
 
     struct theft_autoshrink_bit_pool *out = (struct theft_autoshrink_bit_pool *)output;
@@ -740,7 +733,7 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
     struct theft_autoshrink_bit_pool exp_pool = {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
         .bits = exp_bits,
-        .size = TEST_POOL_BIT_COUNT,
+        .bits_filled = TEST_POOL_BIT_COUNT,
         .consumed = 5 * (3 + 8) + 3,
         .request_count = sizeof(exp_requests)/sizeof(exp_requests[0]),
         .request_ceil = 999,
@@ -909,7 +902,7 @@ trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) {
     return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
-TEST ll_prop(size_t seed, const char *name, theft_propfun *prop) {
+TEST ll_prop(size_t seed, size_t trials, const char *name, theft_propfun *prop) {
     struct theft *t = theft_init(NULL);
     enum theft_run_res res;
 
@@ -924,7 +917,7 @@ TEST ll_prop(size_t seed, const char *name, theft_propfun *prop) {
             .trial_pre = trial_pre_hook,
             .env = &env,
         },
-        .trials = 50000,
+        .trials = trials,
         .seed = seed,
     };
 
@@ -986,13 +979,17 @@ SUITE(autoshrink) {
     RUN_TEST(ll_mutate_sub);
     RUN_TEST(ll_mutate_retries_when_change_has_no_effect);
 
-    RUN_TESTp(ll_prop, seed, "no duplicates", prop_no_duplicates);
-    RUN_TESTp(ll_prop, seed, "not ascending", prop_not_ascending);
-    RUN_TESTp(ll_prop, seed, "no dupes with a non-zero value between",
+    size_t trials = 50000;
+    RUN_TESTp(ll_prop, seed, trials, "no duplicates", prop_no_duplicates);
+    RUN_TESTp(ll_prop, seed, trials, "not ascending", prop_not_ascending);
+    RUN_TESTp(ll_prop, seed, trials, "no dupes with a non-zero value between",
         prop_no_dupes_with_value_between);
-    RUN_TESTp(ll_prop, seed, "no non-zero numbers followed by their square",
+    RUN_TESTp(ll_prop, seed, trials, "no non-zero numbers followed by their square",
         prop_no_nonzero_numbers_followed_by_their_square);
-    RUN_TESTp(ll_prop, seed, "no sequence of three numbers",
+
+    /* Give this one more trials because occasionally it fails to find
+     * counterexamples */
+    RUN_TESTp(ll_prop, seed, 2*trials, "no sequence of three numbers",
         prop_no_seq_of_3);
 
     RUN_TESTp(ia_prop, seed, "not starting with 9", prop_not_start_with_9);
