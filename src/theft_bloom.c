@@ -1,8 +1,10 @@
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "theft.h"
 #include "theft_bloom.h"
+#include "theft_types_internal.h"
 
 #define DEFAULT_BLOOM_BITS 17
 #define DEBUG_BLOOM_FILTER 0
@@ -12,12 +14,22 @@
 /* Initialize a bloom filter. */
 struct theft_bloom *theft_bloom_init(uint8_t bit_size2) {
     size_t sz = 1 << (bit_size2 - LOG2_BITS_PER_BYTE);
-    struct theft_bloom *b = malloc(sizeof(struct theft_bloom) + sz);
-    if (b) {
-        b->size = sz;
-        b->bit_count = bit_size2;
-        memset(b->bits, 0, sz);
+    struct theft_bloom *b = malloc(sizeof(struct theft_bloom));
+    if (b == NULL) {
+        return NULL;
     }
+
+    /* Ensure b->bits is 64-bit aligned so we can process it 64 bits at a time */
+    uint64_t *bits64 = calloc(sz / 8, sizeof(uint64_t));
+    if (bits64 == NULL) {
+        free(b);
+        return NULL;
+    }
+    *b = (struct theft_bloom) {
+        .bits = (uint8_t *)bits64,
+        .size = sz,
+        .bit_count = bit_size2,
+    };
     return b;
 }
 
@@ -57,41 +69,56 @@ bool theft_bloom_check(struct theft_bloom *b, uint8_t *data, size_t data_size) {
 }
 
 /* Free the bloom filter. */
-void theft_bloom_free(struct theft_bloom *b) { free(b); }
+void theft_bloom_free(struct theft_bloom *b) {
+    free(b->bits);
+    free(b);
+}
 
 #include "bits_lut.h"
 
 /* Dump the bloom filter's contents. (Debugging.) */
 void theft_bloom_dump(struct theft_bloom *b) {
     size_t total = 0;
-    uint16_t row_total = 0;
-    
-    for (size_t i = 0; i < b->size; i++) {
-        uint8_t count = bits_lut[b->bits[i]];
-        total += count;
-        row_total += count;
-        #if DEBUG_BLOOM_FILTER > 1
-        char c = (count == 0 ? '.' : '0' + count);
-        printf("%c", c);
-        if ((i & 63) == 0 || i == b->size - 1) {
-            printf(" - %2.1f%%\n",
-                (100 * row_total) / (64.0 * 8));
-            row_total = 0;
+    size_t last_row_total = 0;
+
+    const size_t size = b->size;
+    const uint8_t *bits = b->bits;
+    const uint64_t *bits64 = (uint64_t *)bits;
+
+    size_t offset = 0;
+    const size_t limit = size / 8;
+    assert((size % 8) == 0);
+    while (offset < limit) {
+        uint64_t cur = bits64[offset];
+        if ((offset > 0 && (offset & 0x07) == 0) || (offset == limit - 1)) {
+            LOG(2 - DEBUG_BLOOM_FILTER,
+                " - %2.1f%%\n", (100 * (total - last_row_total)) / (64.0 * 8));
+            last_row_total = total;
         }
-        #endif
+        if (cur == 0) {
+            offset++;
+            LOG(2 - DEBUG_BLOOM_FILTER, "........");
+        } else {
+            for (uint8_t i = 0; i < 8; i++) {
+                const uint8_t byte = 0xff & (cur >> (8U*i));
+                const uint8_t count = bits_lut[byte];
+                LOG(2 - DEBUG_BLOOM_FILTER, "%c", (count == 0 ? '.' : '0' + count));
+                total += count;
+            }
+            offset++;
+        }
     }
 
-    #if DEBUG_BLOOM_FILTER
-    printf(" -- bloom filter: %zd of %zd bits set (%2d%%)\n",
-        total, 8*b->size, (int)((100.0 * total)/(8.0*b->size)));
-    #endif
+    LOG(1 - DEBUG_BLOOM_FILTER,
+        " -- bloom filter: %zd of %zd bits set (%2d%%)\n",
+        total, 8*size, (int)((100.0 * total)/(8.0*size)));
 
     /* If the total number of bits set is > the number of bytes
      * in the table (i.e., > 1/8 full) then warn the user. */
-    if (total > b->size) {
+    if (total > size) {
         fprintf(stderr, "\nWARNING: bloom filter is %zd%% full, "
             "larger bloom_bits value recommended.\n",
-            (size_t)((100 * total) / (8 * b->size)));
+            (size_t)((100 * total) / (8 * size)));
     }
 }
 
@@ -105,7 +132,8 @@ uint8_t theft_bloom_recommendation(int trials) {
      * Note: The above formula is for the *ideal* number of hash
      * functions, but we're using a hardcoded count. It appears to work
      * well enough in practice, though, and this can be adjusted later
-     * without impacting the API. */
+     * without impacting the API. (This errs on the side of being too
+     * large.) */
     #define TRIAL_MULTIPILER 14
     uint8_t res = DEFAULT_BLOOM_BITS;
 

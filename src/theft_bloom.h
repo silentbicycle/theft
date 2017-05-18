@@ -8,7 +8,7 @@
 struct theft_bloom {
     uint8_t bit_count;
     size_t size;
-    uint8_t bits[];
+    uint8_t *bits;
 };
 
 /* Initialize a bloom filter. */
