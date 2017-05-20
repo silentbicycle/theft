@@ -93,16 +93,27 @@ void theft_print_trial_result(
     env->column += used;
 }
 
+void theft_print_run_pre_info(FILE *f,
+        const struct theft_hook_run_pre_info *info) {
+    fprintf(f, "\n== PROP '%s': %zd trials, seed 0x%016lx\n",
+        info->prop_name, info->total_trials,
+        info->run_seed);
+}
+
+enum theft_hook_run_pre_res
+theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info,
+        void *env) {
+    (void)env;
+    theft_print_run_pre_info(stdout, info);
+    return THEFT_HOOK_RUN_PRE_CONTINUE;
+}
+
 void theft_print_run_post_info(FILE *f,
         const struct theft_hook_run_post_info *info) {
-    (void)f;
-    (void)info;
     const struct theft_run_report *r = &info->report;
-    fprintf(f, "\n== %s '%s': %zd trials (p %zd f %zd s %zd d %zd), seed 0x%016lx\n",
-        r->fail > 0 ? "FAIL" : "PASS",
-        info->prop_name, info->total_trials,
-        r->pass, r->fail, r->skip, r->dup,
-        info->run_seed);
+    fprintf(f, "\n== %s '%s': pass %zd, fail %zd, skip %zd, dup %zd\n",
+        r->fail > 0 ? "FAIL" : "PASS", info->prop_name,
+        r->pass, r->fail, r->skip, r->dup);
 }
 
 enum theft_hook_run_post_res

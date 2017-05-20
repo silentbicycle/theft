@@ -88,9 +88,18 @@ void theft_print_trial_result(
     struct theft_print_trial_result_env *print_env,
     const struct theft_hook_trial_post_info *info);
 
-/* Print a run report. */
+/* Print a standard pre-run report. */
+void theft_print_run_pre_info(FILE *f,
+    const struct theft_hook_run_pre_info *info);
+
+/* Print a standard post-run report. */
 void theft_print_run_post_info(FILE *f,
     const struct theft_hook_run_post_info *info);
+
+/* A run-pre hook that just calls theft_print_run_pre_info and returns
+ * THEFT_HOOK_RUN_PRE_CONTINUE. */
+enum theft_hook_run_pre_res
+theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info, void *env);
 
 /* A run-post hook that just calls theft_print_run_post_info and returns
  * THEFT_HOOK_RUN_POST_CONTINUE. */

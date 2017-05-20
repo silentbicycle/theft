@@ -921,6 +921,7 @@ TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
         .hooks = {
             .trial_post = trial_post_hook,
             .trial_pre = trial_pre_hook,
+            .run_pre = theft_hook_run_pre_print_info,
             .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
@@ -952,6 +953,7 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
         .hooks = {
             .trial_post = trial_post_hook,
             .trial_pre = trial_pre_hook,
+            .run_pre = theft_hook_run_pre_print_info,
             .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
