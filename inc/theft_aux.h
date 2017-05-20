@@ -68,6 +68,9 @@ theft_copy_builtin_type_info(enum theft_builtin_type_info type,
 /* Generic free callback: just call free(instance). */
 void theft_generic_free_cb(void *instance, void *env);
 
+/* Get a seed based on the hash of the current timestamp. */
+theft_seed theft_seed_of_time(void);
+
 struct theft_print_trial_result_env {
     FILE *f;                    /* 0 -> default of stdout */
     const uint8_t max_column;   /* 0 -> default of 72 */

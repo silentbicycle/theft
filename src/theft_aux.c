@@ -10,7 +10,7 @@ theft_seed theft_seed_of_time(void) {
         return 0;
     }
 
-    return tv.tv_sec ^ tv.tv_usec;
+    return (uint64_t)theft_hash_onepass((const uint8_t *)&tv, sizeof(tv));
 }
 
 void theft_generic_free_cb(void *instance, void *env) {

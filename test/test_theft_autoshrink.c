@@ -908,7 +908,8 @@ trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) {
     return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
-TEST ll_prop(size_t seed, size_t trials, const char *name, theft_propfun *prop) {
+TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
+    theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
     struct hook_env env = { .failures = 0 };
@@ -938,7 +939,8 @@ prop_not_start_with_9(void *arg) {
     return (ia[0] == 9 ? THEFT_TRIAL_FAIL : THEFT_TRIAL_PASS);
 }
 
-TEST ia_prop(size_t seed, const char *name, theft_propfun *prop) {
+TEST ia_prop(const char *name, theft_propfun *prop) {
+    theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
     struct hook_env env = { .failures = 0 };
@@ -963,14 +965,6 @@ TEST ia_prop(size_t seed, const char *name, theft_propfun *prop) {
 }
 
 SUITE(autoshrink) {
-    struct timeval tv;
-
-    if (-1 == gettimeofday(&tv, NULL)) {
-        assert(false);
-    }
-
-    theft_seed seed = tv.tv_sec ^ tv.tv_usec;
-
     // Various tests for single autoshrinking steps, with an injected PRNG
     RUN_TEST(ll_drop_nothing);
     RUN_TEST(ll_drop_nothing_but_do_truncate);
@@ -984,17 +978,17 @@ SUITE(autoshrink) {
     RUN_TEST(ll_mutate_retries_when_change_has_no_effect);
 
     size_t trials = 50000;
-    RUN_TESTp(ll_prop, seed, trials, "no duplicates", prop_no_duplicates);
-    RUN_TESTp(ll_prop, seed, trials, "not ascending", prop_not_ascending);
-    RUN_TESTp(ll_prop, seed, trials, "no dupes with a non-zero value between",
+    RUN_TESTp(ll_prop, trials, "no duplicates", prop_no_duplicates);
+    RUN_TESTp(ll_prop, trials, "not ascending", prop_not_ascending);
+    RUN_TESTp(ll_prop, trials, "no dupes with a non-zero value between",
         prop_no_dupes_with_value_between);
-    RUN_TESTp(ll_prop, seed, trials, "no non-zero numbers followed by their square",
+    RUN_TESTp(ll_prop, trials, "no non-zero numbers followed by their square",
         prop_no_nonzero_numbers_followed_by_their_square);
 
     /* Give this one more trials because occasionally it fails to find
      * counterexamples */
-    RUN_TESTp(ll_prop, seed, 2*trials, "no sequence of three numbers",
+    RUN_TESTp(ll_prop, 2*trials, "no sequence of three numbers",
         prop_no_seq_of_3);
 
-    RUN_TESTp(ia_prop, seed, "not starting with 9", prop_not_start_with_9);
+    RUN_TESTp(ia_prop, "not starting with 9", prop_not_start_with_9);
 }
