@@ -11,11 +11,6 @@ struct type_info_row {
     struct theft_type_info value;
 };
 
-void theft_generic_free(void *instance, void *env) {
-    (void)env;
-    free(instance);
-}
-
 static enum theft_alloc_res
 bool_alloc(struct theft *t, void *env, void **instance) {
     (void)env;
@@ -215,7 +210,7 @@ HASH_SCALAR(double, double)
         .key = THEFT_BUILTIN_ ## NAME,                                 \
           .value = {                                                   \
             .alloc = NAME ## _alloc,                                   \
-            .free = theft_generic_free,                                \
+            .free = theft_generic_free_cb,                             \
             .hash = NAME ## _hash,                                     \
             .print = NAME ## _print,                                   \
             .autoshrink_config = {                                     \
@@ -302,7 +297,7 @@ static struct type_info_row rows[] = {
         .key = THEFT_BUILTIN_bool,
           .value = {
             .alloc = bool_alloc,
-            .free = theft_generic_free,
+            .free = theft_generic_free_cb,
             .hash = bool_hash,
             .print = bool_print,
             .autoshrink_config = {
@@ -332,7 +327,7 @@ static struct type_info_row rows[] = {
         .key = THEFT_BUILTIN_char_ARRAY,
           .value = {
             .alloc = char_ARRAY_alloc,
-            .free = theft_generic_free,
+            .free = theft_generic_free_cb,
             .hash = char_ARRAY_hash,
             .print = char_ARRAY_print,
             .autoshrink_config = {
@@ -346,7 +341,7 @@ static struct type_info_row rows[] = {
         .key = THEFT_BUILTIN_uint8_t_ARRAY,
           .value = {
             .alloc = char_ARRAY_alloc,
-            .free = theft_generic_free,
+            .free = theft_generic_free_cb,
             .hash = char_ARRAY_hash,
             .print = char_ARRAY_print,
             .autoshrink_config = {

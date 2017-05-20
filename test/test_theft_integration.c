@@ -473,12 +473,11 @@ always_seeds_trial_post(const struct theft_hook_trial_post_info *info, void *ven
     return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
+#include "theft_aux.h"
 static enum theft_hook_run_post_res
 always_seeds_run_post(const struct theft_hook_run_post_info *info, void *env) {
     (void)env;
-    const struct theft_run_report *report = &info->report;
-    printf("\n -- PASS %zd, FAIL %zd, SKIP %zd, DUP %zd\n",
-        report->pass, report->fail, report->skip, report->dup);
+    theft_print_run_post_info(stdout, info);
     return THEFT_HOOK_RUN_POST_CONTINUE;
 }
 
@@ -570,10 +569,14 @@ TEST expected_seed_should_be_used_first(void) {
     theft_mt_free(mt);
 
     struct theft_run_config cfg = {
+        .name = "expected_seed_is_used",
         .fun = prop_expected_seed_is_used,
         .type_info = { &seed_info },
         .trials = 1,
         .seed = EXPECTED_SEED,
+        .hooks = {
+            .run_post = theft_hook_run_post_print_info,
+        },
     };
 
     enum theft_run_res res = theft_run(&cfg);

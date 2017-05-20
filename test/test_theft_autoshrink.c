@@ -5,6 +5,8 @@
 
 #include <sys/time.h>
 
+#include "theft_aux.h"
+
 #define MAX_PAIRS 16
 struct fake_prng_info {
     size_t pos;
@@ -881,6 +883,7 @@ prop_no_seq_of_3(void *arg) {
 }
 
 struct hook_env {
+    struct theft_print_trial_result_env print_env;
     size_t failures;
 };
 
@@ -899,6 +902,9 @@ trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) {
     if (info->result == THEFT_TRIAL_FAIL) {
         env->failures++;
     }
+
+    theft_print_trial_result(&env->print_env, info);
+
     return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
@@ -914,6 +920,7 @@ TEST ll_prop(size_t seed, size_t trials, const char *name, theft_propfun *prop) 
         .hooks = {
             .trial_post = trial_post_hook,
             .trial_pre = trial_pre_hook,
+            .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
         .trials = trials,
@@ -943,6 +950,7 @@ TEST ia_prop(size_t seed, const char *name, theft_propfun *prop) {
         .hooks = {
             .trial_post = trial_post_hook,
             .trial_pre = trial_pre_hook,
+            .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
         .trials = 50000,

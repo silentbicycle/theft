@@ -3,6 +3,8 @@
 
 #include "theft.h"
 
+/* FIXME: move this into main theft / theft_types headers */
+
 #ifndef THEFT_USE_FLOATING_POINT
 #define THEFT_USE_FLOATING_POINT 1
 #endif
@@ -65,5 +67,31 @@ theft_copy_builtin_type_info(enum theft_builtin_type_info type,
 
 /* Generic free callback: just call free(instance). */
 void theft_generic_free_cb(void *instance, void *env);
+
+struct theft_print_trial_result_env {
+    FILE *f;                    /* 0 -> default of stdout */
+    const uint8_t max_column;   /* 0 -> default of 72 */
+    uint8_t column;
+    size_t scale_pass;
+    size_t scale_skip;
+    size_t scale_dup;
+    size_t consec_pass;
+    size_t consec_skip;
+    size_t consec_dup;
+};
+
+/* Print a trial result. */
+void theft_print_trial_result(
+    struct theft_print_trial_result_env *print_env,
+    const struct theft_hook_trial_post_info *info);
+
+/* Print a run report. */
+void theft_print_run_post_info(FILE *f,
+    const struct theft_hook_run_post_info *info);
+
+/* A run-post hook that just calls theft_print_run_post_info and returns
+ * THEFT_HOOK_RUN_POST_CONTINUE. */
+enum theft_hook_run_post_res
+theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info, void *env);
 
 #endif

@@ -344,6 +344,10 @@ enum theft_run_res {
 #define THEFT_BLOOM_BITS_MIN 13 /* 1 KB */
 #define THEFT_BLOOM_BITS_MAX 33 /* 1 GB */
 
+/* Default number of columns after which `theft_print_trial_result`
+ * should wrap. */
+#define DEF_MAX_COLUMNS 72
+
 /* Configuration struct for a theft run. */
 struct theft_run_config {
     /* Property function under test, and info about its arguments.

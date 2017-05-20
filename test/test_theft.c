@@ -7,6 +7,7 @@ int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
     RUN_SUITE(prng);
     RUN_SUITE(autoshrink);
+    RUN_SUITE(aux);
     RUN_SUITE(integration);
     GREATEST_MAIN_END();        /* display results */
 }
