@@ -28,7 +28,7 @@ autoscale_tally(char *buf, size_t buf_size, size_t scale_factor,
     size_t used = 0;
     if (scale > 1 || *count >= nscale) {
         if (*count == nscale) {
-            used = snprintf(buf, buf_size, " (%s x %zd)%c",
+            used = snprintf(buf, buf_size, "(%s x %zd)%c",
                 name, nscale, tally);
             *cur_scale = nscale;
         } else if ((*count % scale) == 0) {
