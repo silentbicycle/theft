@@ -27,36 +27,43 @@ enum theft_builtin_type_info {
      * for a +/- limit (i.e., a pointer to an
      * int16_t of 100 will lead to generated
      * values from -100 to 100, inclusive). */
-    //THEFT_BUILTIN_int8_t,
-    //THEFT_BUILTIN_int16_t,
-    //THEFT_BUILTIN_int32_t,
-    //THEFT_BUILTIN_int64_t,
+    THEFT_BUILTIN_int,
+    THEFT_BUILTIN_int8_t,
+    THEFT_BUILTIN_int16_t,
+    THEFT_BUILTIN_int32_t,
+    THEFT_BUILTIN_int64_t,
 
 #if THEFT_USE_FLOATING_POINT
     /* Built-in floating point types.
      * If env is non-NULL, it will be cast to a
      * pointer of this type and dereferenced for
      * a +/- limit. */
-    //THEFT_BUILTIN_float,
-    //THEFT_BUILTIN_double,
+    THEFT_BUILTIN_float,
+    THEFT_BUILTIN_double,
 #endif
 
     /* Built-in array types.
      * If env is non-NULL, it will be cast to a
      * `size_t *` and deferenced for a max length. */
-    //THEFT_BUILTIN_char_ARRAY
-    //THEFT_BUILTIN_uint8_t_ARRAY
+    THEFT_BUILTIN_char_ARRAY,
+    THEFT_BUILTIN_uint8_t_ARRAY,
+    //THEFT_BUILTIN_UTF_8_ARRAY,
 };
 
-/* Copy built-in type_info callbacks for TYPE into INFO.
- * See the comments for each type above for details. */
-void theft_get_builtin_type_info(enum theft_builtin_type_info type,
+/* Get a connst pointer to built-in type_info callbacks for
+ * TYPE. See the comments for each type above for details.
+ *
+ * NOTE: All built-ins have autoshrink enabled. */
+const struct theft_type_info *
+theft_get_builtin_type_info(enum theft_builtin_type_info type);
+
+/* Copy a built-in type info into INFO, so its fields can be
+ * modified (e.g. setting a limit in info->env). */
+void
+theft_copy_builtin_type_info(enum theft_builtin_type_info type,
     struct theft_type_info *info);
 
 /* Generic free callback: just call free(instance). */
 void theft_generic_free_cb(void *instance, void *env);
-
-/* Generic hash callback: ... (FIXME aligrment?). */
-void theft_generic_hash_cb(void *instance, void *env);
 
 #endif

@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>
+#include <limits.h>
+#include <ctype.h>
 
 struct type_info_row {
     enum theft_builtin_type_info key;
@@ -24,131 +26,351 @@ bool_alloc(struct theft *t, void *env, void **instance) {
     return THEFT_ALLOC_OK;
 }
 
-#define ALLOC_USCALAR(NAME, TYPE, BITS)                                \
-    static enum theft_alloc_res                                        \
-    NAME ## _alloc(struct theft *t, void *env, void **instance) {      \
-        TYPE *res = malloc(sizeof(*res));                              \
-        if (res == NULL) { return THEFT_ALLOC_ERROR; }                 \
-        *res = (TYPE)theft_random_bits(t, BITS);                       \
-        if (env != NULL) {                                             \
-            TYPE *limit = (TYPE *)env;                                 \
-            (*res) %= *limit;                                          \
-        }                                                              \
-        *instance = res;                                               \
-        return THEFT_ALLOC_OK;                                         \
-    }
+#define BITS_USE_SPECIAL 2
 
-#define PRINT_USCALAR(NAME, TYPE, FORMAT)                              \
+#define ALLOC_USCALAR(NAME, TYPE, BITS, ...)                           \
+static enum theft_alloc_res                                            \
+NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
+    TYPE *res = malloc(sizeof(*res));                                  \
+    if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
+    if (0 == theft_random_bits(t, BITS_USE_SPECIAL)) {                 \
+        const TYPE special[] = { __VA_ARGS__ };                        \
+        size_t idx = theft_random_bits(t, 8)                           \
+          % (sizeof(special)/sizeof(special[0]));                      \
+        *res = special[idx];                                           \
+    } else {                                                           \
+        *res = (TYPE)theft_random_bits(t, BITS);                       \
+    }                                                                  \
+    if (env != NULL) {                                                 \
+        TYPE limit = *(TYPE *)env;                                     \
+        assert(limit != 0);                                            \
+        (*res) %= limit;                                               \
+    }                                                                  \
+    *instance = res;                                                   \
+    return THEFT_ALLOC_OK;                                             \
+}
+
+#define ALLOC_SSCALAR(NAME, TYPE, BITS, ...)                           \
+static enum theft_alloc_res                                            \
+NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
+    TYPE *res = malloc(sizeof(*res));                                  \
+    if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
+    if (0 == theft_random_bits(t, BITS_USE_SPECIAL)) {                 \
+        const TYPE special[] = { __VA_ARGS__ };                        \
+        size_t idx = theft_random_bits(t, 8)                           \
+          % (sizeof(special)/sizeof(special[0]));                      \
+        *res = special[idx];                                           \
+    } else {                                                           \
+        *res = (TYPE)theft_random_bits(t, BITS);                       \
+    }                                                                  \
+    if (env != NULL) {                                                 \
+        TYPE limit = *(TYPE *)env;                                     \
+        assert(limit > 0); /* -limit <= res < limit */                 \
+        if (*res < (-limit)) {                                         \
+            *res %= (-limit);                                          \
+        } else if (*res >= limit) {                                    \
+            (*res) %= limit;                                           \
+        }                                                              \
+    }                                                                  \
+    *instance = res;                                                   \
+    return THEFT_ALLOC_OK;                                             \
+}
+
+#define ALLOC_FSCALAR(NAME, TYPE, MOD, BITS, ...)                      \
+static enum theft_alloc_res                                            \
+NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
+    TYPE *res = malloc(sizeof(*res));                                  \
+    if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
+    if (0 == theft_random_bits(t, BITS_USE_SPECIAL)) {                 \
+        const TYPE special[] = { __VA_ARGS__ };                        \
+        size_t idx = theft_random_bits(t, 8)                           \
+          % (sizeof(special)/sizeof(special[0]));                      \
+        *res = special[idx];                                           \
+    } else {                                                           \
+        *res = (TYPE)theft_random_bits(t, BITS);                       \
+    }                                                                  \
+    if (env != NULL) {                                                 \
+        TYPE limit = *(TYPE *)env;                                     \
+        assert(limit > 0); /* -limit <= res < limit */                 \
+        if (*res < (-limit)) {                                         \
+            *res = MOD(*res, -limit);                                  \
+        } else {                                                       \
+            *res = MOD(*res, limit);                                   \
+        }                                                              \
+    }                                                                  \
+    *instance = res;                                                   \
+    return THEFT_ALLOC_OK;                                             \
+}
+
+#define PRINT_SCALAR(NAME, TYPE, FORMAT)                               \
     static void NAME ## _print(FILE *f,                                \
             const void *instance, void *env) {                         \
         (void)env;                                                     \
         fprintf(f, FORMAT, *(TYPE *)instance);                         \
     }
 
-#define HASH_USCALAR(NAME, TYPE)                                       \
+#define HASH_SCALAR(NAME, TYPE)                                        \
     static theft_hash NAME ## _hash(const void *instance, void *env) { \
         (void)env;                                                     \
         return theft_hash_onepass((uint8_t *)instance, sizeof(TYPE));  \
-    }                                                                  \
-    
-/* Try to shrink a scalar type by subtracting a random amount
- * in each shrinking pass, with several passes. */
-#define GENERIC_SHRINK_ATTEMPTS 8
-#define SHRINK_USCALAR(NAME, TYPE)                                     \
-    static enum theft_shrink_res                                       \
-    NAME ## _shrink(struct theft *t, const void *instance,             \
-        uint32_t tactic, void *env, void **output) {                   \
-        (void)env;                                                     \
-        TYPE orig = *(TYPE *)instance;                                 \
-        if (orig == 0) {                                               \
-            return THEFT_SHRINK_NO_MORE_TACTICS;                       \
-        }                                                              \
-        for (uint32_t i = 0; i < GENERIC_SHRINK_ATTEMPTS; i++) {       \
-            if (tactic == i) {                                         \
-                TYPE *res = malloc(sizeof(TYPE));                      \
-                if (res == NULL) {                                     \
-                    return THEFT_SHRINK_ERROR;                         \
-                }                                                      \
-                TYPE delta = theft_random_bits(t, 8*sizeof(TYPE));     \
-                if (delta == 0) {                                      \
-                    return THEFT_SHRINK_DEAD_END;                      \
-                } else if (delta == orig) {                            \
-                    *res = 0;                                          \
-                } else {                                               \
-                    *res = orig - (delta % orig);                      \
-                }                                                      \
-                *output = res;                                         \
-                return THEFT_SHRINK_OK;                                \
-            }                                                          \
-        }                                                              \
-        return THEFT_SHRINK_NO_MORE_TACTICS;                           \
     }
 
-ALLOC_USCALAR(uint, unsigned int, 8*sizeof(unsigned int))
-ALLOC_USCALAR(uint8_t, uint8_t, 8)
-ALLOC_USCALAR(uint16_t, uint16_t, 16)
-ALLOC_USCALAR(uint32_t, uint16_t, 32)
-ALLOC_USCALAR(uint64_t, uint16_t, 64)
-ALLOC_USCALAR(size_t, size_t, (8*sizeof(size_t)))
+ALLOC_USCALAR(uint, unsigned int, 8*sizeof(unsigned int),
+    0, 1, 2, 3, 4, 5, 6, 7,
+    63, 64, 127, 128, 129, 255, UINT_MAX - 1, UINT_MAX)
 
-PRINT_USCALAR(bool, bool, "%d")
-PRINT_USCALAR(uint, unsigned int, "%u")
-PRINT_USCALAR(uint8_t, uint8_t, "%" PRIu8)
-PRINT_USCALAR(uint16_t, uint16_t, "%" PRIu16)
-PRINT_USCALAR(uint32_t, uint32_t, "%" PRIu32)
-PRINT_USCALAR(uint64_t, uint64_t, "%" PRIu64)
-PRINT_USCALAR(size_t, size_t, "%zu")
+ALLOC_USCALAR(uint8_t, uint8_t, 8*sizeof(uint8_t),
+    0, 1, 2, 3, 4, 5, 6, 7,
+    63, 64, 65, 127, 128, 129, 254, 255)
 
-HASH_USCALAR(bool, bool)
-HASH_USCALAR(uint, unsigned int)
-HASH_USCALAR(uint8_t, uint8_t)
-HASH_USCALAR(uint16_t, uint16_t)
-HASH_USCALAR(uint32_t, uint32_t)
-HASH_USCALAR(uint64_t, uint64_t)
-HASH_USCALAR(size_t, size_t)
+ALLOC_USCALAR(uint16_t, uint16_t, 8*sizeof(uint16_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    256, 1024, 4096, 16384, 32768, 32769, 65534, 65535)
 
-SHRINK_USCALAR(uint, unsigned int)
-SHRINK_USCALAR(uint8_t, uint8_t)
-SHRINK_USCALAR(uint16_t, uint16_t)
-SHRINK_USCALAR(uint32_t, uint32_t)
-SHRINK_USCALAR(uint64_t, uint64_t)
-SHRINK_USCALAR(size_t, size_t)
+ALLOC_USCALAR(uint32_t, uint32_t, 8*sizeof(uint32_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    (1LU << 8), (1LU << 8) + 1, (1LU << 16) - 1, (1LU << 16),
+    (1LU << 16) + 1, (1LU << 19), (1LU << 22), (1LLU << 32) - 1)
 
-#define USCALAR_ROW(NAME)                                              \
-    { .key = THEFT_BUILTIN_ ## NAME,                                   \
-          .value = { .alloc = NAME ## _alloc,                          \
-                     .free = theft_generic_free,                       \
-                     .hash = NAME ## _hash,                            \
-                     .print = NAME ## _print,                          \
-                     .shrink = NAME ## _shrink,                        \
+ALLOC_USCALAR(uint64_t, uint64_t, 8*sizeof(uint64_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    (1LLU << 8), (1LLU << 16), (1LLU << 32), (1LLU << 32) + 1,
+    (1LLU << 53), (1LLU << 53) + 1, (uint64_t)-2, (uint64_t)-1)
+
+ALLOC_USCALAR(size_t, size_t, 8*sizeof(size_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    256, (size_t)-2, (size_t)-1)
+
+
+ALLOC_SSCALAR(int, unsigned int, 8*sizeof(int),
+    0, 1, 2, 3, -1, -2, -3, -4,
+    INT_MIN + 1, INT_MIN, INT_MAX - 1, INT_MAX)
+
+ALLOC_SSCALAR(int8_t, int8_t, 8*sizeof(int8_t),
+    0, 1, 2, 3, -1, -2, -3, -4,
+    63, 64, 65, 127,
+    (int8_t)128, (int8_t)129, (int8_t)254, (int8_t)255)
+
+ALLOC_SSCALAR(int16_t, int16_t, 8*sizeof(int16_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    256, 1024, 4096, 16384,
+    (int16_t)32768, (int16_t)32769, (int16_t)65534, (int16_t)65535)
+
+ALLOC_SSCALAR(int32_t, int32_t, 8*sizeof(int32_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    (1LU << 8), (1LU << 8) + 1, (1LU << 16) - 1, (1LU << 16),
+    (int32_t)(1LU << 16) + 1, (int32_t)(1LU << 19),
+    (int32_t)(1LU << 22), (int32_t)(1LLU << 32) - 1)
+
+ALLOC_SSCALAR(int64_t, int64_t, 8*sizeof(int64_t),
+    0, 1, 2, 3, 4, 5, 6, 255,
+    (1LLU << 8), (1LLU << 16), (1LLU << 32), (1LLU << 32) + 1,
+    (1LLU << 53), (1LLU << 53) + 1, (int64_t)-2, (int64_t)-1)
+
+PRINT_SCALAR(bool, bool, "%d")
+PRINT_SCALAR(uint, unsigned int, "%u")
+PRINT_SCALAR(uint8_t, uint8_t, "%" PRIu8)
+PRINT_SCALAR(uint16_t, uint16_t, "%" PRIu16)
+PRINT_SCALAR(uint32_t, uint32_t, "%" PRIu32)
+PRINT_SCALAR(uint64_t, uint64_t, "%" PRIu64)
+PRINT_SCALAR(size_t, size_t, "%zu")
+
+PRINT_SCALAR(int, int, "%d")
+PRINT_SCALAR(int8_t, int8_t, "%" PRId8)
+PRINT_SCALAR(int16_t, int16_t, "%" PRId16)
+PRINT_SCALAR(int32_t, int32_t, "%" PRId32)
+PRINT_SCALAR(int64_t, int64_t, "%" PRId64)
+
+HASH_SCALAR(bool, bool)
+HASH_SCALAR(uint, unsigned int)
+HASH_SCALAR(uint8_t, uint8_t)
+HASH_SCALAR(uint16_t, uint16_t)
+HASH_SCALAR(uint32_t, uint32_t)
+HASH_SCALAR(uint64_t, uint64_t)
+HASH_SCALAR(size_t, size_t)
+
+HASH_SCALAR(int, int)
+HASH_SCALAR(int8_t, int8_t)
+HASH_SCALAR(int16_t, int16_t)
+HASH_SCALAR(int32_t, int32_t)
+HASH_SCALAR(int64_t, int64_t)
+
+#ifdef THEFT_USE_FLOATING_POINT
+#include <math.h>
+#include <float.h>
+ALLOC_FSCALAR(float, float, fmodf, 8*sizeof(float),
+    0, 1, -1, NAN,
+    INFINITY, -INFINITY, FLT_MIN, FLT_MAX)
+ALLOC_FSCALAR(double, double, fmod, 8*sizeof(double),
+    0, 1, -1, NAN,
+    NAN, INFINITY, -INFINITY, DBL_MIN, DBL_MAX)
+PRINT_SCALAR(float, float, "%g")
+PRINT_SCALAR(double, double, "%g")
+HASH_SCALAR(float, float)
+HASH_SCALAR(double, double)
+#endif
+
+#define SCALAR_ROW(NAME)                                               \
+    {                                                                  \
+        .key = THEFT_BUILTIN_ ## NAME,                                 \
+          .value = {                                                   \
+            .alloc = NAME ## _alloc,                                   \
+            .free = theft_generic_free,                                \
+            .hash = NAME ## _hash,                                     \
+            .print = NAME ## _print,                                   \
+            .autoshrink_config = {                                     \
+                .enable = true,                                        \
+            },                                                         \
         },                                                             \
     }
 
+#define DEF_BYTE_ARRAY_CEIL 8
+static enum theft_alloc_res
+char_ARRAY_alloc(struct theft *t, void *env, void **instance) {
+    (void)env;
+    size_t ceil = DEF_BYTE_ARRAY_CEIL;
+    size_t size = 0;
+    size_t *max_length = NULL;
+    if (env != NULL) {
+        max_length = (size_t *)env;
+        assert(*max_length > 0);
+    }
+
+    char *res = malloc(ceil * sizeof(char));
+    if (res == NULL) { return THEFT_ALLOC_ERROR; }
+    while (true) {
+        if (max_length != NULL && size + 1 == *max_length) {
+            res[size] = 0;
+            break;
+        } else if (size == ceil) {
+            const size_t nceil = 2 * ceil;
+            char *nres = realloc(res, nceil * sizeof(char));
+            if (nres == NULL) {
+                free(res);
+                return THEFT_ALLOC_ERROR;
+            }
+            res = nres;
+            ceil = nceil;
+        }
+        char byte = theft_random_bits(t, 8);
+        res[size] = byte;
+        if (byte == 0x00) {
+            break;
+        }
+        size++;
+    }
+
+    *instance = res;
+    return THEFT_ALLOC_OK;
+}
+
+static theft_hash char_ARRAY_hash(const void *instance, void *env) {
+    (void)env;
+    const char *v = (const char *)instance;
+    return theft_hash_onepass((const uint8_t *)v, strlen(v));
+}
+
+static void hexdump(FILE *f, const uint8_t *raw, size_t size) {
+    for (size_t row_i = 0; row_i < size; row_i += 16) {
+        size_t rem = (size - row_i > 16 ? 16 : size - row_i);
+        fprintf(f, "%04zx: ", row_i);
+        for (size_t i = 0; i < rem; i++) {
+            fprintf(f, "%02x ", raw[row_i + i]);
+        }
+
+        while (rem < 16) {      /* add padding */
+            fprintf(f, "   ");
+            rem++;
+        }
+        for (size_t i = 0; i < rem; i++) {
+            char c = ((const char *)raw)[i];
+            fprintf(f, "%c", (isprint(c) ? c : '.'));
+        }
+        fprintf(f, "\n");
+    }
+}
+
+static void char_ARRAY_print(FILE *f, const void *instance, void *env) {
+    (void)env;
+    const char *s = (const char *)instance;
+    size_t len = strlen(s);
+    hexdump(f, (const uint8_t *)s, len);
+}
+
 static struct type_info_row rows[] = {
-    { .key = THEFT_BUILTIN_bool,
-      .value = { .alloc = bool_alloc,
-                 .free = theft_generic_free,
-                 .hash = bool_hash,
-                 .print = bool_print,
+    {
+        .key = THEFT_BUILTIN_bool,
+          .value = {
+            .alloc = bool_alloc,
+            .free = theft_generic_free,
+            .hash = bool_hash,
+            .print = bool_print,
+            .autoshrink_config = {
+                .enable = true,
+            },
         },
     },
-    USCALAR_ROW(uint),
-    USCALAR_ROW(uint8_t),
-    USCALAR_ROW(uint16_t),
-    USCALAR_ROW(uint32_t),
-    USCALAR_ROW(uint64_t),
-    USCALAR_ROW(size_t),
+    SCALAR_ROW(uint),
+    SCALAR_ROW(uint8_t),
+    SCALAR_ROW(uint16_t),
+    SCALAR_ROW(uint32_t),
+    SCALAR_ROW(uint64_t),
+    SCALAR_ROW(size_t),
+
+    SCALAR_ROW(int),
+    SCALAR_ROW(int8_t),
+    SCALAR_ROW(int16_t),
+    SCALAR_ROW(int32_t),
+    SCALAR_ROW(int64_t),
+
+#if THEFT_USE_FLOATING_POINT
+    SCALAR_ROW(float),
+    SCALAR_ROW(double),
+#endif
+
+    {
+        .key = THEFT_BUILTIN_char_ARRAY,
+          .value = {
+            .alloc = char_ARRAY_alloc,
+            .free = theft_generic_free,
+            .hash = char_ARRAY_hash,
+            .print = char_ARRAY_print,
+            .autoshrink_config = {
+                .enable = true,
+            },
+        },
+    },
+    /* This is actually the same implementation, but
+     * the user should cast it differently. */
+    {
+        .key = THEFT_BUILTIN_uint8_t_ARRAY,
+          .value = {
+            .alloc = char_ARRAY_alloc,
+            .free = theft_generic_free,
+            .hash = char_ARRAY_hash,
+            .print = char_ARRAY_print,
+            .autoshrink_config = {
+                .enable = true,
+            },
+        },
+    },
 };
 
-void theft_get_builtin_type_info(enum theft_builtin_type_info type,
-    struct theft_type_info *info) {
-    for (size_t i = 0; i < sizeof(rows)/sizeof(rows[i]); i++) {
-        struct type_info_row *row = &rows[i];
+const struct theft_type_info *
+theft_get_builtin_type_info(enum theft_builtin_type_info type) {
+    for (size_t i = 0; i < sizeof(rows)/sizeof(rows[0]); i++) {
+        const struct type_info_row *row = &rows[i];
         if (row->key == type) {
-            memcpy(info, &row->value, sizeof(row->value));
-            return;
+            return &row->value;
         }
     }
     assert(false);
+    return NULL;
 }
 
+void
+theft_copy_builtin_type_info(enum theft_builtin_type_info type,
+    struct theft_type_info *info) {
+    const struct theft_type_info *builtin = theft_get_builtin_type_info(type);
+    memcpy(info, builtin, sizeof(*builtin));
+}

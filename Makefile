@@ -15,7 +15,9 @@ WARN = 		-Wall -Wextra -pedantic
 CDEFS +=
 CINCS += 	-I${INC} -I${VENDOR} -I${BUILD}
 CFLAGS += 	-std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE} ${CINCS}
-LDFLAGS +=
+
+# Note: -lm is only needed if using built-in floating point generators
+LDFLAGS +=	-lm
 
 all: ${BUILD}/lib${PROJECT}.a
 all: ${BUILD}/test_${PROJECT}
