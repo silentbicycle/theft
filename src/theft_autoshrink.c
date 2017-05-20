@@ -321,7 +321,8 @@ theft_autoshrink_shrink(struct theft *t,
 
     LOG(3, "========== BEFORE (tactic %u)\n", tactic);
     if (THEFT_LOG_LEVEL >= 3) {
-        theft_autoshrink_dump_bit_pool(stdout, orig->limit,
+        theft_autoshrink_dump_bit_pool(stdout,
+            orig->bits_filled,
             orig, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
@@ -338,7 +339,8 @@ theft_autoshrink_shrink(struct theft *t,
     }
     LOG(3, "========== AFTER\n");
     if (THEFT_LOG_LEVEL >= 3) {
-        theft_autoshrink_dump_bit_pool(stdout, copy->limit,
+        theft_autoshrink_dump_bit_pool(stdout,
+            copy->bits_filled,
             copy, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
@@ -542,6 +544,10 @@ choose_and_mutate_request(struct theft *t,
     enum mutation mtype = (enum mutation)prng(MUTATION_TYPE_BITS, env->udata);
 
     const uint8_t request_bits = log2ceil(orig->request_count);
+
+    if (orig->request_count == 0) {
+        return false;  // dead end, no more requests to mutate
+    }
 
     /* Align a change in the bit pool with a random request. The
      * mod here biases it towards earlier requests. */
