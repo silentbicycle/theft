@@ -79,6 +79,10 @@ bloom filter. If given a NULL pointer, it will use defaults.
 In the config, `always_seed_count` and `trials` are now `size_t`s
 rather than `int`s.
 
+The struct `theft_run_config`'s type_info array field now points
+to `const` values, because the built-in type_info structs returned
+by `theft_get_builtin_type_info` are const.
+
 
 ### Other Improvements
 

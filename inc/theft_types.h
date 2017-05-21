@@ -354,7 +354,7 @@ struct theft_run_config {
      * The function is called with as many arguments are there
      * are values in TYPE_INFO, so it can crash if that is wrong. */
     theft_propfun *fun;
-    struct theft_type_info *type_info[THEFT_MAX_ARITY];
+    const struct theft_type_info *type_info[THEFT_MAX_ARITY];
 
     /* -- All fields after this point are optional. -- */
 
