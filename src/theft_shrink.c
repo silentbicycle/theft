@@ -34,8 +34,8 @@ theft_shrink(struct theft *t,
                     LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
                     return SHRINK_OK;
                 case SHRINK_DEAD_END:
-                    break;
                     LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
+                    continue;
                 default:
                 case SHRINK_ERROR:
                     LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
