@@ -113,6 +113,11 @@ void
 theft_autoshrink_get_real_args(struct theft_run_info *run_info,
     void **dst, void **src);
 
+void
+theft_autoshrink_update_model(struct theft *t,
+    struct theft_run_info *run_info,
+    uint8_t arg_id, enum theft_trial_res res);
+
 /* These are only exported for testing. */
 enum theft_shrink_res
 theft_autoshrink_shrink(struct theft *t,

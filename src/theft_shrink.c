@@ -148,6 +148,8 @@ attempt_to_shrink_arg(struct theft *t,
             }
         }
 
+        theft_autoshrink_update_model(t, run_info, arg_i, res);
+
         switch (res) {
         case THEFT_TRIAL_PASS:
         case THEFT_TRIAL_SKIP:

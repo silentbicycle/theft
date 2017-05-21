@@ -194,6 +194,17 @@ theft_autoshrink_get_real_args(struct theft_run_info *run_info,
     }
 }
 
+void
+theft_autoshrink_update_model(struct theft *t,
+    struct theft_run_info *run_info,
+    uint8_t arg_id, enum theft_trial_res res) {
+    (void)t;
+    (void)run_info;
+    (void)arg_id;
+    (void)res;
+}
+
+
 #define CHECK_ENV_CAST(NAME, VENV)                                    \
     struct theft_autoshrink_env *NAME =                               \
       (struct theft_autoshrink_env *)VENV;                            \
@@ -544,6 +555,7 @@ choose_and_mutate_request(struct theft *t,
                           struct theft_autoshrink_bit_pool *pool) {
 
     autoshrink_prng_fun *prng = get_prng(t, env);
+    /* FIXME: this should be based on adaptive weighting */
     enum mutation mtype = (enum mutation)prng(MUTATION_TYPE_BITS, env->udata);
 
     const uint8_t request_bits = log2ceil(orig->request_count);
