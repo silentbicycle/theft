@@ -4,6 +4,8 @@
 #include "theft_autoshrink.h"
 #include <assert.h>
 
+#define LOG_SHRINK 0
+
 /* Attempt to simplify all arguments, breadth first. Continue as long as
  * progress is made, i.e., until a local minima is reached. */
 enum shrink_res
@@ -25,14 +27,18 @@ theft_shrink(struct theft *t,
                     trial_info, arg_i);
                 switch (rres) {
                 case SHRINK_OK:
+                    LOG(3 - LOG_SHRINK, "%s %u: progress\n", __func__, arg_i);
                     progress = true;
                     break;
                 case SHRINK_HALT:
+                    LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
                     return SHRINK_OK;
                 case SHRINK_DEAD_END:
                     break;
+                    LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
                 default:
                 case SHRINK_ERROR:
+                    LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
                     return SHRINK_ERROR;
                 }
             }
@@ -57,6 +63,7 @@ attempt_to_shrink_arg(struct theft *t,
     void **args = trial_info->args;
 
     for (uint32_t tactic = 0; tactic < THEFT_MAX_TACTICS; tactic++) {
+        LOG(2 - LOG_SHRINK, "SHRINKING arg %u, tactic %u\n", arg_i, tactic);
         void *cur = args[arg_i];
         enum theft_shrink_res sres;
         void *candidate = NULL;
@@ -71,6 +78,7 @@ attempt_to_shrink_arg(struct theft *t,
         }
 
         sres = ti->shrink(t, cur, tactic, ti->env, &candidate);
+        LOG(3 - LOG_SHRINK, "%s: tactic %u -> res %d\n", __func__, tactic, sres);
 
         trial_info->shrink_count++;
 
@@ -112,6 +120,7 @@ attempt_to_shrink_arg(struct theft *t,
             theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
 
             res = theft_call(run_info, real_args);
+            LOG(3 - LOG_SHRINK, "%s: call -> res %d\n", __func__, res);
 
             if (!repeated) {
                 if (res == THEFT_TRIAL_FAIL) {
@@ -120,9 +129,6 @@ attempt_to_shrink_arg(struct theft *t,
                     trial_info->failed_shrinks++;
                 }
             }
-
-            LOG(2, "THEFT SHRINK TRIAL -- %s\n",
-                res == THEFT_TRIAL_FAIL ? "FAIL" : "PASS");
 
             enum theft_hook_shrink_trial_post_res stpres;
             stpres = post_shrink_trial_hook(run_info, trial_info,

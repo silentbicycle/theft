@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #define GET_DEF(X, DEF) (X ? X : DEF)
+#define LOG_AUTOSHRINK 0
 
 static autoshrink_prng_fun *get_prng(struct theft *t, struct theft_autoshrink_env *env);
 
@@ -378,7 +379,7 @@ truncate_trailing_zero_bytes(struct theft_autoshrink_bit_pool *pool) {
         }
     }
     nsize *= 8;
-    LOG(1, "Truncating to nsize: %zd\n", nsize);
+    LOG(2, "Truncating to nsize: %zd\n", nsize);
     pool->bits_filled = nsize;
     if (pool->limit > pool->bits_filled) {
         pool->limit = pool->bits_filled;
@@ -437,7 +438,8 @@ static void drop_from_bit_pool(struct theft *t,
     for (size_t ri = 0; ri < orig->request_count; ri++) {
         const uint32_t req_size = orig->requests[ri];
         if (ri == to_drop || prng(drop_bits, env->udata) <= drop_threshold) {
-            LOG(2, "DROPPING: %zd - %zd\n", src_offset, src_offset + req_size);
+            LOG(2 - LOG_AUTOSHRINK,
+                "DROPPING: %zd - %zd\n", src_offset, src_offset + req_size);
             drop_count++;
             for (size_t bi = 0; bi < req_size; bi++) {  // drop
                 src_bit <<= 1;
@@ -490,7 +492,8 @@ static void drop_from_bit_pool(struct theft *t,
         dst_offset++;
     }
 
-    LOG(2, "DROP: %zd -> %zd (%zd requests)\n",
+    LOG(2  - LOG_AUTOSHRINK,
+        "DROP: %zd -> %zd (%zd requests)\n",
         orig->bits_filled, dst_offset, drop_count);
     (void)drop_count;
     copy->bits_filled = dst_offset;
@@ -566,7 +569,8 @@ choose_and_mutate_request(struct theft *t,
         } else {
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             const uint64_t nbits = bits >> shift;
-            LOG(2, "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
+            LOG(2  - LOG_AUTOSHRINK,
+                "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
                 shift, size, pos, bit_offset, bits, nbits);
             write_bits_at_offset(pool, bit_offset, size, nbits);
             return (bits != nbits);
@@ -587,7 +591,8 @@ choose_and_mutate_request(struct theft *t,
         } else {
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             const uint64_t nbits = bits & mask;
-            LOG(2, "MASK[0x%016lx, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
+            LOG(2  - LOG_AUTOSHRINK,
+                "MASK[0x%016lx, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
                 mask, size, pos, bit_offset, bits, nbits);
             write_bits_at_offset(pool, bit_offset, size, nbits);
             return (bits != nbits);
@@ -599,7 +604,7 @@ choose_and_mutate_request(struct theft *t,
         if (size > 64) {
             assert(false); // TODO -- bulk requests
         } else {
-            LOG(2, "SWAP at %zd...\n", pos);
+            LOG(2 - LOG_AUTOSHRINK, "SWAP at %zd...\n", pos);
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
 
             /* Find the next pos of the same size, if any.
@@ -609,7 +614,7 @@ choose_and_mutate_request(struct theft *t,
                     const size_t other_offset = offset_of_pos(orig, i);
                     const uint64_t other = read_bits_at_offset(pool, other_offset, size);
                     if (other < bits) {
-                        LOG(2, "SWAPPING %zd <-> %zd\n", pos, i);
+                        LOG(2 - LOG_AUTOSHRINK, "SWAPPING %zd <-> %zd\n", pos, i);
                         write_bits_at_offset(pool, bit_offset, size, other);
                         write_bits_at_offset(pool, other_offset, size, bits);
                         return true;
@@ -628,7 +633,8 @@ choose_and_mutate_request(struct theft *t,
             uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             if (bits > 0) {
                 uint64_t nbits = bits - (sub % bits);
-                LOG(2, "SUB[%lu, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
+                LOG(2 - LOG_AUTOSHRINK,
+                    "SUB[%lu, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
                     sub, size, pos, bit_offset, bits, nbits);
                 if (nbits == bits) {
                     nbits--;
