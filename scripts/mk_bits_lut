@@ -1,9 +1,20 @@
 #!/usr/bin/awk -f
 
+# Check for bits being set by right shifting until the
+# desired bit is the first bit, and then checking mod 2.
+# (standard awk does not have bit operations included.)
+function bit_is_set(x, bit) {
+    while (bit > 0) {
+        x = int(x / 2)
+        bit = int(bit / 2)
+    }
+    return x % 2
+}
+
 function bit_count(byte,  b, t) {
     t = 0
-    for (b = 0x01; b <= 0x80; b *= 2) {
-        if (and(byte, b)) { t++ }
+    for (b = 1; b <= 128; b *= 2) {
+        if (bit_is_set(byte, b)) { t++ }
     }
     return t
 }
