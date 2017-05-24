@@ -1,5 +1,6 @@
 #include "theft.h"
 #include "theft_aux.h"
+#include "theft_types_internal.h"
 
 #include <assert.h>
 #include <sys/time.h>
@@ -88,14 +89,14 @@ void theft_print_trial_result(
         env->column = 0;
     }
 
-    fprintf(f, buf);
+    fprintf(f, "%s", buf);
     fflush(f);
     env->column += used;
 }
 
 void theft_print_run_pre_info(FILE *f,
         const struct theft_hook_run_pre_info *info) {
-    fprintf(f, "\n== PROP '%s': %zd trials, seed 0x%016lx\n",
+    fprintf(f, "\n== PROP '%s': %zd trials, seed 0x%016" PRIx64 "\n",
         info->prop_name, info->total_trials,
         info->run_seed);
 }

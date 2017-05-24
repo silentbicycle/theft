@@ -2,6 +2,7 @@
 #define THEFT_TYPES_INTERNAL_H
 
 #include "theft.h"
+#include <inttypes.h>
 
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
 #define DEFAULT_THEFT_SEED 0xa600d64b175eedLL

@@ -78,7 +78,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
             size_t offset = pool->bits_filled / 64;
             assert(offset * 64 < pool->bits_ceil);
             bits64[offset] = theft_mt_random(t->mt);
-            LOG(3, "filling bit64[%zd]: 0x%016lx\n",
+            LOG(3, "filling bit64[%zd]: 0x%016" PRIx64 "\n",
                 offset, bits64[offset]);
             pool->bits_filled += 64;
         }
@@ -582,7 +582,7 @@ choose_and_mutate_request(struct theft *t,
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             const uint64_t nbits = bits >> shift;
             LOG(2  - LOG_AUTOSHRINK,
-                "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
+                "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
                 shift, size, pos, bit_offset, bits, nbits);
             write_bits_at_offset(pool, bit_offset, size, nbits);
             return (bits != nbits);
@@ -604,7 +604,7 @@ choose_and_mutate_request(struct theft *t,
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             const uint64_t nbits = bits & mask;
             LOG(2  - LOG_AUTOSHRINK,
-                "MASK[0x%016lx, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
+                "MASK[0x%016" PRIx64 ", %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
                 mask, size, pos, bit_offset, bits, nbits);
             write_bits_at_offset(pool, bit_offset, size, nbits);
             return (bits != nbits);
@@ -646,7 +646,8 @@ choose_and_mutate_request(struct theft *t,
             if (bits > 0) {
                 uint64_t nbits = bits - (sub % bits);
                 LOG(2 - LOG_AUTOSHRINK,
-                    "SUB[%lu, %u @ %zd (0x%08zx)]: 0x%016lx -> 0x%016lx\n",
+                    "SUB[%" PRIu64 ", %u @ %zd (0x%08zx)]: 0x%016"
+                        PRIx64 " -> 0x%016" PRIx64 "\n",
                     sub, size, pos, bit_offset, bits, nbits);
                 if (nbits == bits) {
                     nbits--;
@@ -761,7 +762,7 @@ void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
                 req_size = pool->bits_filled - offset;
             }
             uint64_t bits = read_bits_at_offset(pool, offset, req_size);
-            fprintf(f, "0x%lx (%u), ", bits, req_size);
+            fprintf(f, "0x%" PRIx64 " (%u), ", bits, req_size);
             if ((i & 0x07) == 0x07) {
                 fprintf(f, "\n");
             }

@@ -47,7 +47,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
 
     theft_seed seed = run_info.run_seed;
-    LOG(3, "%s: SETTING RUN SEED TO 0x%016lx\n", __func__, seed);
+    LOG(3, "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n", __func__, seed);
     theft_random_set_seed(t, seed);
     if (!wrap_any_autoshrinks(t, &run_info)) {
         return THEFT_RUN_ERROR;
@@ -80,7 +80,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         void *args[THEFT_MAX_ARITY];
         enum run_step_res res = run_step(t, &run_info,
             trial, args, &seed);
-        LOG(3, "  -- trial %zd/%zd, new seed 0x%016lx\n",
+        LOG(3, "  -- trial %zd/%zd, new seed 0x%016" PRIx64 "\n",
             trial, limit, seed);
         theft_trial_free_args(&run_info, args);
 
@@ -173,7 +173,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     }
 
     /* Set seed for this trial */
-    LOG(3, "%s: SETTING TRIAL SEED TO 0x%016lx\n", __func__, trial_info.seed);
+    LOG(3, "%s: SETTING TRIAL SEED TO 0x%016" PRIx64 "\n", __func__, trial_info.seed);
     theft_random_set_seed(t, trial_info.seed);
 
     enum all_gen_res_t gres = gen_all_args(t, run_info, args);
@@ -244,7 +244,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
 
     /* Update seed for next trial */
     *seed = theft_random(t);
-    LOG(3, "end of trial, new seed is 0x%016lx\n", *seed);
+    LOG(3, "end of trial, new seed is 0x%016" PRIx64 "\n", *seed);
     return RUN_STEP_OK;
 }
 
