@@ -106,4 +106,7 @@ theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info, void *
 enum theft_hook_run_post_res
 theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info, void *env);
 
+/* Return a string name of a trial result. */
+const char *theft_trial_res_str(enum theft_trial_res res);
+
 #endif

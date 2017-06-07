@@ -133,3 +133,15 @@ struct theft_aux_print_trial_result_env {
     size_t consec_pass;
     size_t consec_fail;
 };
+
+const char *theft_trial_res_str(enum theft_trial_res res) {
+    switch (res) {
+    case THEFT_TRIAL_PASS: return "PASS";
+    case THEFT_TRIAL_FAIL: return "FAIL";
+    case THEFT_TRIAL_SKIP: return "SKIP";
+    case THEFT_TRIAL_DUP: return "DUP";
+    case THEFT_TRIAL_ERROR: return "ERROR";
+    default:
+        return "(matchfail)";
+    }
+}
