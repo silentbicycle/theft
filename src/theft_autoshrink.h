@@ -26,6 +26,8 @@ struct theft_autoshrink_bit_pool {
     size_t request_ceil;
     // TODO: should this be uint32_t or uint16_t?
     uint32_t *requests;
+
+    size_t generation; // FIXME TODO DEBUG only
 };
 
 /* How large should the default autoshrink bit pool be?
@@ -59,8 +61,11 @@ typedef uint64_t autoshrink_prng_fun(uint8_t bits, void *udata);
 
 #define TWO_EVENLY 0x80
 #define FOUR_EVENLY 0x40
-#define MODEL_MIN 0x20
-#define MODEL_MAX 0x60
+#define MODEL_MIN 0x10
+#define MODEL_MAX 0x90
+
+#define DROPS_MIN 0x10
+#define DROPS_MAX 0xA0
 
 enum autoshrink_action {
     ASA_DROP = 0x01,
@@ -71,6 +76,7 @@ enum autoshrink_action {
 };
 
 struct autoshrink_model {
+    enum autoshrink_action cur_tried;
     enum autoshrink_action cur_set;
     uint8_t drops;
     uint8_t shift;
