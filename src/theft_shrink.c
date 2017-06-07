@@ -133,7 +133,7 @@ attempt_to_shrink_arg(struct theft *t,
 
             enum theft_hook_shrink_trial_post_res stpres;
             stpres = post_shrink_trial_hook(run_info, trial_info,
-                arg_i, args, tactic, res);
+                arg_i, real_args, tactic, res);
             if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT) {
                 repeated = true;
                 continue;  // loop and run again
