@@ -21,6 +21,7 @@ theft_shrink(struct theft *t,
          * possible before switching to the next. */
         for (uint8_t arg_i = 0; arg_i < run_info->arity; arg_i++) {
             struct theft_type_info *ti = run_info->type_info[arg_i];
+        greedy_continue:
             if (ti->shrink) {
                 /* attempt to simplify this argument by one step */
                 enum shrink_res rres = attempt_to_shrink_arg(t, run_info,
@@ -29,13 +30,13 @@ theft_shrink(struct theft *t,
                 case SHRINK_OK:
                     LOG(3 - LOG_SHRINK, "%s %u: progress\n", __func__, arg_i);
                     progress = true;
-                    break;
+                    goto greedy_continue; /* keep trying to shrink same argument */
                 case SHRINK_HALT:
                     LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
                     return SHRINK_OK;
                 case SHRINK_DEAD_END:
                     LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
-                    continue;
+                    continue;   /* try next argument, if any */
                 default:
                 case SHRINK_ERROR:
                     LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
@@ -155,10 +156,14 @@ attempt_to_shrink_arg(struct theft *t,
         case THEFT_TRIAL_PASS:
         case THEFT_TRIAL_SKIP:
             /* revert */
+            LOG(2 - LOG_SHRINK, "PASS: REVERTING %u: was %p, now %p\n",
+                arg_i, (void *)args[arg_i], (void *)cur);
             args[arg_i] = cur;
             if (ti->free) { ti->free(candidate, ti->env); }
             break;
         case THEFT_TRIAL_FAIL:
+            LOG(2 - LOG_SHRINK, "FAIL: COMMITTING %u: was %p, now %p\n",
+                arg_i, (void *)cur, (void *)args[arg_i]);
             if (ti->free) { ti->free(cur, ti->env); }
             return SHRINK_OK;
         default:
