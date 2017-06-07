@@ -57,6 +57,28 @@ struct theft_autoshrink_bit_pool {
 
 typedef uint64_t autoshrink_prng_fun(uint8_t bits, void *udata);
 
+#define TWO_EVENLY 0x80
+#define FOUR_EVENLY 0x40
+#define MODEL_MIN 0x20
+#define MODEL_MAX 0x60
+
+enum autoshrink_action {
+    ASA_DROP = 0x01,
+    ASA_SHIFT = 0x02,
+    ASA_MASK = 0x04,
+    ASA_SWAP = 0x08,
+    ASA_SUB = 0x10,
+};
+
+struct autoshrink_model {
+    enum autoshrink_action cur_set;
+    uint8_t drops;
+    uint8_t shift;
+    uint8_t mask;
+    uint8_t swap;
+    uint8_t sub;
+};
+
 struct theft_autoshrink_env {
     uint8_t tag;
     struct theft_type_info user_type_info;
@@ -69,6 +91,8 @@ struct theft_autoshrink_env {
     uint32_t max_autoshrinks;  // FIXME: name
     uint64_t drop_threshold;   // FIXME: name
     uint8_t drop_bits;         // FIXME: name
+
+    struct autoshrink_model model;
 
     // allow injecting a fake prng, for testing
     bool leave_trailing_zeroes;
@@ -116,7 +140,8 @@ theft_autoshrink_get_real_args(struct theft_run_info *run_info,
 void
 theft_autoshrink_update_model(struct theft *t,
     struct theft_run_info *run_info,
-    uint8_t arg_id, enum theft_trial_res res);
+    uint8_t arg_id, enum theft_trial_res res,
+    uint8_t adjustment);
 
 /* These are only exported for testing. */
 enum theft_shrink_res

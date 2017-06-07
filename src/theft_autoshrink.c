@@ -194,17 +194,6 @@ theft_autoshrink_get_real_args(struct theft_run_info *run_info,
     }
 }
 
-void
-theft_autoshrink_update_model(struct theft *t,
-    struct theft_run_info *run_info,
-    uint8_t arg_id, enum theft_trial_res res) {
-    (void)t;
-    (void)run_info;
-    (void)arg_id;
-    (void)res;
-}
-
-
 #define CHECK_ENV_CAST(NAME, VENV)                                    \
     struct theft_autoshrink_env *NAME =                               \
       (struct theft_autoshrink_env *)VENV;                            \
@@ -331,6 +320,8 @@ theft_autoshrink_shrink(struct theft *t,
     assert(total_consumed == orig->consumed);
     copy->limit = orig->limit;
 
+    env->model.cur_set = 0x00;
+
     LOG(3, "========== BEFORE (tactic %u)\n", tactic);
     if (THEFT_LOG_LEVEL >= 3) {
         theft_autoshrink_dump_bit_pool(stdout,
@@ -344,7 +335,9 @@ theft_autoshrink_shrink(struct theft *t,
      * as long as it's effective.
      *
      * TODO: Some sort of weighted/adaptive process could be better. */
-    if (0 == (tactic & 0x01)) {
+    //if (0 == (tactic & 0x01)) {
+    if (theft_random_bits(t, 8) < env->model.drops) {
+        env->model.cur_set |= ASA_DROP;
         drop_from_bit_pool(t, env, orig, copy);
     } else {
         mutate_bit_pool(t, env, orig, copy);
@@ -531,6 +524,10 @@ static void mutate_bit_pool(struct theft *t,
     const uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
     uint8_t changed = 0;
 
+    if (env->model.drops == 0) {
+        init_model(env);
+    }
+
     /* Attempt to make up to CHANGE_COUNT changes, with limited retries
      * for when the random modifications have no effect. */
     for (size_t i = 0; i < 10*change_count; i++) {
@@ -556,7 +553,8 @@ choose_and_mutate_request(struct theft *t,
 
     autoshrink_prng_fun *prng = get_prng(t, env);
     /* FIXME: this should be based on adaptive weighting */
-    enum mutation mtype = (enum mutation)prng(MUTATION_TYPE_BITS, env->udata);
+    //enum mutation mtype = (enum mutation)prng(MUTATION_TYPE_BITS, env->udata);
+    enum mutation mtype = get_weighted_mutation(t, env);
 
     const uint8_t request_bits = log2ceil(orig->request_count);
 
@@ -575,6 +573,7 @@ choose_and_mutate_request(struct theft *t,
         assert(false);
     case MUT_SHIFT:
     {
+        env->model.cur_set |= ASA_SHIFT;
         uint8_t shift = prng(2, env->udata) + 1;
         if (size > 64) {
             assert(false); // TODO -- bulk requests
@@ -592,6 +591,7 @@ choose_and_mutate_request(struct theft *t,
     case MUT_MASK:
     {
         /* Clear each bit with 1/4 probability */
+        env->model.cur_set |= ASA_MASK;
         uint64_t mask = prng(size, env->udata) | prng(size, env->udata);
         if (mask == (1LU << size) - 1) {
             // always clear at least 1 bit
@@ -613,6 +613,7 @@ choose_and_mutate_request(struct theft *t,
     }
     case MUT_SWAP:
     {
+        env->model.cur_set |= ASA_SWAP;
         if (size > 64) {
             assert(false); // TODO -- bulk requests
         } else {
@@ -638,6 +639,7 @@ choose_and_mutate_request(struct theft *t,
     }
     case MUT_SUB:
     {
+        env->model.cur_set |= ASA_SUB;
         const uint64_t sub = prng(size, env->udata);
         if (size > 64) {
             assert(false); // TODO -- bulk requests
@@ -825,4 +827,71 @@ static autoshrink_prng_fun *get_prng(struct theft *t,
         env->udata = t;
         return def_autoshrink_prng;
     }
+}
+
+static void init_model(struct theft_autoshrink_env *env) {
+    env->model = (struct autoshrink_model) {
+        .drops = TWO_EVENLY,
+        .shift = FOUR_EVENLY,
+        .mask = FOUR_EVENLY,
+        .swap = FOUR_EVENLY,
+        .sub = FOUR_EVENLY,
+    };
+}
+
+static enum mutation
+get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env) {
+    assert(env->model.shift <= MODEL_MAX && env->model.shift >= MODEL_MIN);
+    const uint16_t shift = env->model.shift;
+    const uint16_t mask = shift + env->model.mask;
+    const uint16_t swap = mask + env->model.swap;
+    const uint16_t sub = swap + env->model.sub;
+    for (;;) {
+        const uint16_t bits = theft_random_bits(t,
+            (sub > 256 ? 10 : 8));
+        if (bits < shift) {
+            return MUT_SHIFT;
+        } else if (bits < mask) {
+            return MUT_MASK;
+        } else if (bits < swap) {
+            return MUT_SWAP;
+        } else if (bits < sub) {
+            return MUT_SUB;
+        } else {
+            continue;  // draw again
+        }
+    }
+}
+
+static void adjust(uint8_t *v, uint8_t offset) {
+    *v += offset;
+    if (*v < MODEL_MIN) {
+        *v = MODEL_MIN;
+    } else if (*v > MODEL_MAX) {
+        *v = MODEL_MAX;
+    }
+}
+
+void
+theft_autoshrink_update_model(struct theft *t,
+        struct theft_run_info *run_info,
+        uint8_t arg_id, enum theft_trial_res res,
+        uint8_t adjustment) {
+    (void)t;
+    CHECK_ENV_CAST(env, run_info->type_info[arg_id]->env);
+    const uint8_t cur_set = env->model.cur_set;
+    uint8_t adj = (res == THEFT_TRIAL_FAIL ? adjustment : -adjustment);
+    adjust(&env->model.drops, (cur_set & ASA_DROP) ? adj : -adj);
+    adjust(&env->model.shift, (cur_set & ASA_SHIFT) ? adj : -adj);
+    adjust(&env->model.mask, (cur_set & ASA_MASK) ? adj : -adj);
+    adjust(&env->model.swap, (cur_set & ASA_SWAP) ? adj : -adj);
+    adjust(&env->model.sub, (cur_set & ASA_SUB) ? adj : -adj);
+
+    LOG(3, "cur_set: %02" PRIx8 " -- new weights DROP %u SHIFT %u MASK %u SWAP %u SUB %u\n",
+        (uint8_t)env->model.cur_set,
+        env->model.drops,
+        env->model.shift,
+        env->model.mask,
+        env->model.swap,
+        env->model.sub);
 }

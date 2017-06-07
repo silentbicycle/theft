@@ -55,4 +55,9 @@ write_bits_at_offset(struct theft_autoshrink_bit_pool *pool,
 
 static void truncate_trailing_zero_bytes(struct theft_autoshrink_bit_pool *pool);
 
+static void init_model(struct theft_autoshrink_env *env);
+
+static enum mutation
+get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env);
+
 #endif

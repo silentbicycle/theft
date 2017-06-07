@@ -66,8 +66,8 @@ enum theft_shrink_res {
     THEFT_SHRINK_ERROR,
 };
 typedef enum theft_shrink_res
-theft_shrink_cb(struct theft *t, const void *instance, uint32_t tactic,
-    void *env, void **output);
+theft_shrink_cb(struct theft *t, const void *instance,
+    uint32_t tactic, void *env, void **output);
 
 /* Print INSTANCE to output stream F.
  * Used for displaying counter-examples. Can be NULL. */
