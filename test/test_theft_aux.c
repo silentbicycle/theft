@@ -119,8 +119,7 @@ expected_failure_trial_post(const struct theft_hook_trial_post_info *info,
     if (info->result == THEFT_TRIAL_FAIL) {
         int8_t a = *(int8_t *)info->args[0];
         uint16_t b = *(uint16_t *)info->args[1];
-        //printf("FAILURE: %d, %u\n", a, b);
-        if (a == 0 && b == 1) {
+        if (a == 1 && b == 0) {
             env->found = true;
         }
     }
