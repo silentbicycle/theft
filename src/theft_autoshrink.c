@@ -531,10 +531,11 @@ static void mutate_bit_pool(struct theft *t,
      * the pool copy. */
     uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
 
-    /* if (change_count > orig->request_count) {
-     *     printf("CLAMPING %u to %zd\n", change_count, orig->request_count);
-     *     change_count = orig->request_count;
-     * } */
+    if (change_count > orig->request_count) {
+        LOG(4 - LOG_AUTOSHRINK,
+            "CLAMPING %u to %zd\n", change_count, orig->request_count);
+        change_count = orig->request_count;
+    }
 
     uint8_t changed = 0;
 
