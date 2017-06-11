@@ -484,26 +484,6 @@ static void drop_from_bit_pool(struct theft *t,
         }
     }
 
-    for (size_t bi = src_offset; bi < orig->bits_filled; bi++) {
-        if (orig->bits[src_byte] & src_bit) {
-            copy->bits[dst_byte] |= dst_bit;
-        }
-
-        src_bit <<= 1;
-        if (src_bit == 0x00) {
-            src_bit = 0x01;
-            src_byte++;
-        }
-        src_offset++;
-
-        dst_bit <<= 1;
-        if (dst_bit == 0x00) {
-            dst_bit = 0x01;
-            dst_byte++;
-        }
-        dst_offset++;
-    }
-
     LOG(2  - LOG_AUTOSHRINK,
         "DROP: %zd -> %zd (%zd requests)\n",
         orig->bits_filled, dst_offset, drop_count);
