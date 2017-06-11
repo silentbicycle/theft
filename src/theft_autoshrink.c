@@ -980,6 +980,11 @@ theft_autoshrink_update_model(struct theft *t,
         uint8_t adjustment) {
     (void)t;
 
+    /* If this type isn't using autoshrink, there's nothing to do. */
+    if (run_info->type_info[arg_id]->autoshrink_config.enable == false) {
+        return;
+    }
+
     CHECK_ENV_CAST(env, run_info->type_info[arg_id]->env);
     const uint8_t cur_set = env->model.cur_set;
     if (cur_set == 0x00) {
