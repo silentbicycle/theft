@@ -86,6 +86,7 @@ enum autoshrink_weight {
 struct autoshrink_model {
     enum autoshrink_action cur_tried;
     enum autoshrink_action cur_set;
+    enum autoshrink_action next_action;
     uint8_t weights[5];
 };
 
@@ -161,5 +162,9 @@ theft_autoshrink_shrink(struct theft *t,
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
     const struct theft_autoshrink_bit_pool *pool,
     enum theft_autoshrink_print_mode print_mode);
+
+/* Set the next action the model will deliver. (This is a hook for testing.) */
+void theft_autoshrink_model_set_next(struct theft_autoshrink_env *env,
+    enum autoshrink_action action);
 
 #endif

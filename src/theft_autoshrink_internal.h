@@ -60,4 +60,6 @@ static void init_model(struct theft_autoshrink_env *env);
 static enum mutation
 get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env);
 
+static bool should_drop(struct theft *t, struct theft_autoshrink_env *env);
+
 #endif

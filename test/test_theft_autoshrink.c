@@ -99,7 +99,6 @@ TEST ll_drop_nothing(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },  // don't drop anything
             { 5, 31, },
@@ -121,6 +120,7 @@ TEST ll_drop_nothing(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_DROP);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -161,7 +161,6 @@ TEST ll_drop_nothing_but_do_truncate(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },  // don't drop anything
             { 5, 31, },
@@ -182,6 +181,7 @@ TEST ll_drop_nothing_but_do_truncate(void) {
         .prng = fake_prng,
         .udata = &prng_info,
     };
+    theft_autoshrink_model_set_next(&env, ASA_DROP);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -223,7 +223,6 @@ TEST ll_drop_first(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 0, },  // drop first 3 bits
             { 5, 0, },  // ... and corresponding 8 bits
@@ -245,6 +244,7 @@ TEST ll_drop_first(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_DROP);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -293,7 +293,6 @@ TEST ll_drop_third_and_fourth(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },
             { 5, 31, },
@@ -315,6 +314,7 @@ TEST ll_drop_third_and_fourth(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_DROP);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -357,7 +357,6 @@ TEST ll_drop_last(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },
             { 5, 31, },
@@ -379,6 +378,7 @@ TEST ll_drop_last(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_DROP);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -421,30 +421,23 @@ TEST ll_drop_last(void) {
 TEST ll_mutate_shift(void) {
     struct theft *t = theft_init(0);
 
-    /* FIXME: inject test model */
-
     uint8_t pos_bits = 4; // log2ceil(11)
 
     struct fake_prng_info prng_info = {
         // three changes, all right shifting by 1
         .pairs = {
-            { 8, 0xFF },  // mutate
-
             // popcount: 3 changes
             { 5, 0x01 | 0x02 /* + 1 */, },
 
             // right-shift value for 4th link by 1
-            { MUTATION_TYPE_BITS, MUT_SHIFT },
             { pos_bits, 7 },
             { 2, 0 },
 
             // right-shift value for 2th link by 2
-            { MUTATION_TYPE_BITS, MUT_SHIFT },
             { pos_bits, 3 },
             { 2, 1 },
 
             // right-shift continue-bits for 5th link by 1
-            { MUTATION_TYPE_BITS, MUT_SHIFT },
             { pos_bits, 8 },
             { 2, 0 },
         },
@@ -457,6 +450,7 @@ TEST ll_mutate_shift(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_SHIFT);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -505,13 +499,10 @@ TEST ll_mutate_mask(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0xFF },  // mutate
-
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
             // mask for 4th link by 0xfe
-            { MUTATION_TYPE_BITS, MUT_MASK },
             { pos_bits, 7 },
             { 8, 0xf0 },
             { 8, 0x0e },
@@ -524,6 +515,7 @@ TEST ll_mutate_mask(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_MASK);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -573,13 +565,10 @@ TEST ll_mutate_swap(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0xFF },  // mutate
-
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
             // swap 4th value
-            { MUTATION_TYPE_BITS, MUT_SWAP },
             { pos_bits, 7 },
         },
     };
@@ -590,6 +579,7 @@ TEST ll_mutate_swap(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_SWAP);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -639,13 +629,10 @@ TEST ll_mutate_sub(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0xFF },  // mutate
-
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
             // subtract (4 % 3) from 3
-            { MUTATION_TYPE_BITS, MUT_SUB },
             { pos_bits, 7 },
             { 8, 0x04 },
         },
@@ -657,6 +644,7 @@ TEST ll_mutate_sub(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_SUB);
 
     void *output = NULL;
     enum theft_shrink_res res;
@@ -706,17 +694,13 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
-            { 8, 0xFF },  // mutate
-
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
             // swap 1st value (has no effect)
-            { MUTATION_TYPE_BITS, MUT_SWAP },
             { pos_bits, 1 },
 
             // swap 4th value
-            { MUTATION_TYPE_BITS, MUT_SWAP },
             { pos_bits, 7 },
         },
     };
@@ -727,6 +711,7 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
     };
+    theft_autoshrink_model_set_next(&env, ASA_SWAP);
 
     void *output = NULL;
     enum theft_shrink_res res;

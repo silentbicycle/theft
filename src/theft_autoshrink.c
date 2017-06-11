@@ -338,15 +338,13 @@ theft_autoshrink_shrink(struct theft *t,
         init_model(env);
     }
 
-    autoshrink_prng_fun *prng = get_prng(t, env);
-
     /* Alternate dropping requests from the pool and mutating individual
      * requests. Since tactic 0 will trigger dropping and successful
      * shrinks reset the tactic to 0, this means it will favor dropping
      * as long as it's effective.
      *
      * TODO: Some sort of weighted/adaptive process could be better. */
-    if (prng(8, env->udata) < env->model.weights[WEIGHT_DROP]) {
+    if (should_drop(t, env)) {
         env->model.cur_set |= ASA_DROP;
         drop_from_bit_pool(t, env, orig, copy);
     } else {
@@ -865,6 +863,9 @@ static autoshrink_prng_fun *get_prng(struct theft *t,
 }
 
 static void init_model(struct theft_autoshrink_env *env) {
+    if (env->model.next_action != 0x00) {
+        return;                 /* a test has an action scheduled */
+    }
     env->model = (struct autoshrink_model) {
         .weights = {
             [WEIGHT_DROP] = TWO_EVENLY,
@@ -876,8 +877,31 @@ static void init_model(struct theft_autoshrink_env *env) {
     };
 }
 
+static bool should_drop(struct theft *t, struct theft_autoshrink_env *env) {
+    autoshrink_prng_fun *prng = get_prng(t, env);
+    if (env->model.next_action == 0x00) {
+        return prng(8, env->udata) < env->model.weights[WEIGHT_DROP];
+    } else {
+        return env->model.next_action == ASA_DROP;
+    }
+}
+
 static enum mutation
 get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env) {
+    if (env->model.next_action != 0x00) {
+        switch (env->model.next_action) {
+        default: assert(false);
+        case ASA_SHIFT:
+            return MUT_SHIFT;
+        case ASA_MASK:
+            return MUT_MASK;
+        case ASA_SWAP:
+            return MUT_SWAP;
+        case ASA_SUB:
+            return MUT_SUB;
+        }
+    }
+
     const uint16_t shift = env->model.weights[WEIGHT_SHIFT];
     const uint16_t mask = shift + env->model.weights[WEIGHT_MASK];
     const uint16_t swap = mask + env->model.weights[WEIGHT_SWAP];
@@ -931,12 +955,14 @@ static void adjust(struct autoshrink_model *model,
         /* De-emphasize actions that produced no changes, but don't add
          * emphasis to them if they caused the property to pass (leading
          * to a negative adjustment) */
-        printf("DE-EMPHASIZING flag 0x%02x by %u\n",
+        LOG(3 - LOG_AUTOSHRINK,
+            "DE-EMPHASIZING flag 0x%02x by %u\n",
             flag, adjustment);
         nv = model->weights[w] - adjustment;
-        printf("  -- was %u, now %u\n", model->weights[w], nv);
+        LOG(3 - LOG_AUTOSHRINK,
+            "  -- was %u, now %u\n", model->weights[w], nv);
     }
-    
+
     if (nv != 0) {
         if (nv > max) {
             nv = max;
@@ -962,7 +988,7 @@ theft_autoshrink_update_model(struct theft *t,
 
     uint8_t adj = (res == THEFT_TRIAL_FAIL ? adjustment : -adjustment);
 
-    LOG(3 - LOG_AUTOSHRINK - 3,
+    LOG(3 - LOG_AUTOSHRINK,
         "%s: res %d, arg_id %u, adj %u, cur_set 0x%02x\n",
         __func__, res, arg_id, adjustment, cur_set);
 
@@ -971,8 +997,8 @@ theft_autoshrink_update_model(struct theft *t,
     adjust(&env->model, WEIGHT_MASK, MODEL_MIN, MODEL_MAX, adj);
     adjust(&env->model, WEIGHT_SWAP, MODEL_MIN, MODEL_MAX, adj);
     adjust(&env->model, WEIGHT_SUB, MODEL_MIN, MODEL_MAX, adj);
-        
-    LOG(3 - LOG_AUTOSHRINK - 3,
+
+    LOG(3 - LOG_AUTOSHRINK,
         "cur_set: %02" PRIx8 " -- new weights DROP %u SHIFT %u MASK %u SWAP %u SUB %u\n",
         (uint8_t)env->model.cur_set,
         env->model.weights[WEIGHT_DROP],
@@ -980,4 +1006,9 @@ theft_autoshrink_update_model(struct theft *t,
         env->model.weights[WEIGHT_MASK],
         env->model.weights[WEIGHT_SWAP],
         env->model.weights[WEIGHT_SUB]);
+}
+
+void theft_autoshrink_model_set_next(struct theft_autoshrink_env *env,
+    enum autoshrink_action action) {
+    env->model.next_action = action;
 }
