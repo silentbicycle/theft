@@ -278,15 +278,23 @@ autoshrink_hash(const void *instance, void *venv) {
         /* Hash the consumed bits from the bit pool */
         struct theft_hasher h;
         theft_hash_init(&h);
+        LOG(5 - LOG_AUTOSHRINK, "@@@ SINKING: [ ");
+        for (size_t i = 0; i < pool->consumed / 8; i++) {
+            LOG(5 - LOG_AUTOSHRINK, "%02x ", pool->bits[i]);
+        }
         theft_hash_sink(&h, pool->bits, pool->consumed / 8);
         const uint8_t rem_bits = pool->consumed % 8;
         if (rem_bits > 0) {
             const uint8_t last_byte = pool->bits[pool->consumed / 8];
             const uint8_t mask = ((1U << rem_bits) - 1);
             uint8_t rem = last_byte & mask;
+            LOG(5 - LOG_AUTOSHRINK, "%02x/%d", rem, rem_bits);
             theft_hash_sink(&h, &rem, 1);
         }
-        return theft_hash_done(&h);
+        LOG(5 - LOG_AUTOSHRINK, " ]\n");
+        theft_hash res = theft_hash_done(&h);
+        LOG(2 - LOG_AUTOSHRINK, "autoshrink_hash: 0x%016" PRIx64 "\n", res);
+        return res;
     }
 }
 
@@ -525,9 +533,11 @@ static void mutate_bit_pool(struct theft *t,
         if (choose_and_mutate_request(t, env, orig, pool)) {
             changed++;
 
+            LOG(3 - LOG_AUTOSHRINK,
+                "-- step changed (try %zd, changed %u, change_count %u)\n",
+                i, changed, change_count);
+
             if (LOG_AUTOSHRINK >= 3) {
-                LOG(0, "-- STEP (try %zd, changed %u, change_count %u)\n",
-                    i, changed, change_count);
                 theft_autoshrink_dump_bit_pool(stdout,
                     pool->bits_filled,
                     pool, THEFT_AUTOSHRINK_PRINT_ALL);
@@ -536,6 +546,10 @@ static void mutate_bit_pool(struct theft *t,
             if (changed == change_count) {
                 break;
             }
+        } else {
+            LOG(3 - LOG_AUTOSHRINK,
+                "-- step failed (try %zd, changed %u, change_count %u)\n",
+                i, changed, change_count);
         }
     }
 
@@ -760,7 +774,7 @@ void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
         const uint8_t rem = bit_count % 8;
         if (rem != 0) {
             const uint8_t byte = bits[byte_count] & ((1U << rem) - 1);
-            fprintf(f, "%02x", byte);
+            fprintf(f, "%02x/%d", byte, rem);
             if ((byte_count & 0x0f) == 0x0e) {
                 fprintf(f, "\n");
                 prev = false;
@@ -888,7 +902,7 @@ get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env) {
     const uint16_t swap = mask + env->model.weights[WEIGHT_SWAP];
     const uint16_t sub = swap + env->model.weights[WEIGHT_SUB];
 
-    LOG(3 - LOG_AUTOSHRINK,
+    LOG(4 - LOG_AUTOSHRINK,
         "%s: shift %04x, mask %04x, swap %04x, sub %04x => LIMIT %04x\n",
         __func__,
         env->model.weights[WEIGHT_SHIFT],
@@ -904,22 +918,22 @@ get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env) {
 
     for (;;) {
         const uint16_t bits = theft_random_bits(t, bit_count);
-        LOG(3 - LOG_AUTOSHRINK,
+        LOG(4 - LOG_AUTOSHRINK,
             "%s: 0x%04x -- ", __func__, bits);
         if (bits < shift) {
-            LOG(3 - LOG_AUTOSHRINK, "SHIFT\n");
+            LOG(4 - LOG_AUTOSHRINK, "SHIFT\n");
             return MUT_SHIFT;
         } else if (bits < mask) {
-            LOG(3 - LOG_AUTOSHRINK, "MASK\n");
+            LOG(4 - LOG_AUTOSHRINK, "MASK\n");
             return MUT_MASK;
         } else if (bits < swap) {
-            LOG(3 - LOG_AUTOSHRINK, "SWAP\n");
+            LOG(4 - LOG_AUTOSHRINK, "SWAP\n");
             return MUT_SWAP;
         } else if (bits < sub) {
-            LOG(3 - LOG_AUTOSHRINK, "SUB\n");
+            LOG(4 - LOG_AUTOSHRINK, "SUB\n");
             return MUT_SUB;
         } else {
-            LOG(3 - LOG_AUTOSHRINK, "continue\n");
+            LOG(4 - LOG_AUTOSHRINK, "continue\n");
             continue;  // draw again
         }
     }

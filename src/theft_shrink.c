@@ -106,6 +106,8 @@ attempt_to_shrink_arg(struct theft *t,
         args[arg_i] = candidate;
         if (t->bloom) {
             if (theft_call_check_called(t, run_info, args)) {
+                LOG(3 - LOG_SHRINK,
+                    "%s: already called, skipping\n", __func__);
                 if (ti->free) { ti->free(candidate, ti->env); }
                 args[arg_i] = cur;
                 continue;

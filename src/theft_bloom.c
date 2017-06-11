@@ -53,6 +53,7 @@ void theft_bloom_mark(struct theft_bloom *b, uint8_t *data, size_t data_size) {
 /* Check whether the data's hash is in the bloom filter. */
 bool theft_bloom_check(struct theft_bloom *b, uint8_t *data, size_t data_size) {
     uint64_t hash = theft_hash_onepass(data, data_size);
+    LOG(4, "%s: overall hash: 0x%016" PRIx64 "\n", __func__, hash);
     uint8_t bc = b->bit_count;
     uint64_t mask = (1 << bc) - 1;
 

@@ -59,7 +59,9 @@ get_arg_hash_buffer(theft_hash *buffer,
         struct theft_run_info *run_info, void **args) {
     for (int i = 0; i < run_info->arity; i++) {
         struct theft_type_info *ti = run_info->type_info[i];
-        buffer[i] = ti->hash(args[i], ti->env);
+        theft_hash h = ti->hash(args[i], ti->env);
+        LOG(4, "%s: arg %d hash; 0x%016" PRIx64 "\n", __func__, i, h);
+        buffer[i] = h;
     }
 }
 
