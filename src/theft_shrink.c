@@ -126,7 +126,7 @@ attempt_to_shrink_arg(struct theft *t,
             if (!repeated) {
                 if (res == THEFT_TRIAL_FAIL) {
                     trial_info->successful_shrinks++;
-                    theft_autoshrink_update_model(t, run_info, arg_i, res, 1);
+                    theft_autoshrink_update_model(t, run_info, arg_i, res, 3);
                 } else {
                     trial_info->failed_shrinks++;
                 }
@@ -150,7 +150,7 @@ attempt_to_shrink_arg(struct theft *t,
             }
         }
 
-        theft_autoshrink_update_model(t, run_info, arg_i, res, 3);
+        theft_autoshrink_update_model(t, run_info, arg_i, res, 8);
 
         switch (res) {
         case THEFT_TRIAL_PASS:

@@ -334,13 +334,19 @@ theft_autoshrink_shrink(struct theft *t,
             orig, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
+    if (env->model.weights[WEIGHT_DROP] == 0) {
+        init_model(env);
+    }
+
+    autoshrink_prng_fun *prng = get_prng(t, env);
+
     /* Alternate dropping requests from the pool and mutating individual
      * requests. Since tactic 0 will trigger dropping and successful
      * shrinks reset the tactic to 0, this means it will favor dropping
      * as long as it's effective.
      *
      * TODO: Some sort of weighted/adaptive process could be better. */
-    if (theft_random_bits(t, 8) < env->model.drops) {
+    if (prng(8, env->udata) < env->model.weights[WEIGHT_DROP]) {
         env->model.cur_set |= ASA_DROP;
         drop_from_bit_pool(t, env, orig, copy);
     } else {
@@ -525,12 +531,14 @@ static void mutate_bit_pool(struct theft *t,
 
     /* Get some random bits, and for each 1 bit, we will make one change in
      * the pool copy. */
-    const uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
-    uint8_t changed = 0;
+    uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
 
-    if (env->model.drops == 0) {
-        init_model(env);
-    }
+    /* if (change_count > orig->request_count) {
+     *     printf("CLAMPING %u to %zd\n", change_count, orig->request_count);
+     *     change_count = orig->request_count;
+     * } */
+
+    uint8_t changed = 0;
 
     /* Attempt to make up to CHANGE_COUNT changes, with limited retries
      * for when the random modifications have no effect. */
@@ -586,8 +594,8 @@ choose_and_mutate_request(struct theft *t,
         assert(false);
     case MUT_SHIFT:
     {
-        env->model.cur_tried |= ASA_MASK;
-        uint8_t shift = prng(2, env->udata) + 1;
+        env->model.cur_tried |= ASA_SHIFT;
+        const uint8_t shift = prng(2, env->udata) + 1;
         if (size > 64) {
             assert(false); // TODO -- bulk requests
         } else {
@@ -858,29 +866,30 @@ static autoshrink_prng_fun *get_prng(struct theft *t,
 
 static void init_model(struct theft_autoshrink_env *env) {
     env->model = (struct autoshrink_model) {
-        .drops = TWO_EVENLY,
-        .shift = FOUR_EVENLY,
-        .mask = FOUR_EVENLY,
-        .swap = FOUR_EVENLY,
-        .sub = FOUR_EVENLY,
+        .weights = {
+            [WEIGHT_DROP] = TWO_EVENLY,
+            [WEIGHT_SHIFT] = FOUR_EVENLY,
+            [WEIGHT_MASK] = FOUR_EVENLY,
+            [WEIGHT_SWAP] = FOUR_EVENLY - 0x10,
+            [WEIGHT_SUB] = FOUR_EVENLY,
+        },
     };
 }
 
 static enum mutation
 get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env) {
-    assert(env->model.shift <= MODEL_MAX && env->model.shift >= MODEL_MIN);
-    const uint16_t shift = env->model.shift;
-    const uint16_t mask = shift + env->model.mask;
-    const uint16_t swap = mask + env->model.swap;
-    const uint16_t sub = swap + env->model.sub;
+    const uint16_t shift = env->model.weights[WEIGHT_SHIFT];
+    const uint16_t mask = shift + env->model.weights[WEIGHT_MASK];
+    const uint16_t swap = mask + env->model.weights[WEIGHT_SWAP];
+    const uint16_t sub = swap + env->model.weights[WEIGHT_SUB];
 
     LOG(3 - LOG_AUTOSHRINK,
         "%s: shift %04x, mask %04x, swap %04x, sub %04x => LIMIT %04x\n",
         __func__,
-        env->model.shift,
-        env->model.mask,
-        env->model.swap,
-        env->model.sub,
+        env->model.weights[WEIGHT_SHIFT],
+        env->model.weights[WEIGHT_MASK],
+        env->model.weights[WEIGHT_SWAP],
+        env->model.weights[WEIGHT_SUB],
         sub);
     uint8_t bit_count = 7;
     while ((1LU << bit_count) < sub) {
@@ -911,12 +920,30 @@ get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env) {
     }
 }
 
-static void adjust(uint8_t *v, uint8_t offset) {
-    *v += offset;
-    if (*v < MODEL_MIN) {
-        *v = MODEL_MIN;
-    } else if (*v > MODEL_MAX) {
-        *v = MODEL_MAX;
+static void adjust(struct autoshrink_model *model,
+        enum autoshrink_weight w,
+    uint8_t min, uint8_t max, int8_t adjustment) {
+    enum autoshrink_action flag = (enum autoshrink_action)(1U << w);
+    uint8_t nv = 0;
+    if (model->cur_set & flag) {
+        nv = model->weights[w] + adjustment;
+    } else if ((model->cur_tried & flag) && adjustment > 0) {
+        /* De-emphasize actions that produced no changes, but don't add
+         * emphasis to them if they caused the property to pass (leading
+         * to a negative adjustment) */
+        printf("DE-EMPHASIZING flag 0x%02x by %u\n",
+            flag, adjustment);
+        nv = model->weights[w] - adjustment;
+        printf("  -- was %u, now %u\n", model->weights[w], nv);
+    }
+    
+    if (nv != 0) {
+        if (nv > max) {
+            nv = max;
+        } else if (nv < min) {
+            nv = min;
+        }
+        model->weights[w] = nv;
     }
 }
 
@@ -935,28 +962,22 @@ theft_autoshrink_update_model(struct theft *t,
 
     uint8_t adj = (res == THEFT_TRIAL_FAIL ? adjustment : -adjustment);
 
-    LOG(3 - LOG_AUTOSHRINK,
+    LOG(3 - LOG_AUTOSHRINK - 3,
         "%s: res %d, arg_id %u, adj %u, cur_set 0x%02x\n",
         __func__, res, arg_id, adjustment, cur_set);
 
-    env->model.drops += (cur_set & ASA_DROP ? adj : -adj);
-    if (env->model.drops < DROPS_MIN) {
-        env->model.drops = DROPS_MIN;
-    } else if (env->model.drops > DROPS_MAX) {
-        env->model.drops = DROPS_MAX;
-    }
-
-    adjust(&env->model.shift, (cur_set & ASA_SHIFT) ? adj : -adj);
-    adjust(&env->model.mask, (cur_set & ASA_MASK) ? adj : -adj);
-    adjust(&env->model.swap, (cur_set & ASA_SWAP) ? adj : -adj);
-    adjust(&env->model.sub, (cur_set & ASA_SUB) ? adj : -adj);
-
-    LOG(3 - LOG_AUTOSHRINK,
+    adjust(&env->model, WEIGHT_DROP, DROPS_MIN, DROPS_MAX, adj);
+    adjust(&env->model, WEIGHT_SHIFT, MODEL_MIN, MODEL_MAX, adj);
+    adjust(&env->model, WEIGHT_MASK, MODEL_MIN, MODEL_MAX, adj);
+    adjust(&env->model, WEIGHT_SWAP, MODEL_MIN, MODEL_MAX, adj);
+    adjust(&env->model, WEIGHT_SUB, MODEL_MIN, MODEL_MAX, adj);
+        
+    LOG(3 - LOG_AUTOSHRINK - 3,
         "cur_set: %02" PRIx8 " -- new weights DROP %u SHIFT %u MASK %u SWAP %u SUB %u\n",
         (uint8_t)env->model.cur_set,
-        env->model.drops,
-        env->model.shift,
-        env->model.mask,
-        env->model.swap,
-        env->model.sub);
+        env->model.weights[WEIGHT_DROP],
+        env->model.weights[WEIGHT_SHIFT],
+        env->model.weights[WEIGHT_MASK],
+        env->model.weights[WEIGHT_SWAP],
+        env->model.weights[WEIGHT_SUB]);
 }

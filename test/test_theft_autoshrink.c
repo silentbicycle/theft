@@ -18,7 +18,7 @@ struct fake_prng_info {
 
 static uint64_t fake_prng(uint8_t bits, void *udata) {
     struct fake_prng_info *info = (struct fake_prng_info *)udata;
-    //printf("BITS, %d\n", bits);
+    printf("BITS, %d\n", bits);
     if (bits == info->pairs[info->pos].bits) {
         return info->pairs[info->pos++].value;
     } else {
@@ -99,6 +99,7 @@ TEST ll_drop_nothing(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },  // don't drop anything
             { 5, 31, },
@@ -160,6 +161,7 @@ TEST ll_drop_nothing_but_do_truncate(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },  // don't drop anything
             { 5, 31, },
@@ -221,6 +223,7 @@ TEST ll_drop_first(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 0, },  // drop first 3 bits
             { 5, 0, },  // ... and corresponding 8 bits
@@ -290,6 +293,7 @@ TEST ll_drop_third_and_fourth(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },
             { 5, 31, },
@@ -353,6 +357,7 @@ TEST ll_drop_last(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0 },    // drop
             { 32, DO_NOT_DROP },
             { 5, 31, },
             { 5, 31, },
@@ -416,11 +421,15 @@ TEST ll_drop_last(void) {
 TEST ll_mutate_shift(void) {
     struct theft *t = theft_init(0);
 
+    /* FIXME: inject test model */
+
     uint8_t pos_bits = 4; // log2ceil(11)
 
     struct fake_prng_info prng_info = {
         // three changes, all right shifting by 1
         .pairs = {
+            { 8, 0xFF },  // mutate
+
             // popcount: 3 changes
             { 5, 0x01 | 0x02 /* + 1 */, },
 
@@ -496,6 +505,8 @@ TEST ll_mutate_mask(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0xFF },  // mutate
+
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
@@ -562,6 +573,8 @@ TEST ll_mutate_swap(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0xFF },  // mutate
+
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
@@ -626,6 +639,8 @@ TEST ll_mutate_sub(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0xFF },  // mutate
+
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
@@ -691,6 +706,8 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
 
     struct fake_prng_info prng_info = {
         .pairs = {
+            { 8, 0xFF },  // mutate
+
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 

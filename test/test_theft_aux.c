@@ -1,14 +1,14 @@
 #include "test_theft.h"
 #include "theft_aux.h"
 
-struct a_squared_lte_b_env {
+struct a_squared_env {
     struct theft_print_trial_result_env print_env;
     bool found;
 };
 
 /* Property: a^2 <= 12345 */
 static enum theft_trial_res
-prop_a_squared_gte_fixed(void *arg) {
+prop_a_squared_lte_fixed(void *arg) {
     int8_t a = *(int8_t *)arg;
     uint16_t b = 12345;
     const size_t aa = a * a;
@@ -21,7 +21,7 @@ prop_a_squared_gte_fixed(void *arg) {
 static enum theft_hook_trial_post_res
 fixed_expected_failure_trial_post(const struct theft_hook_trial_post_info *info,
                             void *penv) {
-    struct a_squared_lte_b_env *env = (struct a_squared_lte_b_env *)penv;
+    struct a_squared_env *env = (struct a_squared_env *)penv;
     int8_t a = *(int8_t *)info->args[0];
 
     if (greatest_get_verbosity() > 0) {
@@ -57,15 +57,15 @@ fixed_log_shrink_trial_post(const struct theft_hook_shrink_trial_post_info *info
     return THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE;
 }
 
-TEST a_squared_gte_fixed(void) {
+TEST a_squared_lte_fixed(void) {
     theft_seed seed = theft_seed_of_time();
 
-    struct a_squared_lte_b_env env;
+    struct a_squared_env env;
     memset(&env, 0x00, sizeof(env));
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_a_squared_gte_fixed,
+        .fun = prop_a_squared_lte_fixed,
         .type_info = {
             theft_get_builtin_type_info(THEFT_BUILTIN_int8_t),
         },
@@ -87,14 +87,14 @@ TEST a_squared_gte_fixed(void) {
 }
 
 static enum theft_trial_res
-prop_a_squared_lte_b(void *arg_a, void *arg_b) {
+prop_a_squared_lt_b(void *arg_a, void *arg_b) {
     int8_t a = *(int8_t *)arg_a;
     uint16_t b = *(uint16_t *)arg_b;
     const size_t aa = a * a;
 
     if (0) {
-        fprintf(stdout, "\n$$ checking (%d^2) <= %u ? %d (a^2 = %zd)\n",
-            a, b, aa <= b, aa);
+        fprintf(stdout, "\n$$ checking (%d^2) < %u ? %d (a^2 = %zd)\n",
+            a, b, aa < b, aa);
     }
 
     return (aa <= b)
@@ -105,7 +105,7 @@ prop_a_squared_lte_b(void *arg_a, void *arg_b) {
 static enum theft_hook_trial_post_res
 expected_failure_trial_post(const struct theft_hook_trial_post_info *info,
                             void *penv) {
-    struct a_squared_lte_b_env *env = (struct a_squared_lte_b_env *)penv;
+    struct a_squared_env *env = (struct a_squared_env *)penv;
     int8_t a = *(int8_t *)info->args[0];
     uint16_t b = *(uint16_t *)info->args[1];
 
@@ -145,15 +145,15 @@ log_shrink_trial_post(const struct theft_hook_shrink_trial_post_info *info,
     return THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE;
 }
 
-TEST a_squared_lte_b(void) {
+TEST a_squared_lt_b(void) {
     theft_seed seed = theft_seed_of_time();
 
-    struct a_squared_lte_b_env env;
+    struct a_squared_env env;
     memset(&env, 0x00, sizeof(env));
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_a_squared_lte_b,
+        .fun = prop_a_squared_lt_b,
         .type_info = {
             theft_get_builtin_type_info(THEFT_BUILTIN_int8_t),
             theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t),
@@ -177,6 +177,6 @@ TEST a_squared_lte_b(void) {
 
 SUITE(aux) {
     // builtins
-    RUN_TEST(a_squared_gte_fixed);
-    RUN_TEST(a_squared_lte_b);
+    RUN_TEST(a_squared_lte_fixed);
+    RUN_TEST(a_squared_lt_b);
 }

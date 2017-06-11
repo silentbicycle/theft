@@ -61,8 +61,8 @@ typedef uint64_t autoshrink_prng_fun(uint8_t bits, void *udata);
 
 #define TWO_EVENLY 0x80
 #define FOUR_EVENLY 0x40
-#define MODEL_MIN 0x10
-#define MODEL_MAX 0x90
+#define MODEL_MIN 0x08
+#define MODEL_MAX 0x80
 
 #define DROPS_MIN 0x10
 #define DROPS_MAX 0xA0
@@ -75,14 +75,18 @@ enum autoshrink_action {
     ASA_SUB = 0x10,
 };
 
+enum autoshrink_weight {
+    WEIGHT_DROP = 0x00,
+    WEIGHT_SHIFT = 0x01,
+    WEIGHT_MASK = 0x02,
+    WEIGHT_SWAP = 0x03,
+    WEIGHT_SUB = 0x04,
+};
+
 struct autoshrink_model {
     enum autoshrink_action cur_tried;
     enum autoshrink_action cur_set;
-    uint8_t drops;
-    uint8_t shift;
-    uint8_t mask;
-    uint8_t swap;
-    uint8_t sub;
+    uint8_t weights[5];
 };
 
 struct theft_autoshrink_env {
