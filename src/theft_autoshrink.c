@@ -346,12 +346,6 @@ theft_autoshrink_shrink(struct theft *t,
         init_model(env);
     }
 
-    /* Alternate dropping requests from the pool and mutating individual
-     * requests. Since tactic 0 will trigger dropping and successful
-     * shrinks reset the tactic to 0, this means it will favor dropping
-     * as long as it's effective.
-     *
-     * TODO: Some sort of weighted/adaptive process could be better. */
     if (should_drop(t, env)) {
         env->model.cur_set |= ASA_DROP;
         drop_from_bit_pool(t, env, orig, copy);

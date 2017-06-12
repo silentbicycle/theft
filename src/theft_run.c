@@ -196,7 +196,6 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         .args = args,
     };
 
-    // TODO: handle this result
     enum theft_hook_trial_post_res pres;
     void *hook_env = run_info->hooks.env;
 
