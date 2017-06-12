@@ -83,10 +83,16 @@ struct theft_print_trial_result_env {
     size_t consec_dup;
 };
 
-/* Print a trial result. */
+/* Print a trial result in the default format. */
 void theft_print_trial_result(
     struct theft_print_trial_result_env *print_env,
     const struct theft_hook_trial_post_info *info);
+
+/* Print a property counter-example that caused a failing trial.
+ * This is the default counterexample hook. */
+enum theft_hook_counterexample_res
+theft_print_counterexample(const struct theft_hook_counterexample_info *info,
+    void *env);
 
 /* Print a standard pre-run report. */
 void theft_print_run_pre_info(FILE *f,

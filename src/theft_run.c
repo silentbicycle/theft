@@ -5,6 +5,7 @@
 #include "theft_trial.h"
 #include "theft_random.h"
 #include "theft_autoshrink.h"
+#include "theft_aux.h"
 
 #include <string.h>
 #include <assert.h>
@@ -38,6 +39,9 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
             .gen_args_pre = cfg->hooks.gen_args_pre,
             .trial_pre = cfg->hooks.trial_pre,
             .trial_post = cfg->hooks.trial_post,
+            .counterexample = (cfg->hooks.counterexample != NULL
+                ? cfg->hooks.counterexample
+                : theft_print_counterexample),
             .shrink_pre = cfg->hooks.shrink_pre,
             .shrink_post = cfg->hooks.shrink_post,
             .shrink_trial_post = cfg->hooks.shrink_trial_post,

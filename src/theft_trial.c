@@ -93,17 +93,23 @@ report_on_failure(struct theft *t,
         struct theft_trial_info *trial_info,
         struct theft_hook_trial_post_info *hook_info,
         theft_hook_trial_post_cb *trial_post) {
-    int arity = run_info->arity;
-    fprintf(t->out, "\n\n -- Counter-Example: %s\n",
-        run_info->name ? run_info-> name : "");
-    fprintf(t->out, "    Trial %u, Seed 0x%016" PRIx64 "\n",
-        trial_info->trial, (uint64_t)trial_info->seed);
-    for (int i = 0; i < arity; i++) {
-        struct theft_type_info *ti = run_info->type_info[i];
-        if (ti->print) {
-            fprintf(t->out, "    Argument %d:\n", i);
-            ti->print(t->out, trial_info->args[i], ti->env);
-            fprintf(t->out, "\n");
+
+    theft_hook_counterexample_cb *counterexample = run_info->hooks.counterexample;
+    if (counterexample != NULL) {
+        struct theft_hook_counterexample_info hook_info = {
+            .t = t,
+            .prop_name = run_info->name,
+            .trial_id = trial_info->trial,
+            .trial_seed = trial_info->seed,
+            .arity = run_info->arity,
+            .type_info = run_info->type_info,
+            /* Note: NOT using real_args here because autoshrink_print
+             * expects the wrapped version. */
+            .args = trial_info->args,
+        };
+        if (counterexample(&hook_info, run_info->hooks.env)
+            != THEFT_HOOK_COUNTEREXAMPLE_CONTINUE) {
+            return THEFT_HOOK_TRIAL_POST_ERROR;
         }
     }
 

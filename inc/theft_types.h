@@ -242,6 +242,25 @@ typedef enum theft_hook_trial_post_res
 theft_hook_trial_post_cb(const struct theft_hook_trial_post_info *info,
     void *env);
 
+/* Counter-example hook: called when theft finds a counter-example
+ * that causes a property test to fail. */
+enum theft_hook_counterexample_res {
+    THEFT_HOOK_COUNTEREXAMPLE_CONTINUE,
+    THEFT_HOOK_COUNTEREXAMPLE_ERROR,
+};
+struct theft_hook_counterexample_info {
+    struct theft *t;
+    const char *prop_name;
+    size_t trial_id;
+    theft_seed trial_seed;
+    uint8_t arity;
+    struct theft_type_info **type_info;
+    void **args;
+};
+typedef enum theft_hook_counterexample_res
+theft_hook_counterexample_cb(const struct theft_hook_counterexample_info *info,
+    void *env);
+
 /* Pre-shrinking hook: called before each shrinking attempt.
  * Returning HALT will keep shrinking from going any further. */
 enum theft_hook_shrink_pre_res {
@@ -387,6 +406,7 @@ struct theft_run_config {
         theft_hook_gen_args_pre_cb *gen_args_pre;
         theft_hook_trial_pre_cb *trial_pre;
         theft_hook_trial_post_cb *trial_post;
+        theft_hook_counterexample_cb *counterexample;
         theft_hook_shrink_pre_cb *shrink_pre;
         theft_hook_shrink_post_cb *shrink_post;
         theft_hook_shrink_trial_post_cb *shrink_trial_post;
