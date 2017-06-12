@@ -21,7 +21,7 @@ bool_alloc(struct theft *t, void *env, void **instance) {
     return THEFT_ALLOC_OK;
 }
 
-#define BITS_USE_SPECIAL (2 + 4 /* FIXME */)
+#define BITS_USE_SPECIAL (3)
 
 #define ALLOC_USCALAR(NAME, TYPE, BITS, ...)                           \
 static enum theft_alloc_res                                            \

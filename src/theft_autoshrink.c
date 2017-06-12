@@ -566,8 +566,6 @@ choose_and_mutate_request(struct theft *t,
                           struct theft_autoshrink_bit_pool *pool) {
 
     autoshrink_prng_fun *prng = get_prng(t, env);
-    /* FIXME: this should be based on adaptive weighting */
-    //enum mutation mtype = (enum mutation)prng(MUTATION_TYPE_BITS, env->udata);
     enum mutation mtype = get_weighted_mutation(t, env);
 
     const uint8_t request_bits = log2ceil(orig->request_count);

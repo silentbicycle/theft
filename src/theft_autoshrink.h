@@ -24,10 +24,11 @@ struct theft_autoshrink_bit_pool {
     size_t consumed;
     size_t request_count;
     size_t request_ceil;
-    // TODO: should this be uint32_t or uint16_t?
+    /* TODO: requests are currently limited to <=64 bits, but
+     * `theft_random_bits_bulk` will allow more. */
     uint32_t *requests;
 
-    size_t generation; // FIXME TODO DEBUG only
+    size_t generation;
 };
 
 /* How large should the default autoshrink bit pool be?
@@ -99,9 +100,8 @@ struct theft_autoshrink_env {
     size_t pool_limit;
     enum theft_autoshrink_print_mode print_mode;
     size_t max_failed_shrinks;
-    uint32_t max_autoshrinks;  // FIXME: name
-    uint64_t drop_threshold;   // FIXME: name
-    uint8_t drop_bits;         // FIXME: name
+    uint64_t drop_threshold;
+    uint8_t drop_bits;
 
     struct autoshrink_model model;
 

@@ -71,6 +71,7 @@ TEST a_squared_lte_fixed(void) {
         },
         .bloom_bits = 20,
         .seed = seed,
+        .trials = 500,
         .hooks = {
             .run_pre = theft_hook_run_pre_print_info,
             .run_post = theft_hook_run_post_print_info,
@@ -159,6 +160,7 @@ TEST a_squared_lt_b(void) {
         },
         .bloom_bits = 20,
         .seed = seed,
+        .trials = 500,
         .hooks = {
             .run_pre = theft_hook_run_pre_print_info,
             .run_post = theft_hook_run_post_print_info,

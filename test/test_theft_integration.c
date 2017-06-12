@@ -516,13 +516,6 @@ TEST always_seeds_must_be_run() {
 
 #define EXPECTED_SEED 0x15a600d64b175eedLL
 
-TEST seeds_should_not_be_truncated(void) {
-    /* This isn't really a property test so much as a test checking
-     * that explicitly requested 64-bit seeds are passed through to the
-     * callbacks without being truncated. */
-    SKIPm("FIXME");
-}
-
 static enum theft_alloc_res
 seed_alloc(struct theft *t, void *env, void **output) {
     uint64_t *res = malloc(sizeof(*res));
@@ -1103,6 +1096,5 @@ SUITE(integration) {
     RUN_TEST(repeat_first_successful_shrink_once_then_halt);
 
     // Regressions
-    RUN_TEST(seeds_should_not_be_truncated);
     RUN_TEST(expected_seed_should_be_used_first);
 }
