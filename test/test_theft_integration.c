@@ -385,7 +385,7 @@ prop_gen_list_unique_pair(list *a, list *b) {
         list *la = a;
         list *lb = b;
 
-        for (la = a; la && lb; la = a->next, lb = b->next) {
+        for (la = a; la && lb; la = la->next, lb = lb->next) {
             if (la->v != lb->v) { break; }
         }
 
@@ -442,7 +442,7 @@ TEST two_generated_lists_do_not_match() {
     };
     res = theft_run(&cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
-    ASSERT(env.fail > 0);
+    ASSERT(env.fail);
     theft_free(t);
     PASS();
 }
