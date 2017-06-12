@@ -46,12 +46,12 @@ bool theft_autoshrink_wrap(struct theft *t,
     return true;
 }
 
-uint64_t
+void
 theft_autoshrink_bit_pool_random(struct theft *t,
         struct theft_autoshrink_bit_pool *pool,
-        uint8_t bit_count, bool save_request) {
+        uint8_t bit_count, bool save_request,
+        uint64_t *buf) {
     assert(pool);
-    assert(bit_count <= 64);
 
     /* If not shrinking, lazily fill the bit pool. */
     if (!pool->shrinking) {
@@ -67,7 +67,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
                 (void *)nbits, nceil);
             if (nbits == NULL) {
                 assert(false);   // alloc fail
-                return 0;
+                return;
             }
             pool->bits = (uint8_t *)nbits;
             pool->bits_ceil = nceil;
@@ -88,7 +88,8 @@ theft_autoshrink_bit_pool_random(struct theft *t,
      * end of the pool, just return 0 bits forever and stop tracking
      * requests. */
     if (pool->consumed == pool->limit) {
-        return 0;
+        memset(buf, 0x00, (bit_count / 64) + ((bit_count % 64) == 0 ? 0 : 1));
+        return;
     } else if (pool->consumed + bit_count >= pool->limit) {
         bit_count = pool->limit - pool->consumed;
     }
@@ -99,26 +100,27 @@ theft_autoshrink_bit_pool_random(struct theft *t,
         }
     }
 
-    uint64_t res = 0;
+    size_t res_offset = 0;
     size_t offset = pool->consumed / 8;
     uint8_t bit = 1LU << (pool->consumed & 0x07);
     const uint8_t *bits = pool->bits;
 
     for (uint8_t i = 0; i < bit_count; i++) {
-        res |= (bits[offset] & bit) ? (1LLU << i) : 0;
+        uint8_t bit_i = i % 64;
+        buf[res_offset] |= (bits[offset] & bit) ? (1LLU << bit_i) : 0;
         if (bit == 0x80) {
             bit = 0x01;
             offset++;
         } else {
             bit <<= 1;
         }
+
+        if (bit_i == 63) {
+            res_offset++;
+        }
     }
 
-    LOG(3 - LOG_AUTOSHRINK,
-        "bit_pool_random: %" PRIu64 " (0x%" PRIx64 ")\n", res, res);
-
     pool->consumed += bit_count;
-    return res;
 }
 
 static size_t get_aligned_size(size_t size, uint8_t alignment) {
@@ -582,7 +584,24 @@ choose_and_mutate_request(struct theft *t,
         env->model.cur_tried |= ASA_SHIFT;
         const uint8_t shift = prng(2, env->udata) + 1;
         if (size > 64) {
-            assert(false); // TODO -- bulk requests
+            /* Pick an offset and region to shift */
+            const uint64_t pos = prng(32, env->udata) % size;
+            uint32_t to_change = prng(6, env->udata);
+            if (to_change > size - pos) {
+                to_change = size - pos;
+            }
+            const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+            const uint64_t nbits = bits >> shift;
+            LOG(2  - LOG_AUTOSHRINK,
+                "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
+                shift, size, pos, bit_offset, bits, nbits);
+            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+            if (bits != nbits) {
+                env->model.cur_set |= ASA_SHIFT;
+                return true;
+            } else {
+                return false;
+            }
         } else {
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             const uint64_t nbits = bits >> shift;
@@ -603,14 +622,32 @@ choose_and_mutate_request(struct theft *t,
     {
         env->model.cur_tried |= ASA_MASK;
         /* Clear each bit with 1/4 probability */
-        uint64_t mask = prng(size, env->udata) | prng(size, env->udata);
-        if (mask == (1LU << size) - 1) {
+        uint8_t mask_size = (size <= 64 ? size : 64);
+        uint64_t mask = prng(mask_size, env->udata) | prng(mask_size, env->udata);
+        if (mask == (1LU << mask_size) - 1) {
             // always clear at least 1 bit
-            const uint8_t one_bit = prng(8, env->udata) % size;
+            const uint8_t one_bit = prng(8, env->udata) % mask_size;
             mask &=- (1LU << one_bit);
         }
         if (size > 64) {
-            assert(false); // TODO -- bulk requests
+            /* Pick an offset and region to shift */
+            const uint64_t pos = prng(32, env->udata) % size;
+            uint32_t to_change = prng(6, env->udata);
+            if (to_change > size - pos) {
+                to_change = size - pos;
+            }
+            const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+            const uint64_t nbits = bits & mask;
+            LOG(2  - LOG_AUTOSHRINK,
+                "MASK[0x%016" PRIx64 ", %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
+                mask, size, pos, bit_offset, bits, nbits);
+            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+            if (bits != nbits) {
+                env->model.cur_set |= ASA_MASK;
+                return true;
+            } else {
+                return false;
+            }
         } else {
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             const uint64_t nbits = bits & mask;
@@ -631,7 +668,8 @@ choose_and_mutate_request(struct theft *t,
     {
         env->model.cur_tried |= ASA_SWAP;
         if (size > 64) {
-            assert(false); // TODO -- bulk requests
+            //assert(false); // TODO -- bulk requests
+            return false;
         } else {
             LOG(4 - LOG_AUTOSHRINK, "SWAP at %zd...\n", pos);
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
@@ -658,9 +696,29 @@ choose_and_mutate_request(struct theft *t,
     case MUT_SUB:
     {
         env->model.cur_tried |= ASA_SUB;
-        const uint64_t sub = prng(size, env->udata);
+        uint8_t sub_size = (size <= 64 ? size : 64);
+        const uint64_t sub = prng(sub_size, env->udata);
         if (size > 64) {
-            assert(false); // TODO -- bulk requests
+            /* Pick an offset and region to shift */
+            const uint64_t pos = prng(32, env->udata) % size;
+            uint32_t to_change = prng(6, env->udata);
+            if (to_change > size - pos) {
+                to_change = size - pos;
+            }
+            uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+            if (bits > 0) {
+                uint64_t nbits = bits - (sub % bits);
+                if (nbits == bits) {
+                    nbits--;
+                }
+                LOG(2 - LOG_AUTOSHRINK,
+                    "SUB[%" PRIu64 ", %u @ %zd (0x%08zx)]: 0x%016"
+                        PRIx64 " -> 0x%016" PRIx64 "\n",
+                    sub, size, pos, bit_offset, bits, nbits);
+                env->model.cur_set |= ASA_SUB;
+                write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+                return true;
+            }
         } else {
             uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
             if (bits > 0) {

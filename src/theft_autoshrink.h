@@ -24,8 +24,6 @@ struct theft_autoshrink_bit_pool {
     size_t consumed;
     size_t request_count;
     size_t request_ceil;
-    /* TODO: requests are currently limited to <=64 bits, but
-     * `theft_random_bits_bulk` will allow more. */
     uint32_t *requests;
 
     size_t generation;
@@ -139,10 +137,11 @@ bool theft_autoshrink_wrap(struct theft *t,
 void theft_autoshrink_free_bit_pool(struct theft *t,
     struct theft_autoshrink_bit_pool *pool);
 
-uint64_t
+void
 theft_autoshrink_bit_pool_random(struct theft *t,
     struct theft_autoshrink_bit_pool *pool,
-    uint8_t bit_count, bool save_request);
+    uint8_t bit_count, bool save_request,
+    uint64_t *buf);
 
 void
 theft_autoshrink_get_real_args(struct theft_run_info *run_info,

@@ -1,6 +1,7 @@
 #include "test_theft.h"
 #include "theft_autoshrink.h"
 #include "test_theft_autoshrink_ll.h"
+#include "test_theft_autoshrink_bulk.h"
 #include "test_theft_autoshrink_int_array.h"
 
 #include <sys/time.h>
@@ -968,6 +969,47 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
     PASS();
 }
 
+static enum theft_trial_res
+random_bulk_bits_contains_23(void *arg) {
+    struct bulk_buffer *bb = (struct bulk_buffer *)arg;
+
+    const size_t limit = bb->size / 8;
+    const uint8_t *buf8 = (const uint8_t *)bb->buf;
+    for (size_t i = 0; i < limit; i++) {
+        if (buf8[i] == 23) {
+            return THEFT_TRIAL_FAIL;
+        }
+    }
+
+    return THEFT_TRIAL_PASS;
+}
+
+TEST bulk_random_bits(void) {
+    theft_seed seed = theft_seed_of_time();
+    enum theft_run_res res;
+
+    struct hook_env env = { .failures = 0 };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = random_bulk_bits_contains_23,
+        .type_info = { &bb_info },
+        .hooks = {
+            .trial_post = trial_post_hook,
+            .trial_pre = trial_pre_hook,
+            .run_pre = theft_hook_run_pre_print_info,
+            .run_post = theft_hook_run_post_print_info,
+            .env = &env,
+        },
+        .trials = 1000,
+        .seed = seed,
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
+    PASS();
+}
+
 SUITE(autoshrink) {
     // Various tests for single autoshrinking steps, with an injected PRNG
     RUN_TEST(ll_drop_nothing);
@@ -995,4 +1037,6 @@ SUITE(autoshrink) {
         prop_no_seq_of_3);
 
     RUN_TESTp(ia_prop, "not starting with 9", prop_not_start_with_9);
+
+    RUN_TEST(bulk_random_bits);
 }

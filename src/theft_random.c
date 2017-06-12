@@ -6,7 +6,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
-static uint64_t mask(uint8_t bits);
+static uint64_t get_mask(uint8_t bits);
 
 /* (Re-)initialize the random number generator with a specific seed.
  * This stops using the current bit pool. */
@@ -32,37 +32,60 @@ void theft_random_stop_using_bit_pool(struct theft *t) {
 /* Get BITS random bits from the test runner's PRNG.
  * Bits can be retrieved at most 64 at a time. */
 uint64_t theft_random_bits(struct theft *t, uint8_t bit_count) {
-    assert(bit_count <= 64);
+    if (bit_count > 64) {
+        LOG(0, "BIT COUNT: %u\n", bit_count);
+        assert(bit_count <= 64);
+    }
     LOG(4, "RANDOM_BITS: available %u, bit_count: %u, buf %016" PRIx64 "\n",
         t->bits_available, bit_count, t->prng_buf);
 
-    if (t->bit_pool) {
-        return theft_autoshrink_bit_pool_random(t, t->bit_pool, bit_count, true);
-    }
-
     uint64_t res = 0;
-    uint8_t shift = 0;
+    theft_random_bits_bulk(t, bit_count, &res);
+    return res;
 
-    if (t->bits_available < bit_count) {
-        LOG(4, " -- mask of %" PRIx64 "\n", mask(t->bits_available));
-        res |= t->prng_buf & mask(t->bits_available);
-        shift += t->bits_available;
-        bit_count -= t->bits_available;
-        t->prng_buf = theft_mt_random(t->mt);
-        t->bits_available = 64;
-        LOG(4, " -- NEW BUF %016" PRIx64 ", partial res %016" PRIx64 "\n",
-            t->prng_buf, res);
+}
+
+void theft_random_bits_bulk(struct theft *t, uint32_t bit_count, uint64_t *buf) {
+    assert(buf);
+    if (t->bit_pool) {
+        theft_autoshrink_bit_pool_random(t, t->bit_pool, bit_count, true, buf);
+        return;
     }
 
-    res |= ((t->prng_buf & mask(bit_count)) << shift);
-    t->bits_available -= bit_count;
-    t->prng_buf >>= bit_count;
-    LOG(4, " -- res %016" PRIx64 ", bit_count %u, shift %u, buf %016" PRIx64 "\n",
-        res, bit_count, shift, t->prng_buf);
-    LOG(4, " -- shifted buf: %" PRIx64 "\n", t->prng_buf);
+    size_t rem = bit_count;
+    uint8_t shift = 0;
+    size_t offset = 0;
 
-    LOG(4, " -- RANDOM_BITS %d -> result %016" PRIx64 "\n", bit_count, res);
-    return res;
+    while (rem > 0) {
+        if (t->bits_available == 0) {
+            t->prng_buf = theft_mt_random(t->mt);
+            t->bits_available = 64;
+        }
+
+        uint8_t take = 64 - shift;
+        if (take > rem) {
+            take = rem;
+        }
+        if (take > t->bits_available) {
+            take = t->bits_available;
+        }
+
+        LOG(5, "%s: rem %zd, available %u, buf 0x%016" PRIx64 ", offset %zd, take %u\n",
+            __func__, rem, t->bits_available, t->prng_buf, offset, take);
+
+        const uint64_t mask = get_mask(take);
+        buf[offset] |= (t->prng_buf & mask) << shift;
+        t->bits_available -= take;
+        t->prng_buf >>= take;
+
+        shift += take;
+        if (shift == 64) {
+            offset++;
+            shift = 0;
+        }
+
+        rem -= take;
+    }
 }
 
 /* Get a random 64-bit integer from the test runner's PRNG.
@@ -80,7 +103,7 @@ double theft_random_double(struct theft *t) {
     return res;
 }
 
-static uint64_t mask(uint8_t bits) {
+static uint64_t get_mask(uint8_t bits) {
     if (bits == 64) {
         return ~(uint64_t)0;    // just set all bits -- would overflow
     } else {
