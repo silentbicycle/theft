@@ -18,7 +18,7 @@ struct fake_prng_info {
 
 static uint64_t fake_prng(uint8_t bits, void *udata) {
     struct fake_prng_info *info = (struct fake_prng_info *)udata;
-    printf("BITS, %d\n", bits);
+    //printf("BITS, %d\n", bits);
     if (bits == info->pairs[info->pos].bits) {
         return info->pairs[info->pos++].value;
     } else {
