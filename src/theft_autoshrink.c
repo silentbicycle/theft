@@ -52,6 +52,9 @@ theft_autoshrink_bit_pool_random(struct theft *t,
         uint8_t bit_count, bool save_request,
         uint64_t *buf) {
     assert(pool);
+    if (bit_count == 0) {
+        return;
+    }
 
     /* If not shrinking, lazily fill the bit pool. */
     if (!pool->shrinking) {
@@ -457,13 +460,40 @@ static void drop_from_bit_pool(struct theft *t,
             LOG(2 - LOG_AUTOSHRINK,
                 "DROPPING: %zd - %zd\n", src_offset, src_offset + req_size);
             drop_count++;
-            for (size_t bi = 0; bi < req_size; bi++) {  // drop
-                src_bit <<= 1;
-                if (src_bit == 0x00) {
-                    src_bit = 0x01;
-                    src_byte++;
+
+            if (req_size > 64) { /* drop subset */
+                uint32_t drop_offset = prng(32, env->udata) % req_size;
+                uint32_t drop_size = prng(32, env->udata) % req_size;
+                for (size_t bi = 0; bi < req_size; bi++) {
+                    if (bi < drop_offset || bi > drop_offset + drop_size) {
+                        if (orig->bits[src_byte] & src_bit) {
+                            copy->bits[dst_byte] |= dst_bit;
+                        }
+                    }
+
+                    src_bit <<= 1;
+                    if (src_bit == 0x00) {
+                        src_bit = 0x01;
+                        src_byte++;
+                    }
+                    src_offset++;
+
+                    dst_bit <<= 1;
+                    if (dst_bit == 0x00) {
+                        dst_bit = 0x01;
+                        dst_byte++;
+                    }
+                    dst_offset++;
                 }
-                src_offset++;
+            } else {                                       /* drop all */
+                for (size_t bi = 0; bi < req_size; bi++) {
+                    src_bit <<= 1;
+                    if (src_bit == 0x00) {
+                        src_bit = 0x01;
+                        src_byte++;
+                    }
+                    src_offset++;
+                }
             }
         } else {  // copy
             for (size_t bi = 0; bi < req_size; bi++) {
@@ -583,38 +613,30 @@ choose_and_mutate_request(struct theft *t,
     {
         env->model.cur_tried |= ASA_SHIFT;
         const uint8_t shift = prng(2, env->udata) + 1;
-        if (size > 64) {
-            /* Pick an offset and region to shift */
-            const uint64_t pos = prng(32, env->udata) % size;
-            uint32_t to_change = prng(6, env->udata);
+        uint64_t pos = 0;
+        uint32_t to_change = 0;
+
+        if (size > 64) {        /* Pick an offset and region to shift */
+            pos = prng(32, env->udata) % size;
+            to_change = prng(6, env->udata);
             if (to_change > size - pos) {
                 to_change = size - pos;
             }
-            const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
-            const uint64_t nbits = bits >> shift;
-            LOG(2  - LOG_AUTOSHRINK,
-                "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
-                shift, size, pos, bit_offset, bits, nbits);
-            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
-            if (bits != nbits) {
-                env->model.cur_set |= ASA_SHIFT;
-                return true;
-            } else {
-                return false;
-            }
         } else {
-            const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
-            const uint64_t nbits = bits >> shift;
-            LOG(2  - LOG_AUTOSHRINK,
-                "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
-                shift, size, pos, bit_offset, bits, nbits);
-            write_bits_at_offset(pool, bit_offset, size, nbits);
-            if (bits != nbits) {
-                env->model.cur_set |= ASA_SHIFT;
-                return true;
-            } else {
-                return false;
-            }
+            to_change = size;   /* just change the whole thing */
+        }
+
+        const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+        const uint64_t nbits = bits >> shift;
+        LOG(2  - LOG_AUTOSHRINK,
+            "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
+            shift, size, pos, bit_offset, bits, nbits);
+        write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+        if (bits != nbits) {
+            env->model.cur_set |= ASA_SHIFT;
+            return true;
+        } else {
+            return false;
         }
         return false;
     }
@@ -629,48 +651,65 @@ choose_and_mutate_request(struct theft *t,
             const uint8_t one_bit = prng(8, env->udata) % mask_size;
             mask &=- (1LU << one_bit);
         }
-        if (size > 64) {
-            /* Pick an offset and region to shift */
-            const uint64_t pos = prng(32, env->udata) % size;
-            uint32_t to_change = prng(6, env->udata);
+
+        uint64_t pos = 0;
+        uint32_t to_change = 0;
+
+        if (size > 64) {        /* Pick an offset and region to shift */
+            pos = prng(32, env->udata) % size;
+            to_change = prng(6, env->udata);
             if (to_change > size - pos) {
                 to_change = size - pos;
             }
-            const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
-            const uint64_t nbits = bits & mask;
-            LOG(2  - LOG_AUTOSHRINK,
-                "MASK[0x%016" PRIx64 ", %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
-                mask, size, pos, bit_offset, bits, nbits);
-            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
-            if (bits != nbits) {
-                env->model.cur_set |= ASA_MASK;
-                return true;
-            } else {
-                return false;
-            }
         } else {
-            const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
-            const uint64_t nbits = bits & mask;
-            LOG(2  - LOG_AUTOSHRINK,
-                "MASK[0x%016" PRIx64 ", %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
-                mask, size, pos, bit_offset, bits, nbits);
-            write_bits_at_offset(pool, bit_offset, size, nbits);
-            if (bits != nbits) {
-                env->model.cur_set |= ASA_MASK;
-                return true;
-            } else {
-                return false;
-            }
+            to_change = size;
         }
-        return false;
+        const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+        const uint64_t nbits = bits & mask;
+        LOG(2  - LOG_AUTOSHRINK,
+            "MASK[0x%016" PRIx64 ", %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
+            mask, size, pos, bit_offset, bits, nbits);
+        write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+        if (bits != nbits) {
+            env->model.cur_set |= ASA_MASK;
+            return true;
+        } else {
+            return false;
+        }
     }
     case MUT_SWAP:
     {
         env->model.cur_tried |= ASA_SWAP;
+        assert(size > 0);
         if (size > 64) {
-            //assert(false); // TODO -- bulk requests
+            /* maybe swap two blocks non-overlapping within the request */
+            uint8_t to_swap = prng(6, env->udata);
+            while (2*to_swap >= size) {
+                to_swap /= 2;
+            }
+            if (to_swap == 0) {
+                return false;
+            }
+            assert(size - 2*to_swap > 0);
+            size_t pos_a = prng(32, env->udata) % (size - to_swap);
+            size_t pos_b = prng(32, env->udata) % (size - 2*to_swap);
+            if ((pos_a < pos_b && pos_a + to_swap > pos_b)
+                || (pos_b < pos_a && pos_b + to_swap > pos_a)) {
+                return false;   /* overlapping */
+            }
+
+            const uint64_t a = read_bits_at_offset(pool, bit_offset + pos_a, to_swap);
+            const uint64_t b = read_bits_at_offset(pool, bit_offset + pos_b, to_swap);
+            if (b < a) {
+                LOG(2 - LOG_AUTOSHRINK, "SWAPPING %zd <-> %zd\n",
+                    bit_offset + pos_a, bit_offset + pos_a);
+                write_bits_at_offset(pool, bit_offset + pos_a, to_swap, b);
+                write_bits_at_offset(pool, bit_offset + pos_b, to_swap, a);
+                env->model.cur_set |= ASA_SWAP;
+                return true;
+            }
             return false;
-        } else {
+        } else {                /* maybe swap two requests with the same size */
             LOG(4 - LOG_AUTOSHRINK, "SWAP at %zd...\n", pos);
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
 
@@ -698,42 +737,30 @@ choose_and_mutate_request(struct theft *t,
         env->model.cur_tried |= ASA_SUB;
         uint8_t sub_size = (size <= 64 ? size : 64);
         const uint64_t sub = prng(sub_size, env->udata);
-        if (size > 64) {
-            /* Pick an offset and region to shift */
-            const uint64_t pos = prng(32, env->udata) % size;
-            uint32_t to_change = prng(6, env->udata);
+        uint64_t pos = 0;
+        uint32_t to_change = 0;
+        if (size > 64) {        /* Pick an offset and region to shift */
+            pos = prng(32, env->udata) % size;
+            to_change = prng(6, env->udata);
             if (to_change > size - pos) {
                 to_change = size - pos;
             }
-            uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
-            if (bits > 0) {
-                uint64_t nbits = bits - (sub % bits);
-                if (nbits == bits) {
-                    nbits--;
-                }
-                LOG(2 - LOG_AUTOSHRINK,
-                    "SUB[%" PRIu64 ", %u @ %zd (0x%08zx)]: 0x%016"
-                        PRIx64 " -> 0x%016" PRIx64 "\n",
-                    sub, size, pos, bit_offset, bits, nbits);
-                env->model.cur_set |= ASA_SUB;
-                write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
-                return true;
+        } else {                /* just change the whole thing */
+            to_change = size;
+        }
+        uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+        if (bits > 0) {
+            uint64_t nbits = bits - (sub % bits);
+            if (nbits == bits) {
+                nbits--;
             }
-        } else {
-            uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
-            if (bits > 0) {
-                uint64_t nbits = bits - (sub % bits);
-                if (nbits == bits) {
-                    nbits--;
-                }
-                LOG(2 - LOG_AUTOSHRINK,
-                    "SUB[%" PRIu64 ", %u @ %zd (0x%08zx)]: 0x%016"
-                        PRIx64 " -> 0x%016" PRIx64 "\n",
-                    sub, size, pos, bit_offset, bits, nbits);
-                env->model.cur_set |= ASA_SUB;
-                write_bits_at_offset(pool, bit_offset, size, nbits);
-                return true;
-            }
+            LOG(2 - LOG_AUTOSHRINK,
+                "SUB[%" PRIu64 ", %u @ %zd (0x%08zx)]: 0x%016"
+                PRIx64 " -> 0x%016" PRIx64 "\n",
+                sub, size, pos, bit_offset, bits, nbits);
+            env->model.cur_set |= ASA_SUB;
+            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+            return true;
         }
         return false;
     }
