@@ -20,8 +20,11 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     void *real_args[THEFT_MAX_ARITY];
     theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
 
-    if (t->bloom) { theft_call_mark_called(t, run_info, trial_info->args); }
-    
+    if (t->bloom) {
+        theft_call_mark_called(t, run_info, trial_info->args);
+    }
+
+    bool repeated = false;
     enum theft_trial_res tres = theft_call(run_info, real_args);
     theft_hook_trial_post_cb *trial_post =
       (run_info->hooks.trial_post == NULL
@@ -41,7 +44,9 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
 
     switch (tres) {
     case THEFT_TRIAL_PASS:
-        run_info->pass++;
+        if (!repeated) {
+            run_info->pass++;
+        }
         *tpres = trial_post(&hook_info, run_info->hooks.env);
         break;
     case THEFT_TRIAL_FAIL:
@@ -57,12 +62,16 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         }
 
         theft_autoshrink_get_real_args(run_info, hook_info.args, trial_info->args);
-        run_info->fail++;
+        if (!repeated) {
+            run_info->fail++;
+        }
         *tpres = report_on_failure(t, run_info, trial_info,
             &hook_info, trial_post);
         break;
     case THEFT_TRIAL_SKIP:
-        run_info->skip++;
+        if (!repeated) {
+            run_info->skip++;
+        }
         *tpres = trial_post(&hook_info, run_info->hooks.env);
         break;
     case THEFT_TRIAL_DUP:
@@ -70,6 +79,10 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     case THEFT_TRIAL_ERROR:
         *tpres = trial_post(&hook_info, run_info->hooks.env);
         theft_trial_free_args(run_info, real_args);
+        return false;
+    }
+
+    if (*tpres == THEFT_HOOK_TRIAL_POST_ERROR) {
         return false;
     }
 
@@ -103,8 +116,8 @@ report_on_failure(struct theft *t,
             .trial_seed = trial_info->seed,
             .arity = run_info->arity,
             .type_info = run_info->type_info,
-            /* Note: NOT using real_args here because autoshrink_print
-             * expects the wrapped version. */
+            /* Note: intentionally NOT using real_args here, because
+             * autoshrink_print expects the wrapped version. */
             .args = trial_info->args,
         };
         if (counterexample(&hook_info, run_info->hooks.env)
@@ -115,13 +128,15 @@ report_on_failure(struct theft *t,
 
     enum theft_hook_trial_post_res res;
     res = trial_post(hook_info, run_info->hooks.env);
-    if (res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
-        res = THEFT_HOOK_TRIAL_POST_REPEAT;
-    }
-    while (res == THEFT_HOOK_TRIAL_POST_REPEAT) {
+
+    while (res == THEFT_HOOK_TRIAL_POST_REPEAT
+        || res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
         enum theft_trial_res tres = theft_call(run_info, trial_info->args);
         if (tres == THEFT_TRIAL_FAIL) {
             res = trial_post(hook_info, run_info->hooks.env);
+            if (res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
+                break;
+            }
         } else if (tres == THEFT_TRIAL_PASS) {
             fprintf(t->out, "Warning: Failed property passed when re-run.\n");
             res = THEFT_HOOK_TRIAL_POST_ERROR;

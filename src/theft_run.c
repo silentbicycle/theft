@@ -238,12 +238,18 @@ run_step(struct theft *t, struct theft_run_info *run_info,
             tpres = run_info->hooks.trial_pre(&info, hook_env);
             if (tpres == THEFT_HOOK_TRIAL_PRE_HALT) {
                 return RUN_STEP_HALT;
+            } else if (tpres == THEFT_HOOK_TRIAL_PRE_ERROR) {
+                return RUN_STEP_TRIAL_ERROR;
             }
         }
+
         if (!theft_trial_run(t, run_info, &trial_info, &pres)) {
             return RUN_STEP_TRIAL_ERROR;
         }
-        (void)pres;  // TODO: use
+    }
+
+    if (pres == THEFT_HOOK_TRIAL_POST_ERROR) {
+        return RUN_STEP_TRIAL_ERROR;
     }
 
     /* Update seed for next trial */
