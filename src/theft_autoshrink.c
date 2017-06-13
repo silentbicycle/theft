@@ -651,7 +651,7 @@ choose_and_mutate_request(struct theft *t,
         const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
         const uint64_t nbits = bits >> shift;
         LOG(2  - LOG_AUTOSHRINK,
-            "SHIFT[%u, %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
+            "SHIFT[%u, %u @ %" PRIx64 " (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
             shift, size, pos, bit_offset, bits, nbits);
         write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
         if (bits != nbits) {
@@ -689,7 +689,7 @@ choose_and_mutate_request(struct theft *t,
         const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
         const uint64_t nbits = bits & mask;
         LOG(2  - LOG_AUTOSHRINK,
-            "MASK[0x%016" PRIx64 ", %u @ %zd (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
+            "MASK[0x%016" PRIx64 ", %u @ %" PRId64 " (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
             mask, size, pos, bit_offset, bits, nbits);
         write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
         if (bits != nbits) {
@@ -777,7 +777,7 @@ choose_and_mutate_request(struct theft *t,
                 nbits--;
             }
             LOG(2 - LOG_AUTOSHRINK,
-                "SUB[%" PRIu64 ", %u @ %zd (0x%08zx)]: 0x%016"
+                "SUB[%" PRIu64 ", %u @ %" PRId64 " (0x%08zx)]: 0x%016"
                 PRIx64 " -> 0x%016" PRIx64 "\n",
                 sub, size, pos, bit_offset, bits, nbits);
             env->model.cur_set |= ASA_SUB;
