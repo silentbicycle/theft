@@ -93,6 +93,14 @@ void theft_print_trial_result(
     env->column += used;
 }
 
+enum theft_hook_trial_post_res
+theft_hook_trial_post_print_result(const struct theft_hook_trial_post_info *info,
+        void *env) {
+    theft_print_trial_result((struct theft_print_trial_result_env *)env,
+        info);
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
 enum theft_hook_counterexample_res
 theft_print_counterexample(const struct theft_hook_counterexample_info *info,
         void *env) {

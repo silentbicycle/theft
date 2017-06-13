@@ -33,11 +33,18 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
             ? 0 : cfg->always_seed_count),
         .always_seeds = cfg->always_seeds,
         .hooks = {
-            .run_pre = cfg->hooks.run_pre,
-            .run_post = cfg->hooks.run_post,
+            .run_pre = (cfg->hooks.run_pre != NULL
+                ? cfg->hooks.run_pre
+                : theft_hook_run_pre_print_info),
+            .run_post = (cfg->hooks.run_post != NULL
+                ? cfg->hooks.run_post
+                : theft_hook_run_post_print_info),
             .gen_args_pre = cfg->hooks.gen_args_pre,
             .trial_pre = cfg->hooks.trial_pre,
-            .trial_post = cfg->hooks.trial_post,
+            .trial_post = (cfg->hooks.trial_post != NULL
+                ? cfg->hooks.trial_post
+                : theft_hook_trial_post_print_result),
+
             .counterexample = (cfg->hooks.counterexample != NULL
                 ? cfg->hooks.counterexample
                 : theft_print_counterexample),
@@ -65,15 +72,24 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         t->bloom = theft_bloom_init(t->requested_bloom_bits);
     }
 
-    if (cfg->hooks.run_pre != NULL) {
+    if (run_info.hooks.trial_post == theft_hook_trial_post_print_result) {
+        run_info.print_trial_result_env = calloc(1,
+            sizeof(*run_info.print_trial_result_env));
+        if (run_info.print_trial_result_env == NULL) {
+            return THEFT_RUN_ERROR;
+        }
+    }
+
+    if (run_info.hooks.run_pre != NULL) {
         struct theft_hook_run_pre_info hook_info = {
             .prop_name = run_info.name,
             .total_trials = run_info.trial_count,
             .run_seed = run_info.run_seed,
         };
-        enum theft_hook_run_pre_res res = cfg->hooks.run_pre(&hook_info, run_info.hooks.env);
+        enum theft_hook_run_pre_res res = run_info.hooks.run_pre(&hook_info, run_info.hooks.env);
         if (res != THEFT_HOOK_RUN_PRE_CONTINUE) {
             free_any_autoshrink_wrappers(&run_info);
+            free_print_trial_result_env(&run_info);
             return THEFT_RUN_ERROR;
         }
     }
@@ -98,6 +114,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         case RUN_STEP_GEN_ERROR:
         case RUN_STEP_TRIAL_ERROR:
             free_any_autoshrink_wrappers(&run_info);
+            free_print_trial_result_env(&run_info);
             return THEFT_RUN_ERROR;
         }
     }
@@ -119,11 +136,13 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         enum theft_hook_run_post_res res = run_post(&hook_info, run_info.hooks.env);
         if (res != THEFT_HOOK_RUN_POST_CONTINUE) {
             free_any_autoshrink_wrappers(&run_info);
+            free_print_trial_result_env(&run_info);
             return THEFT_RUN_ERROR;
         }
     }
 
     free_any_autoshrink_wrappers(&run_info);
+    free_print_trial_result_env(&run_info);
 
     if (run_info.fail > 0) {
         return THEFT_RUN_FAIL;
@@ -186,10 +205,10 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     theft_random_set_seed(t, trial_info.seed);
 
     enum all_gen_res_t gres = gen_all_args(t, run_info, args);
-    theft_hook_trial_post_cb *post_cb =
-      (run_info->hooks.trial_post == NULL
-          ? def_trial_post_cb
-          : run_info->hooks.trial_post);
+    theft_hook_trial_post_cb *post_cb = run_info->hooks.trial_post;
+    void *hook_env = (run_info->hooks.trial_post == theft_hook_trial_post_print_result
+        ? run_info->print_trial_result_env
+        : run_info->hooks.env);
 
     struct theft_hook_trial_post_info hook_info = {
         .prop_name = run_info->name,
@@ -203,7 +222,6 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     };
 
     enum theft_hook_trial_post_res pres;
-    void *hook_env = run_info->hooks.env;
 
     switch (gres) {
     case ALL_GEN_SKIP:
@@ -367,9 +385,10 @@ static void free_any_autoshrink_wrappers(struct theft_run_info *info) {
     }
 }
 
-static enum theft_hook_trial_post_res
-def_trial_post_cb(const struct theft_hook_trial_post_info *info, void *udata) {
-    (void)info;
-    (void)udata;
-    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+static void free_print_trial_result_env(struct theft_run_info *run_info) {
+    if (run_info->hooks.trial_post == theft_hook_trial_post_print_result
+        && run_info->print_trial_result_env != NULL) {
+        free(run_info->print_trial_result_env);
+        run_info->print_trial_result_env = NULL;
+    }
 }

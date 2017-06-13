@@ -885,46 +885,29 @@ prop_no_seq_of_3(void *arg) {
 
 struct hook_env {
     struct theft_print_trial_result_env print_env;
-    size_t failures;
     bool minimal;
 };
 
 static enum theft_hook_trial_pre_res
-trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
-    (void)info;
-    struct hook_env *env = (struct hook_env *)penv;
-    return env->failures == 5
+trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *env) {
+    (void)env;
+    return info->failures == 5
       ? THEFT_HOOK_TRIAL_PRE_HALT
       : THEFT_HOOK_TRIAL_PRE_CONTINUE;
-}
-
-static enum theft_hook_trial_post_res
-trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) {
-    struct hook_env *env = (struct hook_env *)penv;
-    if (info->result == THEFT_TRIAL_FAIL) {
-        env->failures++;
-    }
-
-    theft_print_trial_result(&env->print_env, info);
-
-    return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
 TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
-    struct hook_env env = { .failures = 0 };
+    struct hook_env env = { .minimal = false };
 
     struct theft_run_config cfg = {
         .name = name,
         .fun = prop,
         .type_info = { &ll_info },
         .hooks = {
-            .trial_post = trial_post_hook,
             .trial_pre = trial_pre_hook,
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
         .trials = trials,
@@ -946,17 +929,14 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
-    struct hook_env env = { .failures = 0 };
+    struct hook_env env = { .minimal = false };
 
     struct theft_run_config cfg = {
         .name = name,
         .fun = prop,
         .type_info = { &ia_info },
         .hooks = {
-            .trial_post = trial_post_hook,
             .trial_pre = trial_pre_hook,
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
         .trials = 50000,
@@ -988,7 +968,6 @@ bulk_trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) 
     struct hook_env *env = (struct hook_env *)penv;
     if (info->result == THEFT_TRIAL_FAIL) {
         struct bulk_buffer *bb = info->args[0];
-        env->failures++;
         if (bb->size == 8 && bb->buf[0] == 23) {
             env->minimal = true;
         }
@@ -1000,10 +979,9 @@ bulk_trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) 
 }
 
 static enum theft_hook_trial_pre_res
-bulk_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
-    (void)info;
-    struct hook_env *env = (struct hook_env *)penv;
-    return env->failures == 25
+bulk_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *env) {
+    (void)env;
+    return info->failures == 25
       ? THEFT_HOOK_TRIAL_PRE_HALT
       : THEFT_HOOK_TRIAL_PRE_CONTINUE;
 }
@@ -1012,7 +990,7 @@ TEST bulk_random_bits(void) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
-    struct hook_env env = { .failures = 0 };
+    struct hook_env env = { .minimal = false };
 
     struct theft_run_config cfg = {
         .name = __func__,
@@ -1022,8 +1000,6 @@ TEST bulk_random_bits(void) {
         .hooks = {
             .trial_post = bulk_trial_post_hook,
             .trial_pre = bulk_trial_pre_hook,
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
         .trials = 1000,

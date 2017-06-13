@@ -26,10 +26,10 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
 
     bool repeated = false;
     enum theft_trial_res tres = theft_call(run_info, real_args);
-    theft_hook_trial_post_cb *trial_post =
-      (run_info->hooks.trial_post == NULL
-          ? def_trial_post_cb
-          : run_info->hooks.trial_post);
+    theft_hook_trial_post_cb *trial_post = run_info->hooks.trial_post;
+    void *trial_post_env = (trial_post == theft_hook_trial_post_print_result
+        ? run_info->print_trial_result_env
+        : run_info->hooks.env);
 
     struct theft_hook_trial_post_info hook_info = {
         .prop_name = run_info->name,
@@ -47,7 +47,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         if (!repeated) {
             run_info->pass++;
         }
-        *tpres = trial_post(&hook_info, run_info->hooks.env);
+        *tpres = trial_post(&hook_info, trial_post_env);
         break;
     case THEFT_TRIAL_FAIL:
         if (theft_shrink(t, run_info, trial_info) != SHRINK_OK) {
@@ -57,7 +57,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
             for (size_t i = 0; i < trial_info->arity; i++) {
                 hook_info.args[i] = NULL;
             }
-            *tpres = trial_post(&hook_info, run_info->hooks.env);
+            *tpres = trial_post(&hook_info, trial_post_env);
             return false;
         }
 
@@ -66,18 +66,18 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
             run_info->fail++;
         }
         *tpres = report_on_failure(t, run_info, trial_info,
-            &hook_info, trial_post);
+            &hook_info, trial_post, trial_post_env);
         break;
     case THEFT_TRIAL_SKIP:
         if (!repeated) {
             run_info->skip++;
         }
-        *tpres = trial_post(&hook_info, run_info->hooks.env);
+        *tpres = trial_post(&hook_info, trial_post_env);
         break;
     case THEFT_TRIAL_DUP:
         /* user callback should not return this; fall through */
     case THEFT_TRIAL_ERROR:
-        *tpres = trial_post(&hook_info, run_info->hooks.env);
+        *tpres = trial_post(&hook_info, trial_post_env);
         return false;
     }
 
@@ -104,7 +104,8 @@ report_on_failure(struct theft *t,
         struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         struct theft_hook_trial_post_info *hook_info,
-        theft_hook_trial_post_cb *trial_post) {
+        theft_hook_trial_post_cb *trial_post,
+        void *trial_post_env) {
 
     theft_hook_counterexample_cb *counterexample = run_info->hooks.counterexample;
     if (counterexample != NULL) {
@@ -126,7 +127,7 @@ report_on_failure(struct theft *t,
     }
 
     enum theft_hook_trial_post_res res;
-    res = trial_post(hook_info, run_info->hooks.env);
+    res = trial_post(hook_info, trial_post_env);
 
     while (res == THEFT_HOOK_TRIAL_POST_REPEAT
         || res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
@@ -146,11 +147,4 @@ report_on_failure(struct theft *t,
         }
     }
     return res;
-}
-
-enum theft_hook_trial_post_res
-def_trial_post_cb(const struct theft_hook_trial_post_info *info, void *udata) {
-    (void)info;
-    (void)udata;
-    return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }

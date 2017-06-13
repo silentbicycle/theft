@@ -486,8 +486,6 @@ TEST always_seeds_must_be_run() {
         ALWAYS_SEEDS(always_seeds),
         .hooks = {
             .trial_post = always_seeds_trial_post,
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
             .env = &env,
         },
     };
@@ -544,10 +542,6 @@ TEST expected_seed_should_be_used_first(void) {
         .type_info = { &seed_info },
         .trials = 1,
         .seed = EXPECTED_SEED,
-        .hooks = {
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
-        },
     };
 
     enum theft_run_res res = theft_run(&cfg);

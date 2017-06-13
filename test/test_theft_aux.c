@@ -72,8 +72,6 @@ TEST a_squared_lte_fixed(void) {
         .seed = seed,
         .trials = 500,
         .hooks = {
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
             .trial_post = fixed_expected_failure_trial_post,
             .shrink_trial_post = fixed_log_shrink_trial_post,
             .env = &env,
@@ -161,8 +159,6 @@ TEST a_squared_lt_b(void) {
         .seed = seed,
         .trials = 500,
         .hooks = {
-            .run_pre = theft_hook_run_pre_print_info,
-            .run_post = theft_hook_run_post_print_info,
             .trial_post = expected_failure_trial_post,
             .shrink_trial_post = log_shrink_trial_post,
             .env = &env,

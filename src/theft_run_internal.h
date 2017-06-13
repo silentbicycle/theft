@@ -29,6 +29,6 @@ static bool wrap_any_autoshrinks(struct theft *t,
 
 static void free_any_autoshrink_wrappers(struct theft_run_info *info);
 
-static theft_hook_trial_post_cb def_trial_post_cb;
+static void free_print_trial_result_env(struct theft_run_info *info);
 
 #endif

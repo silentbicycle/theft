@@ -9,7 +9,8 @@ report_on_failure(struct theft *t,
     struct theft_run_info *run_info,
     struct theft_trial_info *trial_info,
     struct theft_hook_trial_post_info *hook_info,
-    theft_hook_trial_post_cb *trial_post);
+    theft_hook_trial_post_cb *trial_post,
+    void *trial_post_env);
 
 theft_hook_trial_post_cb def_trial_post_cb;
 

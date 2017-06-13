@@ -104,6 +104,12 @@ void theft_print_run_post_info(FILE *f,
 enum theft_hook_run_pre_res
 theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info, void *env);
 
+/* The default trial-post hook, which just calls theft_print_trial_result,
+ * with an internally allocated `struct theft_print_trial_result_env`. */
+enum theft_hook_trial_post_res
+theft_hook_trial_post_print_result(const struct theft_hook_trial_post_info *info,
+    void *env);
+
 /* A run-post hook that just calls theft_print_run_post_info and returns
  * THEFT_HOOK_RUN_POST_CONTINUE. */
 enum theft_hook_run_post_res
