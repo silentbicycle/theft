@@ -5,7 +5,7 @@
 #include <sys/time.h>
 
 theft_seed theft_seed_of_time(void) {
-    struct timeval tv;
+    struct timeval tv = { 0, 0 };
     if (-1 == gettimeofday(&tv, NULL)) {
         return 0;
     }
