@@ -83,13 +83,16 @@ ${TEST}/*.c: Makefile
 ${BUILD}:
 	mkdir ${BUILD}
 
+${BUILD}/cover: | ${BUILD}
+	mkdir ${BUILD}/cover
+
 profile: test
 	gprof build/test_theft
 
-coverage: test
+coverage: test | ${BUILD} ${BUILD}/cover
 	ls -1 src/*.c | sed -e "s#src/#build/#" | xargs -n1 gcov
-	@echo moving coverage files to ${BUILD}
-	mv *.gcov ${BUILD}
+	@echo moving coverage files to ${BUILD}/cover
+	mv *.gcov ${BUILD}/cover
 
 ${BUILD}/theft_autoshrink.o: ${BUILD}/bits_lut.h | ${BUILD}
 
