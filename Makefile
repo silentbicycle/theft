@@ -112,9 +112,9 @@ install: ${BUILD}/lib${PROJECT}.a
 	${INSTALL} -c ${INC}/${PROJECT}_types.h ${PREFIX}/include/
 
 uninstall:
-	${RM} -f ${PREFIX}/lib/lib${PROJECT}.a
-	${RM} -f ${PREFIX}/include/${PROJECT}.h
-	${RM} -f ${PREFIX}/include/${PROJECT}_types.h
+	${RM} ${PREFIX}/lib/lib${PROJECT}.a
+	${RM} ${PREFIX}/include/${PROJECT}.h
+	${RM} ${PREFIX}/include/${PROJECT}_types.h
 
 
 # Other dependencies
