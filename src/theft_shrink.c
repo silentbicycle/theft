@@ -147,6 +147,7 @@ attempt_to_shrink_arg(struct theft *t,
             } else if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE) {
                 break;
             } else {
+                if (ti->free) { ti->free(cur, ti->env); }
                 return SHRINK_ERROR;
             }
         }
@@ -169,6 +170,7 @@ attempt_to_shrink_arg(struct theft *t,
             return SHRINK_OK;
         default:
         case THEFT_TRIAL_ERROR:
+            if (ti->free) { ti->free(cur, ti->env); }
             return SHRINK_ERROR;
         }
     }

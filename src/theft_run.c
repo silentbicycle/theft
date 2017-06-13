@@ -119,6 +119,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
 
         enum theft_hook_run_post_res res = run_post(&hook_info, run_info.hooks.env);
         if (res != THEFT_HOOK_RUN_POST_CONTINUE) {
+            free_any_autoshrink_wrappers(&run_info);
             return THEFT_RUN_ERROR;
         }
     }
