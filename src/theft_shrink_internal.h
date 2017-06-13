@@ -16,7 +16,8 @@ shrink_pre_hook(struct theft_run_info *run_info,
 static enum theft_hook_shrink_post_res
 shrink_post_hook(struct theft_run_info *run_info,
     struct theft_trial_info *trial_info,
-    uint8_t arg_index, void *arg, uint32_t tactic, bool done);
+    uint8_t arg_index, void *arg, uint32_t tactic,
+    enum theft_shrink_res sres);
 
 static enum theft_hook_shrink_trial_post_res
 shrink_trial_post_hook(struct theft_run_info *run_info,

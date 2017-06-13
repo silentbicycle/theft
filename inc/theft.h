@@ -11,10 +11,19 @@
 #define THEFT_VERSION_MINOR 2
 #define THEFT_VERSION_PATCH 0
 
-/* A property can have at most this many arguments. */
-#define THEFT_MAX_ARITY 10
-
 #include "theft_types.h"
+
+/* Run a series of randomized trials of a property function.
+ *
+ * Configuration is specified in CFG; many fields are optional.
+ * See the type definition in `theft_types.h`. */
+enum theft_run_res
+theft_run(const struct theft_run_config *cfg);
+
+
+/***********************
+ * Getting random bits *
+ ***********************/
 
 /* Get a random 64-bit integer from the test runner's PRNG.
  *
@@ -33,15 +42,10 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bits, uint64_t *buf);
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t);
 
-/* Change T's output stream handle to OUT. (Default: stdout.) */
-void theft_set_output_stream(struct theft *t, FILE *out);
 
-/* Run a series of randomized trials of a property function.
- *
- * Configuration is specified in CFG; many fields are optional.
- * See the type definition in `theft_types.h`. */
-enum theft_run_res
-theft_run(const struct theft_run_config *cfg);
+/***********
+ * Hashing *
+ ***********/
 
 /* Hash a buffer in one pass. (Wraps the below functions.) */
 theft_hash theft_hash_onepass(const uint8_t *data, size_t bytes);
@@ -55,5 +59,136 @@ void theft_hash_sink(struct theft_hasher *h,
 
 /* Finish hashing and get the result. */
 theft_hash theft_hash_done(struct theft_hasher *h);
+
+
+/*********
+ * Hooks *
+ *********/
+
+/* Print a trial result in the default format.
+ *
+ * To use this, add a `struct theft_print_trial_result_env` to the env
+ * in the `struct theft_run_config`, and call `theft_print_trial_result`
+ * with it from inside the `trial_post` hook. */
+struct theft_print_trial_result_env {
+    FILE *f;                    /* 0 -> default of stdout */
+    const uint8_t max_column;   /* 0 -> default of 72 */
+    uint8_t column;
+    size_t scale_pass;
+    size_t scale_skip;
+    size_t scale_dup;
+    size_t consec_pass;
+    size_t consec_skip;
+    size_t consec_dup;
+};
+void theft_print_trial_result(
+    struct theft_print_trial_result_env *print_env,
+    const struct theft_hook_trial_post_info *info);
+
+/* Print a property counter-example that caused a failing trial.
+ * This is the default counterexample hook. */
+enum theft_hook_counterexample_res
+theft_print_counterexample(const struct theft_hook_counterexample_info *info,
+    void *env);
+
+/* Print a standard pre-run report. */
+void theft_print_run_pre_info(FILE *f,
+    const struct theft_hook_run_pre_info *info);
+
+/* Print a standard post-run report. */
+void theft_print_run_post_info(FILE *f,
+    const struct theft_hook_run_post_info *info);
+
+/* A run-pre hook that just calls theft_print_run_pre_info and returns
+ * THEFT_HOOK_RUN_PRE_CONTINUE. */
+enum theft_hook_run_pre_res
+theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info, void *env);
+
+/* A run-post hook that just calls theft_print_run_post_info and returns
+ * THEFT_HOOK_RUN_POST_CONTINUE. */
+enum theft_hook_run_post_res
+theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info, void *env);
+
+
+/***************************
+ * Other utility functions *
+ ***************************/
+
+/* Change T's output stream handle to OUT. (Default: stdout.) */
+void theft_set_output_stream(struct theft *t, FILE *out);
+
+/* Get a seed based on the hash of the current timestamp. */
+theft_seed theft_seed_of_time(void);
+
+/* Generic free callback: just call free(instance). */
+void theft_generic_free_cb(void *instance, void *env);
+
+/* Return a string name of a trial result. */
+const char *theft_trial_res_str(enum theft_trial_res res);
+
+
+/***********************
+ * Built-in generators *
+ ***********************/
+
+/* Should the floating-point generators be built? */
+#ifndef THEFT_USE_FLOATING_POINT
+#define THEFT_USE_FLOATING_POINT 1
+#endif
+
+enum theft_builtin_type_info {
+    THEFT_BUILTIN_bool,
+
+    /* Built-in unsigned types.
+     * If env is non-NULL, it will be cast to
+     * a pointer of this type and dereferenced
+     * for a limit. */
+    THEFT_BUILTIN_uint,  // platform-specific
+    THEFT_BUILTIN_uint8_t,
+    THEFT_BUILTIN_uint16_t,
+    THEFT_BUILTIN_uint32_t,
+    THEFT_BUILTIN_uint64_t,
+    THEFT_BUILTIN_size_t,
+
+    /* Built-in signed types.
+     * If env is non-NULL, it will be cast to
+     * a pointer of this type and dereferenced
+     * for a +/- limit (i.e., a pointer to an
+     * int16_t of 100 will lead to generated
+     * values from -100 to 100, inclusive). */
+    THEFT_BUILTIN_int,
+    THEFT_BUILTIN_int8_t,
+    THEFT_BUILTIN_int16_t,
+    THEFT_BUILTIN_int32_t,
+    THEFT_BUILTIN_int64_t,
+
+#if THEFT_USE_FLOATING_POINT
+    /* Built-in floating point types.
+     * If env is non-NULL, it will be cast to a
+     * pointer of this type and dereferenced for
+     * a +/- limit. */
+    THEFT_BUILTIN_float,
+    THEFT_BUILTIN_double,
+#endif
+
+    /* Built-in array types.
+     * If env is non-NULL, it will be cast to a
+     * `size_t *` and deferenced for a max length. */
+    THEFT_BUILTIN_char_ARRAY,
+    THEFT_BUILTIN_uint8_t_ARRAY,
+};
+
+/* Get a connst pointer to built-in type_info callbacks for
+ * TYPE. See the comments for each type above for details.
+ *
+ * NOTE: All built-ins have autoshrink enabled. */
+const struct theft_type_info *
+theft_get_builtin_type_info(enum theft_builtin_type_info type);
+
+/* Copy a built-in type info into INFO, so its fields can be
+ * modified (e.g. setting a limit in info->env). */
+void
+theft_copy_builtin_type_info(enum theft_builtin_type_info type,
+    struct theft_type_info *info);
 
 #endif

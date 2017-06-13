@@ -86,7 +86,7 @@ attempt_to_shrink_arg(struct theft *t,
         enum theft_hook_shrink_post_res shrink_post_res;
         shrink_post_res = shrink_post_hook(run_info, trial_info, arg_i,
             sres == THEFT_SHRINK_OK ? candidate : cur,
-            tactic, sres == THEFT_SHRINK_NO_MORE_TACTICS);
+            tactic, sres);
         if (shrink_post_res != THEFT_HOOK_SHRINK_POST_CONTINUE) {
             if (ti->free) { ti->free(candidate, ti->env); }
             return SHRINK_ERROR;
@@ -186,6 +186,7 @@ shrink_pre_hook(struct theft_run_info *run_info,
         struct theft_hook_shrink_pre_info hook_info = {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
+            .failures = run_info->fail,
             .run_seed = run_info->run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
@@ -206,7 +207,8 @@ shrink_pre_hook(struct theft_run_info *run_info,
 static enum theft_hook_shrink_post_res
 shrink_post_hook(struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
-        uint8_t arg_index, void *arg, uint32_t tactic, bool done) {
+        uint8_t arg_index, void *arg, uint32_t tactic,
+        enum theft_shrink_res sres) {
     if (run_info->hooks.shrink_post != NULL) {
         struct theft_hook_shrink_post_info hook_info = {
             .prop_name = run_info->name,
@@ -221,7 +223,8 @@ shrink_post_hook(struct theft_run_info *run_info,
             .arg_index = arg_index,
             .arg = arg,
             .tactic = tactic,
-            .done = done,
+            .shrunk = (sres == THEFT_SHRINK_OK),
+            .done = (sres == THEFT_SHRINK_NO_MORE_TACTICS),
         };
         return run_info->hooks.shrink_post(&hook_info, run_info->hooks.env);
     } else {
@@ -238,6 +241,7 @@ shrink_trial_post_hook(struct theft_run_info *run_info,
         struct theft_hook_shrink_trial_post_info hook_info = {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
+            .failures = run_info->fail,
             .run_seed = run_info->run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,

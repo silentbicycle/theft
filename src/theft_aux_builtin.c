@@ -1,5 +1,4 @@
-#include "theft_aux.h"
-
+#include "theft.h"
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>

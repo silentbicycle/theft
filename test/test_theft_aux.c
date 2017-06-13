@@ -1,5 +1,4 @@
 #include "test_theft.h"
-#include "theft_aux.h"
 
 struct a_squared_env {
     struct theft_print_trial_result_env print_env;

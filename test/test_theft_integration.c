@@ -1,7 +1,6 @@
 #include "test_theft.h"
 
 #include "theft_mt.h"
-#include "theft_aux.h"
 
 #include <sys/time.h>
 #include <assert.h>

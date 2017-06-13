@@ -1,5 +1,4 @@
 #include "test_theft.h"
-#include "theft_aux.h"
 
 enum behavior {
     BEH_NONE,

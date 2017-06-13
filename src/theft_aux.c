@@ -1,5 +1,4 @@
 #include "theft.h"
-#include "theft_aux.h"
 #include "theft_types_internal.h"
 
 #include <assert.h>
@@ -52,7 +51,7 @@ void theft_print_trial_result(
 
     FILE *f = (env->f ? env->f : stdout);
     const uint8_t maxcol = (env->max_column == 0
-        ? DEF_MAX_COLUMNS : env->max_column);
+        ? THEFT_DEF_MAX_COLUMNS : env->max_column);
 
     size_t used = 0;
     char buf[64];

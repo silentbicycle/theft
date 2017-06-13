@@ -6,8 +6,6 @@
 
 #include <sys/time.h>
 
-#include "theft_aux.h"
-
 #define MAX_PAIRS 16
 struct fake_prng_info {
     size_t pos;

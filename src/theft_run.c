@@ -5,7 +5,6 @@
 #include "theft_trial.h"
 #include "theft_random.h"
 #include "theft_autoshrink.h"
-#include "theft_aux.h"
 
 #include <string.h>
 #include <assert.h>
@@ -161,6 +160,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         struct theft_hook_gen_args_pre_info hook_info = {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
+            .failures = run_info->fail,
             .run_seed = run_info->run_seed,
             .trial_id = trial,
             .trial_seed = trial_info.seed,
@@ -194,6 +194,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
     struct theft_hook_trial_post_info hook_info = {
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
+        .failures = run_info->fail,
         .run_seed = *seed,
         .trial_id = trial,
         .trial_seed = trial_info.seed,
@@ -232,6 +233,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
             struct theft_hook_trial_pre_info info = {
                 .prop_name = run_info->name,
                 .total_trials = run_info->trial_count,
+                .failures = run_info->fail,
                 .run_seed = run_info->run_seed,
                 .trial_id = trial,
                 .trial_seed = trial_info.seed,

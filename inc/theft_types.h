@@ -1,6 +1,9 @@
 #ifndef THEFT_TYPES_H
 #define THEFT_TYPES_H
 
+/* Opaque handle struct for a theft property-test runner. */
+struct theft;
+
 /* A pseudo-random number/seed, used to generate instances. */
 typedef uint64_t theft_seed;
 
@@ -11,17 +14,68 @@ typedef uint64_t theft_hash;
 struct theft_bloom;             /* bloom filter */
 struct theft_mt;                /* mersenne twister PRNG */
 
-/* Opaque struct handle for property-test runner. */
-struct theft;
+/* Configuration for a theft run. (Forward reference, defined below.) */
+struct theft_run_config;
+
+/* Overall trial pass/fail/skip/duplicate counts after a run. */
+struct theft_run_report {
+    size_t pass;
+    size_t fail;
+    size_t skip;
+    size_t dup;
+};
+
+/* Result from a single trial. */
+enum theft_trial_res {
+    THEFT_TRIAL_PASS,           /* property held */
+    THEFT_TRIAL_FAIL,           /* property contradicted */
+    THEFT_TRIAL_SKIP,           /* user requested skip; N/A */
+    THEFT_TRIAL_DUP,            /* args probably already tried */
+    THEFT_TRIAL_ERROR,          /* unrecoverable error, halt */
+};
+
+/* A test property function. Arguments must match the types specified by
+ * theft_config.type_info, or the result will be undefined. For example,
+ * a propfun `prop_foo(A x, B y, C z)` must have a type_info array of
+ * `{ info_A, info_B, info_C }`.
+ *
+ * Should return:
+ *     THEFT_TRIAL_PASS if the property holds,
+ *     THEFT_TRIAL_FAIL if a counter-example is found,
+ *     THEFT_TRIAL_SKIP if the combination of args isn't applicable,
+ *  or THEFT_TRIAL_ERROR if the whole run should be halted. */
+typedef enum theft_trial_res theft_propfun( /* arguments unconstrained */ );
+
+/* Internal state for incremental hashing. */
+struct theft_hasher {
+    theft_hash accum;
+};
+
+
+/***********************
+ * Type info callbacks *
+ ***********************/
+
+/* This struct contains callbacks used to specify how to allocate, free,
+ * hash, print, and/or shrink the property test input.
+ *
+ * Only `alloc` is required, though `free` is strongly recommended. */
+struct theft_type_info;         /* (forward reference) */
 
 /* Allocate and return an instance of the type, based on a pseudo-random
  * number stream with a known seed. To get random numbers, use
- * theft_random(t) or theft_random_bits(t, bit_count); this stream of
- * numbers will be deterministic, so if the alloc callback is
- * constructed appropriately, an identical instance can be constructed
- * later from the same initial seed and environment.
+ * `theft_random_bits(t, bit_count)` or `theft_random_bits_bulk(t,
+ * bit_count, buffer)`. This stream of numbers will be deterministic, so
+ * if the alloc callback is constructed appropriately, an identical
+ * instance can be constructed later from the same initial seed and
+ * environment.
  *
- * The allocated instance should be written into *instance. */
+ * The allocated instance should be written into *instance.
+ *
+ * If autoshrinking is used, then alloc has an additional requirement:
+ * getting smaller values from `theft_random_bits` should correspond to
+ * simpler instances. In particular, if `theft_random_bits` returns 0
+ * forever, alloc must generate a minimal instance. */
 enum theft_alloc_res {
     THEFT_ALLOC_OK,
     THEFT_ALLOC_SKIP,
@@ -74,27 +128,6 @@ theft_shrink_cb(struct theft *t, const void *instance,
 typedef void
 theft_print_cb(FILE *f, const void *instance, void *env);
 
-/* Result from a single trial. */
-enum theft_trial_res {
-    THEFT_TRIAL_PASS,           /* property held */
-    THEFT_TRIAL_FAIL,           /* property contradicted */
-    THEFT_TRIAL_SKIP,           /* user requested skip; N/A */
-    THEFT_TRIAL_DUP,            /* args probably already tried */
-    THEFT_TRIAL_ERROR,          /* unrecoverable error, halt */
-};
-
-/* A test property function. Arguments must match the types specified by
- * theft_config.type_info, or the result will be undefined. For example,
- * a propfun `prop_foo(A x, B y, C z)` must have a type_info array of
- * `{ info_A, info_B, info_C }`.
- *
- * Should return:
- *     THEFT_TRIAL_PASS if the property holds,
- *     THEFT_TRIAL_FAIL if a counter-example is found,
- *     THEFT_TRIAL_SKIP if the combination of args isn't applicable,
- *  or THEFT_TRIAL_ERROR if the whole run should be halted. */
-typedef enum theft_trial_res theft_propfun( /* arguments unconstrained */ );
-
 /* When printing an autoshrink bit pool, should just the user's print
  * callback be used (if available), or should it also print the raw
  * bit pool and/or the request sizes and values? */
@@ -106,17 +139,17 @@ enum theft_autoshrink_print_mode {
 };
 
 /* Configuration for autoshrinking.
- * For all of these, leaving them as 0 will use the default. */
+ * For all of these fields, leaving them as 0 will use the default. */
 struct theft_autoshrink_config {
     bool enable;                /* true: Enable autoshrinking */
-    size_t pool_size;           /* Initial allocation size */
-    /* Max number of random bits usable per trial.
-     * (Default: no limit) */
-    size_t pool_limit;          /* Max number of random bits per trial */
+    /* Initial allocation size (default: DEF_POOL_SIZE).
+     * When generating very complex instances, this may need to be increased. */
+    size_t pool_size;
     enum theft_autoshrink_print_mode print_mode;
 
     /* How many unsuccessful shrinking attempts to try in a row
-     * before deciding a local minimum has been reached. */
+     * before deciding a local minimum has been reached.
+     * Default: DEF_MAX_FAILED_SHRINKS. */
     size_t max_failed_shrinks;
 };
 
@@ -129,27 +162,26 @@ struct theft_type_info {
     /* Optional, but recommended: */
     theft_free_cb *free;        /* free instance */
     theft_hash_cb *hash;        /* instance -> hash */
-    theft_shrink_cb *shrink;    /* shrink instance */
     theft_print_cb *print;      /* fprintf instance */
+    /* shrink instance, if autoshrinking is not in use */
+    theft_shrink_cb *shrink;
 
     struct theft_autoshrink_config autoshrink_config;
 
-    /* Optional environment, passed to the callbacks above. */
+    /* Optional environment, passed to the callbacks above.
+     * This is completely opaque to theft. */
     void *env;
-};
-
-/* Overall trial pass/fail/skip/duplicate counts after a run. */
-struct theft_run_report {
-    size_t pass;
-    size_t fail;
-    size_t skip;
-    size_t dup;
 };
 
 
 /*********
  * Hooks *
  *********/
+
+/* Much of theft's runtime behavior can be customized using these
+ * hooks. In all cases, returning `*_ERROR` will cause theft to
+ * halt everything, clean up, and return `THEFT_RUN_ERROR`. */
+
 
 /* Pre-run hook: called before the start of a run (group of trials). */
 enum theft_hook_run_pre_res {
@@ -186,11 +218,13 @@ theft_hook_run_post_cb(const struct theft_hook_run_post_info *info,
 enum theft_hook_gen_args_pre_res {
     THEFT_HOOK_GEN_ARGS_PRE_ERROR,
     THEFT_HOOK_GEN_ARGS_PRE_CONTINUE,
+    /* Don't run any more trials (e.g. stop after N failures). */
     THEFT_HOOK_GEN_ARGS_PRE_HALT,
 };
 struct theft_hook_gen_args_pre_info {
     const char *prop_name;
     size_t total_trials;
+    size_t failures;
     theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
@@ -205,11 +239,13 @@ theft_hook_gen_args_pre_cb(const struct theft_hook_gen_args_pre_info *info,
 enum theft_hook_trial_pre_res {
     THEFT_HOOK_TRIAL_PRE_ERROR,
     THEFT_HOOK_TRIAL_PRE_CONTINUE,
+    /* Don't run any more trials (e.g. stop after N failures). */
     THEFT_HOOK_TRIAL_PRE_HALT,
 };
 struct theft_hook_trial_pre_info {
     const char *prop_name;
     size_t total_trials;
+    size_t failures;
     theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
@@ -225,12 +261,15 @@ theft_hook_trial_pre_cb(const struct theft_hook_trial_pre_info *info,
 enum theft_hook_trial_post_res {
     THEFT_HOOK_TRIAL_POST_ERROR,
     THEFT_HOOK_TRIAL_POST_CONTINUE,
+    /* Run the trial again with the same arguments. */
     THEFT_HOOK_TRIAL_POST_REPEAT,
+    /* Same as REPEAT, but only repeat once. */
     THEFT_HOOK_TRIAL_POST_REPEAT_ONCE,
 };
 struct theft_hook_trial_post_info {
     const char *prop_name;
     size_t total_trials;
+    size_t failures;
     theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
@@ -243,7 +282,10 @@ theft_hook_trial_post_cb(const struct theft_hook_trial_post_info *info,
     void *env);
 
 /* Counter-example hook: called when theft finds a counter-example
- * that causes a property test to fail. */
+ * that causes a property test to fail.
+ *
+ * By default, this just calls `theft_print_counterexample`, but can
+ * be overridden to log the counterexample some other way. */
 enum theft_hook_counterexample_res {
     THEFT_HOOK_COUNTEREXAMPLE_CONTINUE,
     THEFT_HOOK_COUNTEREXAMPLE_ERROR,
@@ -261,16 +303,18 @@ typedef enum theft_hook_counterexample_res
 theft_hook_counterexample_cb(const struct theft_hook_counterexample_info *info,
     void *env);
 
-/* Pre-shrinking hook: called before each shrinking attempt.
- * Returning HALT will keep shrinking from going any further. */
+/* Pre-shrinking hook: called before each shrinking attempt. */
 enum theft_hook_shrink_pre_res {
     THEFT_HOOK_SHRINK_PRE_ERROR,
     THEFT_HOOK_SHRINK_PRE_CONTINUE,
+    /* Don't attempt to shrink any further (e.g. if the user callback
+     * checks a time limit). */
     THEFT_HOOK_SHRINK_PRE_HALT,
 };
 struct theft_hook_shrink_pre_info {
     const char *prop_name;
     size_t total_trials;
+    size_t failures;
     theft_seed run_seed;
     size_t trial_id;
     theft_seed trial_seed;
@@ -286,7 +330,8 @@ typedef enum theft_hook_shrink_pre_res
 theft_hook_shrink_pre_cb(const struct theft_hook_shrink_pre_info *info,
     void *env);
 
-/* Post-shrinking hook: called after attempting to shrink. */
+/* Post-shrinking hook: called after attempting to shrink, with
+ * the new instance (if shrinking succeeded). */
 enum theft_hook_shrink_post_res {
     THEFT_HOOK_SHRINK_POST_ERROR,
     THEFT_HOOK_SHRINK_POST_CONTINUE,
@@ -304,6 +349,8 @@ struct theft_hook_shrink_post_info {
     uint8_t arg_index;
     void *arg;
     uint32_t tactic;
+    /* Did shrink() simplify the instance? */
+    bool shrunk;
     /* Did shrink() indicate that we're at a local minimum? */
     bool done;
 };
@@ -312,18 +359,20 @@ theft_hook_shrink_post_cb(const struct theft_hook_shrink_post_info *info,
     void *env);
 
 /* Post-trial-shrinking hook: called after running a trial with
- * shrunken arguments. Returning REPEAT will run the trial again
- * with the same argument(s). */
+ * shrunken arguments. */
 enum theft_hook_shrink_trial_post_res {
     THEFT_HOOK_SHRINK_TRIAL_POST_ERROR,
     THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE,
+    /* Run the trial again, with the same argument(s). */
     THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT,
+    /* Same as REPEAT, but only repeat once. */
     THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT_ONCE,
 };
 struct theft_hook_shrink_trial_post_info {
     const char *prop_name;
     size_t total_trials;
     theft_seed run_seed;
+    size_t failures;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -348,7 +397,7 @@ theft_hook_shrink_trial_post_cb(const struct theft_hook_shrink_trial_post_info *
 enum theft_run_res {
     THEFT_RUN_PASS = 0,             /* no failures */
     THEFT_RUN_FAIL = 1,             /* 1 or more failures */
-    THEFT_RUN_SKIP = 2,             /* 0 failures, 0 passes, skips */
+    THEFT_RUN_SKIP = 2,             /* no failures, but no passes either */
     THEFT_RUN_ERROR = 3,            /* an error occurred */
     THEFT_RUN_ERROR_BAD_ARGS = -1,  /* API misuse */
     /* Missing required callback for 1 or more types */
@@ -366,7 +415,10 @@ enum theft_run_res {
 
 /* Default number of columns after which `theft_print_trial_result`
  * should wrap. */
-#define DEF_MAX_COLUMNS 72
+#define THEFT_DEF_MAX_COLUMNS 72
+
+/* A property can have at most this many arguments. */
+#define THEFT_MAX_ARITY 10
 
 /* Configuration struct for a theft run. */
 struct theft_run_config {
@@ -378,7 +430,7 @@ struct theft_run_config {
 
     /* -- All fields after this point are optional. -- */
 
-    /* Property name, displayed in test runner output. */
+    /* Property name, displayed in test runner output if non-NULL. */
     const char *name;
 
     /* Array of seeds to always run, and its length.
@@ -388,6 +440,9 @@ struct theft_run_config {
 
     /* Number of trials to run. Defaults to THEFT_DEF_TRIALS. */
     size_t trials;
+
+    /* Seed for the random number generator. */
+    theft_seed seed;
 
     /* The number of bits to use for the bloom filter, which
      * detects combinations of arguments that have already
@@ -415,17 +470,6 @@ struct theft_run_config {
          * itself, but will be passed to all callbacks. */
         void *env;
     } hooks;
-
-    /* Struct to populate with more detailed test results. */
-    struct theft_trial_report *report;
-
-    /* Seed for the random number generator. */
-    theft_seed seed;
-};
-
-/* Internal state for incremental hashing. */
-struct theft_hasher {
-    theft_hash accum;
 };
 
 #endif
