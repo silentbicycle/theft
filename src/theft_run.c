@@ -74,6 +74,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         };
         enum theft_hook_run_pre_res res = cfg->hooks.run_pre(&hook_info, run_info.hooks.env);
         if (res != THEFT_HOOK_RUN_PRE_CONTINUE) {
+            free_any_autoshrink_wrappers(&run_info);
             return THEFT_RUN_ERROR;
         }
     }
@@ -97,6 +98,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         default:
         case RUN_STEP_GEN_ERROR:
         case RUN_STEP_TRIAL_ERROR:
+            free_any_autoshrink_wrappers(&run_info);
             return THEFT_RUN_ERROR;
         }
     }

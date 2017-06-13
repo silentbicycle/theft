@@ -8,6 +8,7 @@ int main(int argc, char **argv) {
     RUN_SUITE(prng);
     RUN_SUITE(autoshrink);
     RUN_SUITE(aux);
+    RUN_SUITE(error);
     RUN_SUITE(integration);
     GREATEST_MAIN_END();        /* display results */
 }

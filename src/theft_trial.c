@@ -78,7 +78,6 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         /* user callback should not return this; fall through */
     case THEFT_TRIAL_ERROR:
         *tpres = trial_post(&hook_info, run_info->hooks.env);
-        theft_trial_free_args(run_info, real_args);
         return false;
     }
 

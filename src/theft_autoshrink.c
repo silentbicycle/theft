@@ -265,10 +265,7 @@ autoshrink_free(void *instance, void *venv) {
     }
 
     pool->instance = NULL;
-
     theft_autoshrink_free_bit_pool(NULL, pool);
-
-    (void)instance;
 }
 
 static theft_hash
