@@ -33,7 +33,7 @@ struct theft_autoshrink_bit_pool {
  * The pool will be filled and grown on demand, but an
  * excessively small initial pool will lead to several
  * reallocs in quick succession. */
-#define DEF_POOL_SIZE (4 * 8*sizeof(uint64_t))
+#define DEF_POOL_SIZE (64 * 8*sizeof(uint64_t))
 
 /* How large should the buffer for request sizes be by default? */
 #define DEF_REQUESTS_CEIL2 4 /* constrain to a power of 2 */
