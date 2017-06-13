@@ -140,7 +140,7 @@ void theft_autoshrink_free_bit_pool(struct theft *t,
 void
 theft_autoshrink_bit_pool_random(struct theft *t,
     struct theft_autoshrink_bit_pool *pool,
-    uint8_t bit_count, bool save_request,
+    uint32_t bit_count, bool save_request,
     uint64_t *buf);
 
 void

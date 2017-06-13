@@ -49,7 +49,7 @@ bool theft_autoshrink_wrap(struct theft *t,
 void
 theft_autoshrink_bit_pool_random(struct theft *t,
         struct theft_autoshrink_bit_pool *pool,
-        uint8_t bit_count, bool save_request,
+        uint32_t bit_count, bool save_request,
         uint64_t *buf) {
     assert(pool);
     if (bit_count == 0) {
@@ -61,7 +61,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
         /* Grow pool->bits as necessary */
         LOG(3, "consumed %zd, bit_count %u, ceil %zd\n",
             pool->consumed, bit_count, pool->bits_ceil);
-        if (pool->consumed + bit_count > pool->bits_ceil) {
+        while (pool->consumed + bit_count > pool->bits_ceil) {
             size_t nceil = 2*pool->bits_ceil;
             LOG(1, "growing pool: from bits %p, ceil %zd, ",
                 (void *)pool->bits, pool->bits_ceil);
@@ -91,6 +91,8 @@ theft_autoshrink_bit_pool_random(struct theft *t,
      * end of the pool, just return 0 bits forever and stop tracking
      * requests. */
     if (pool->consumed == pool->limit) {
+        LOG(3 - LOG_AUTOSHRINK, "%s: end of bit pool, yielding zeroes\n",
+            __func__);
         memset(buf, 0x00, (bit_count / 64) + ((bit_count % 64) == 0 ? 0 : 1));
         return;
     } else if (pool->consumed + bit_count >= pool->limit) {
@@ -108,7 +110,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
     uint8_t bit = 1LU << (pool->consumed & 0x07);
     const uint8_t *bits = pool->bits;
 
-    for (uint8_t i = 0; i < bit_count; i++) {
+    for (uint32_t i = 0; i < bit_count; i++) {
         uint8_t bit_i = i % 64;
         buf[res_offset] |= (bits[offset] & bit) ? (1LLU << bit_i) : 0;
         if (bit == 0x80) {
@@ -446,7 +448,8 @@ static void drop_from_bit_pool(struct theft *t,
 
     autoshrink_prng_fun *prng = get_prng(t, env);
 
-    /* Always drop at least one, unless to_drop is DO_NOT_DROP. */
+    /* Always drop at least one, unless to_drop is DO_NOT_DROP (which is
+     * only for testing). */
     size_t to_drop = prng(32, env->udata);
     if (to_drop != DO_NOT_DROP && orig->request_count > 0) {
         to_drop %= orig->request_count;
@@ -464,11 +467,23 @@ static void drop_from_bit_pool(struct theft *t,
             if (req_size > 64) { /* drop subset */
                 uint32_t drop_offset = prng(32, env->udata) % req_size;
                 uint32_t drop_size = prng(32, env->udata) % req_size;
+                LOG(2 - LOG_AUTOSHRINK,
+                    "DROPPING offset %u, size %u of %u\n",
+                    drop_offset,
+                    drop_size,
+                    req_size);
                 for (size_t bi = 0; bi < req_size; bi++) {
                     if (bi < drop_offset || bi > drop_offset + drop_size) {
                         if (orig->bits[src_byte] & src_bit) {
                             copy->bits[dst_byte] |= dst_bit;
                         }
+
+                        dst_bit <<= 1;
+                        if (dst_bit == 0x00) {
+                            dst_bit = 0x01;
+                            dst_byte++;
+                        }
+                        dst_offset++;
                     }
 
                     src_bit <<= 1;
@@ -477,13 +492,6 @@ static void drop_from_bit_pool(struct theft *t,
                         src_byte++;
                     }
                     src_offset++;
-
-                    dst_bit <<= 1;
-                    if (dst_bit == 0x00) {
-                        dst_bit = 0x01;
-                        dst_byte++;
-                    }
-                    dst_offset++;
                 }
             } else {                                       /* drop all */
                 for (size_t bi = 0; bi < req_size; bi++) {
@@ -545,10 +553,26 @@ static void mutate_bit_pool(struct theft *t,
      * the pool copy. */
     uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
 
+    /* If there are only a few requests, and none of them are large,
+     * then limit the change count to the request count. This helps
+     * prevent making several changes to a small surface area, which
+     * tends to make shrinking overshoot when it's close to a local
+     * minimum. */
     if (change_count > orig->request_count) {
-        LOG(4 - LOG_AUTOSHRINK,
-            "CLAMPING %u to %zd\n", change_count, orig->request_count);
-        change_count = orig->request_count;
+        bool all_small = true;
+        for (size_t i = 0; i < orig->request_count; i++) {
+            if (orig->requests[i] > 64) {
+                all_small = false;
+                break;
+            }
+        }
+
+        if (all_small) {
+            LOG(4 - LOG_AUTOSHRINK,
+                "%s: clamping %u to %zd\n",
+                __func__, change_count, orig->request_count);
+            change_count = orig->request_count;
+        }
     }
 
     uint8_t changed = 0;
@@ -701,8 +725,8 @@ choose_and_mutate_request(struct theft *t,
             const uint64_t a = read_bits_at_offset(pool, bit_offset + pos_a, to_swap);
             const uint64_t b = read_bits_at_offset(pool, bit_offset + pos_b, to_swap);
             if (b < a) {
-                LOG(2 - LOG_AUTOSHRINK, "SWAPPING %zd <-> %zd\n",
-                    bit_offset + pos_a, bit_offset + pos_a);
+                LOG(2 - LOG_AUTOSHRINK, "SWAPPING %zd <-> %zd (bulk)\n",
+                    bit_offset + pos_a, bit_offset + pos_b);
                 write_bits_at_offset(pool, bit_offset + pos_a, to_swap, b);
                 write_bits_at_offset(pool, bit_offset + pos_b, to_swap, a);
                 env->model.cur_set |= ASA_SWAP;

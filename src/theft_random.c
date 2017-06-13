@@ -46,13 +46,14 @@ uint64_t theft_random_bits(struct theft *t, uint8_t bit_count) {
 }
 
 void theft_random_bits_bulk(struct theft *t, uint32_t bit_count, uint64_t *buf) {
+    LOG(5, "%s: bit_count %u\n", __func__, bit_count);
     assert(buf);
     if (t->bit_pool) {
         theft_autoshrink_bit_pool_random(t, t->bit_pool, bit_count, true, buf);
         return;
     }
 
-    size_t rem = bit_count;
+    uint32_t rem = bit_count;
     uint8_t shift = 0;
     size_t offset = 0;
 
@@ -61,6 +62,7 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bit_count, uint64_t *buf) 
             t->prng_buf = theft_mt_random(t->mt);
             t->bits_available = 64;
         }
+        LOG(5, "%% prng_buf 0x%016" PRIx64 "\n", t->prng_buf);
 
         uint8_t take = 64 - shift;
         if (take > rem) {
@@ -70,11 +72,13 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bit_count, uint64_t *buf) 
             take = t->bits_available;
         }
 
-        LOG(5, "%s: rem %zd, available %u, buf 0x%016" PRIx64 ", offset %zd, take %u\n",
+        LOG(5, "%s: rem %u, available %u, buf 0x%016" PRIx64 ", offset %zd, take %u\n",
             __func__, rem, t->bits_available, t->prng_buf, offset, take);
 
         const uint64_t mask = get_mask(take);
         buf[offset] |= (t->prng_buf & mask) << shift;
+        LOG(5, "== buf[%zd]: %016" PRIx64 " (%u / %u)\n",
+            offset, buf[offset], bit_count - rem, bit_count);
         t->bits_available -= take;
         t->prng_buf >>= take;
 

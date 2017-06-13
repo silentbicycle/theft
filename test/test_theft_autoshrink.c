@@ -888,6 +888,7 @@ prop_no_seq_of_3(void *arg) {
 struct hook_env {
     struct theft_print_trial_result_env print_env;
     size_t failures;
+    bool minimal;
 };
 
 static enum theft_hook_trial_pre_res
@@ -984,6 +985,31 @@ random_bulk_bits_contains_23(void *arg) {
     return THEFT_TRIAL_PASS;
 }
 
+static enum theft_hook_trial_post_res
+bulk_trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) {
+    struct hook_env *env = (struct hook_env *)penv;
+    if (info->result == THEFT_TRIAL_FAIL) {
+        struct bulk_buffer *bb = info->args[0];
+        env->failures++;
+        if (bb->size == 8 && bb->buf[0] == 23) {
+            env->minimal = true;
+        }
+    }
+
+    theft_print_trial_result(&env->print_env, info);
+
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+static enum theft_hook_trial_pre_res
+bulk_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
+    (void)info;
+    struct hook_env *env = (struct hook_env *)penv;
+    return env->failures == 25
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
 TEST bulk_random_bits(void) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
@@ -994,9 +1020,10 @@ TEST bulk_random_bits(void) {
         .name = __func__,
         .fun = random_bulk_bits_contains_23,
         .type_info = { &bb_info },
+        .bloom_bits = 20,
         .hooks = {
-            .trial_post = trial_post_hook,
-            .trial_pre = trial_pre_hook,
+            .trial_post = bulk_trial_post_hook,
+            .trial_pre = bulk_trial_pre_hook,
             .run_pre = theft_hook_run_pre_print_info,
             .run_post = theft_hook_run_post_print_info,
             .env = &env,
@@ -1007,6 +1034,7 @@ TEST bulk_random_bits(void) {
 
     res = theft_run(&cfg);
     ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
+    ASSERT(env.minimal);
     PASS();
 }
 
