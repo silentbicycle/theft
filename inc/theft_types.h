@@ -348,7 +348,8 @@ theft_hook_shrink_trial_post_cb(const struct theft_hook_shrink_trial_post_info *
 enum theft_run_res {
     THEFT_RUN_PASS = 0,             /* no failures */
     THEFT_RUN_FAIL = 1,             /* 1 or more failures */
-    THEFT_RUN_ERROR = 2,            /* an error occurred */
+    THEFT_RUN_SKIP = 2,             /* 0 failures, 0 passes, skips */
+    THEFT_RUN_ERROR = 3,            /* an error occurred */
     THEFT_RUN_ERROR_BAD_ARGS = -1,  /* API misuse */
     /* Missing required callback for 1 or more types */
     THEFT_RUN_ERROR_MISSING_CALLBACK = -2,

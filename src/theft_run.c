@@ -125,8 +125,10 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
 
     if (run_info.fail > 0) {
         return THEFT_RUN_FAIL;
-    } else {
+    } else if (run_info.pass > 0) {
         return THEFT_RUN_PASS;
+    } else {
+        return THEFT_RUN_SKIP;
     }
 }
 

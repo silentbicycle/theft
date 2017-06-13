@@ -83,6 +83,9 @@ The struct `theft_run_config`'s type_info array field now points
 to `const` values, because the built-in type_info structs returned
 by `theft_get_builtin_type_info` are const.
 
+`theft_run` will now return `THEFT_RUN_SKIP` if a run completes
+without any passes or failures (because all trials were skipped).
+
 
 ### Other Improvements
 
