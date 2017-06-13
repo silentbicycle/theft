@@ -853,7 +853,7 @@ write_bits_at_offset(struct theft_autoshrink_bit_pool *pool,
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
                                     const struct theft_autoshrink_bit_pool *pool,
                                     enum theft_autoshrink_print_mode print_mode) {
-    fprintf(f, "\n-- autoshrink_bit_pool@%p[%zd bits, %zd consumed, %zd limit, %zd requests] -- GEN %zd\n",
+    fprintf(f, "\n-- autoshrink_bit_pool@%p[%zd bits, %zd consumed, %zd limit, %zd requests, gen %zd]\n",
         (void *)pool, pool->bits_filled, pool->consumed,
         pool->limit, pool->request_count, pool->generation);
     bool prev = false;
