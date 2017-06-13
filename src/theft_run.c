@@ -211,6 +211,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
         : run_info->hooks.env);
 
     struct theft_hook_trial_post_info hook_info = {
+        .t = t,
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
         .failures = run_info->fail,

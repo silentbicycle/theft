@@ -69,9 +69,14 @@ theft_hash theft_hash_done(struct theft_hasher *h);
  *
  * To use this, add a `struct theft_print_trial_result_env` to the env
  * in the `struct theft_run_config`, and call `theft_print_trial_result`
- * with it from inside the `trial_post` hook. */
+ * with it from inside the `trial_post` hook.
+ *
+ * When the default `theft_hook_trial_post_print_result` hook is used,
+ * the env is allocated and freed internally.
+ *
+ * Unless a custom output max_column width is wanted, all of these
+ * fields can just be initialized to 0. */
 struct theft_print_trial_result_env {
-    FILE *f;                    /* 0 -> default of stdout */
     const uint8_t max_column;   /* 0 -> default of 72 */
     uint8_t column;
     size_t scale_pass;

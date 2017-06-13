@@ -267,6 +267,7 @@ enum theft_hook_trial_post_res {
     THEFT_HOOK_TRIAL_POST_REPEAT_ONCE,
 };
 struct theft_hook_trial_post_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     size_t failures;

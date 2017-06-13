@@ -49,7 +49,6 @@ void theft_print_trial_result(
     assert(env);
     assert(info);
 
-    FILE *f = (env->f ? env->f : stdout);
     const uint8_t maxcol = (env->max_column == 0
         ? THEFT_DEF_MAX_COLUMNS : env->max_column);
 
@@ -82,6 +81,9 @@ void theft_print_trial_result(
         assert(false);
         return;
     }
+
+    assert(info->t);
+    FILE *f = (info->t->out == NULL ? stdout : info->t->out);
 
     if (env->column + used >= maxcol) {
         fprintf(f, "\n");
