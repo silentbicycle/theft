@@ -713,10 +713,8 @@ TEST gen_pre_halt(void) {
 
 
 static enum theft_trial_res
-prop_uint_is_lte_12345(void *arg) {
-    uint32_t *pnum = (uint32_t *)arg;;
-
-    return *pnum <= 12345 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL;
+prop_uint_is_lte_12345(uint32_t *arg) {
+    return *arg <= 12345 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL;
 }
 
 static enum theft_shrink_res

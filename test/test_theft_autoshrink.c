@@ -756,9 +756,7 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
 /* Property -- for a randomly generated linked list of numbers,
  * it will not have any duplicated numbers. */
 static enum theft_trial_res
-prop_no_duplicates(void *arg) {
-    struct ll *head = (struct ll *)arg;
-
+prop_no_duplicates(struct ll *head) {
     struct ll *cur = head;
 
     while (cur) {
@@ -781,8 +779,7 @@ prop_no_duplicates(void *arg) {
  * The PRNG will generate some runs of ascending numbers;
  * this is to test how well it can automatically shrink them. */
 static enum theft_trial_res
-prop_not_ascending(void *arg) {
-    struct ll *head = (struct ll *)arg;
+prop_not_ascending(struct ll *head) {
 
     struct ll *cur = head;
     uint16_t prev = 0;
@@ -805,9 +802,7 @@ prop_not_ascending(void *arg) {
 /* Property: There won't be any repeated values in the list, with a
  * single non-zero value between them. */
 static enum theft_trial_res
-prop_no_dupes_with_value_between(void *arg) {
-    struct ll *head = (struct ll *)arg;
-
+prop_no_dupes_with_value_between(struct ll *head) {
     struct ll *cur = head;
     uint16_t window[3];
     uint8_t wi = 0;
@@ -838,9 +833,7 @@ prop_no_dupes_with_value_between(void *arg) {
 /* Property: There won't be any value in the list immediately
  * followed by its square. */
 static enum theft_trial_res
-prop_no_nonzero_numbers_followed_by_their_square(void *arg) {
-    struct ll *head = (struct ll *)arg;
-
+prop_no_nonzero_numbers_followed_by_their_square(struct ll *head) {
     struct ll *cur = head;
 
     while (cur) {
@@ -861,9 +854,7 @@ prop_no_nonzero_numbers_followed_by_their_square(void *arg) {
 /* Property: There won't be three values in a row that are
  * [X, X + 1, X + 2]. */
 static enum theft_trial_res
-prop_no_seq_of_3(void *arg) {
-    struct ll *head = (struct ll *)arg;
-
+prop_no_seq_of_3(struct ll *head) {
     struct ll *cur = head;
 
     while (cur) {
@@ -920,8 +911,7 @@ TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
 }
 
 static enum theft_trial_res
-prop_not_start_with_9(void *arg) {
-    uint8_t *ia = (uint8_t *)arg;
+prop_not_start_with_9(uint8_t *ia) {
     return (ia[0] == 9 ? THEFT_TRIAL_FAIL : THEFT_TRIAL_PASS);
 }
 
@@ -949,9 +939,7 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
 }
 
 static enum theft_trial_res
-random_bulk_bits_contains_23(void *arg) {
-    struct bulk_buffer *bb = (struct bulk_buffer *)arg;
-
+random_bulk_bits_contains_23(struct bulk_buffer *bb) {
     const size_t limit = bb->size / 8;
     const uint8_t *buf8 = (const uint8_t *)bb->buf;
     for (size_t i = 0; i < limit; i++) {
