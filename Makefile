@@ -56,7 +56,7 @@ test: ${BUILD}/test_${PROJECT}
 	${BUILD}/test_${PROJECT}
 
 clean:
-	rm -rf ${BUILD}
+	rm -rf ${BUILD} gmon.out
 
 tags: ${BUILD}/TAGS
 
