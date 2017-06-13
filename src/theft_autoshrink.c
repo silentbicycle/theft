@@ -15,6 +15,7 @@ bool theft_autoshrink_wrap(struct theft *t,
         struct theft_type_info *type_info, struct theft_type_info *wrapper) {
     (void)t;
     if (type_info->alloc == NULL || type_info->shrink != NULL) {
+        free(wrapper);
         return false;           /* API misuse */
     }
 

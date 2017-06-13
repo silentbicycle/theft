@@ -148,7 +148,7 @@ hook_shrink_post_error(const struct theft_hook_shrink_post_info *info,
     return THEFT_HOOK_SHRINK_POST_ERROR;
 }
 
-TEST shrinking_post_hook_error(void) {
+TEST shrink_post_hook_error(void) {
     struct err_env env = {
         .b = BEH_NONE,
     };
@@ -156,7 +156,9 @@ TEST shrinking_post_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .shrink = bits_shrink,
+        .autoshrink_config = {
+            .enable = true,
+        },
     };
     type_info.env = &env;
 
@@ -328,7 +330,7 @@ SUITE(error) {
     RUN_TEST(alloc_returns_skip);
     RUN_TEST(shrinking_error);
     RUN_TEST(error_from_both_autoshrink_and_shrink_cb);
-    RUN_TEST(shrinking_post_hook_error);
+    RUN_TEST(shrink_post_hook_error);
     RUN_TEST(trial_skip);
     RUN_TEST(trial_error);
     RUN_TEST(counterexample_error);

@@ -88,6 +88,7 @@ attempt_to_shrink_arg(struct theft *t,
             sres == THEFT_SHRINK_OK ? candidate : cur,
             tactic, sres == THEFT_SHRINK_NO_MORE_TACTICS);
         if (shrink_post_res != THEFT_HOOK_SHRINK_POST_CONTINUE) {
+            if (ti->free) { ti->free(candidate, ti->env); }
             return SHRINK_ERROR;
         }
 

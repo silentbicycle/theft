@@ -319,22 +319,36 @@ gen_all_args(struct theft *t, struct theft_run_info *run_info,
 
 static bool wrap_any_autoshrinks(struct theft *t,
         struct theft_run_info *info) {
+    uint8_t wrapped = 0;
     for (uint8_t i = 0; i < info->arity; i++) {
         struct theft_type_info *ti = info->type_info[i];
         if (ti->autoshrink_config.enable) {
             struct theft_type_info *new_ti = calloc(1, sizeof(*new_ti));
             if (new_ti == NULL) {
-                return false;
+                goto cleanup;
             }
             if (!theft_autoshrink_wrap(t, ti, new_ti)) {
-                return false;   /* alloc fail */
+                goto cleanup;
             }
+            wrapped++;
 
             info->type_info[i] = new_ti;
         }
     }
 
     return true;
+cleanup:
+    for (uint8_t i = 0; i < wrapped; i++) {
+        struct theft_type_info *ti = info->type_info[i];
+        if (ti->autoshrink_config.enable) {
+            struct theft_autoshrink_env *env =
+              (struct theft_autoshrink_env *)ti->env;
+            assert(env->tag == AUTOSHRINK_ENV_TAG);
+            free(env);
+            free(ti);
+        }
+    }
+    return false;
 }
 
 static void free_any_autoshrink_wrappers(struct theft_run_info *info) {

@@ -32,10 +32,7 @@ void theft_random_stop_using_bit_pool(struct theft *t) {
 /* Get BITS random bits from the test runner's PRNG.
  * Bits can be retrieved at most 64 at a time. */
 uint64_t theft_random_bits(struct theft *t, uint8_t bit_count) {
-    if (bit_count > 64) {
-        LOG(0, "BIT COUNT: %u\n", bit_count);
-        assert(bit_count <= 64);
-    }
+    assert(bit_count <= 64);
     LOG(4, "RANDOM_BITS: available %u, bit_count: %u, buf %016" PRIx64 "\n",
         t->bits_available, bit_count, t->prng_buf);
 
