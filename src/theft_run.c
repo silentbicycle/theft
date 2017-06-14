@@ -260,7 +260,7 @@ run_step(struct theft *t, struct theft_run_info *run_info,
                 .args = args,
             };
             enum theft_hook_trial_pre_res tpres;
-            tpres = run_info->hooks.trial_pre(&info, hook_env);
+            tpres = run_info->hooks.trial_pre(&info, run_info->hooks.env);
             if (tpres == THEFT_HOOK_TRIAL_PRE_HALT) {
                 return RUN_STEP_HALT;
             } else if (tpres == THEFT_HOOK_TRIAL_PRE_ERROR) {
