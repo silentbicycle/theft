@@ -36,7 +36,8 @@ uint64_t theft_random(struct theft *t);
 uint64_t theft_random_bits(struct theft *t, uint8_t bits);
 
 /* Get BITS random bits, in bulk, and put them in BUF.
- * BUF is assumed to be large enough. */
+ * BUF is assumed to be large enough, and will be zeroed
+ * before any bits are copied to it. */
 void theft_random_bits_bulk(struct theft *t, uint32_t bits, uint64_t *buf);
 
 /* Get a random double from the test runner's PRNG. */

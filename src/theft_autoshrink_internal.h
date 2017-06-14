@@ -62,4 +62,11 @@ get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env);
 
 static bool should_drop(struct theft *t, struct theft_autoshrink_env *env);
 
+static void lazily_fill_bit_pool(struct theft *t,
+    struct theft_autoshrink_bit_pool *pool,
+    const uint32_t bit_count);
+
+static void fill_buf(struct theft_autoshrink_bit_pool *pool,
+    const uint32_t bit_count, uint64_t *buf);
+
 #endif

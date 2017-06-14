@@ -59,33 +59,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
 
     /* If not shrinking, lazily fill the bit pool. */
     if (!pool->shrinking) {
-        /* Grow pool->bits as necessary */
-        LOG(3, "consumed %zd, bit_count %u, ceil %zd\n",
-            pool->consumed, bit_count, pool->bits_ceil);
-        while (pool->consumed + bit_count > pool->bits_ceil) {
-            size_t nceil = 2*pool->bits_ceil;
-            LOG(1, "growing pool: from bits %p, ceil %zd, ",
-                (void *)pool->bits, pool->bits_ceil);
-            uint64_t *nbits = realloc(pool->bits, nceil/(64/sizeof(uint64_t)));
-            LOG(1, "nbits %p, nceil %zd\n",
-                (void *)nbits, nceil);
-            if (nbits == NULL) {
-                assert(false);   // alloc fail
-                return;
-            }
-            pool->bits = (uint8_t *)nbits;
-            pool->bits_ceil = nceil;
-        }
-
-        while (pool->consumed + bit_count > pool->bits_filled) {
-            uint64_t *bits64 = (uint64_t *)pool->bits;
-            size_t offset = pool->bits_filled / 64;
-            assert(offset * 64 < pool->bits_ceil);
-            bits64[offset] = theft_mt_random(t->mt);
-            LOG(3, "filling bit64[%zd]: 0x%016" PRIx64 "\n",
-                offset, bits64[offset]);
-            pool->bits_filled += 64;
-        }
+        lazily_fill_bit_pool(t, pool, bit_count);
     }
 
     /* Only return as many bits as the pool contains. After reaching the
@@ -106,24 +80,85 @@ theft_autoshrink_bit_pool_random(struct theft *t,
         }
     }
 
-    size_t res_offset = 0;
-    size_t offset = pool->consumed / 8;
-    uint8_t bit = 1LU << (pool->consumed & 0x07);
-    const uint8_t *bits = pool->bits;
+    fill_buf(pool, bit_count, buf);
+}
 
-    for (uint32_t i = 0; i < bit_count; i++) {
-        uint8_t bit_i = i % 64;
-        buf[res_offset] |= (bits[offset] & bit) ? (1LLU << bit_i) : 0;
-        if (bit == 0x80) {
-            bit = 0x01;
-            offset++;
-        } else {
-            bit <<= 1;
+static void lazily_fill_bit_pool(struct theft *t,
+    struct theft_autoshrink_bit_pool *pool,
+    const uint32_t bit_count) {
+    /* Grow pool->bits as necessary */
+    LOG(3, "consumed %zd, bit_count %u, ceil %zd\n",
+        pool->consumed, bit_count, pool->bits_ceil);
+    while (pool->consumed + bit_count > pool->bits_ceil) {
+        size_t nceil = 2*pool->bits_ceil;
+        LOG(1, "growing pool: from bits %p, ceil %zd, ",
+            (void *)pool->bits, pool->bits_ceil);
+        uint64_t *nbits = realloc(pool->bits, nceil/(64/sizeof(uint64_t)));
+        LOG(1, "nbits %p, nceil %zd\n",
+            (void *)nbits, nceil);
+        if (nbits == NULL) {
+            assert(false);   // alloc fail
+            return;
+        }
+        pool->bits = (uint8_t *)nbits;
+        pool->bits_ceil = nceil;
+    }
+
+    while (pool->consumed + bit_count > pool->bits_filled) {
+        uint64_t *bits64 = (uint64_t *)pool->bits;
+        size_t offset = pool->bits_filled / 64;
+        assert(offset * 64 < pool->bits_ceil);
+        bits64[offset] = theft_mt_random(t->mt);
+        LOG(3, "filling bit64[%zd]: 0x%016" PRIx64 "\n",
+            offset, bits64[offset]);
+        pool->bits_filled += 64;
+    }
+}
+
+static void fill_buf(struct theft_autoshrink_bit_pool *pool,
+        const uint32_t bit_count, uint64_t *dst) {
+    const uint64_t *src = (const uint64_t *)pool->bits;
+    size_t src_offset = pool->consumed / 64;
+    uint8_t src_bit = (pool->consumed & 0x3f);
+
+    size_t dst_offset = 0;
+    dst[0] = 0;                 /* clobber the destination buffer */
+
+    uint32_t i = 0;
+    while (i < bit_count) {
+        const uint8_t dst_bit = i & 0x3f;
+
+        const uint8_t src_rem = 64 - src_bit;
+        const uint8_t dst_req = (bit_count - i < 64U - dst_bit
+            ? bit_count - i : 64U - dst_bit);
+
+        /* Figure out how many bits can be copied at once, based on the
+         * current bit offsets into the src and dst buffers. */
+        const uint8_t to_copy = (dst_req < src_rem ? dst_req : src_rem);
+        const uint64_t mask = (1LLU << to_copy) - 1;
+        const uint64_t bits = (src[src_offset] >> src_bit) & mask;
+
+        LOG(5, "src_bit %u, dst_bit %u, src_rem %u, dst_req %u, to_copy %u, mask 0x%"
+            PRIx64 ", bits 0x%" PRIx64 "\n",
+            src_bit, dst_bit, src_rem, dst_req, to_copy, mask, bits);
+        LOG(5, "    src[%zd] 0x%016" PRIx64 ", dst[%zd] 0x%016" PRIx64 " => %016" PRIx64 "\n",
+            src_offset, src[src_offset],
+            dst_offset, dst[dst_offset],
+            dst[dst_offset] | (bits << dst_bit));
+
+        dst[dst_offset] |= (bits << dst_bit);
+
+        src_bit += to_copy;
+        if (src_bit == 64) {
+            src_bit = 0;
+            src_offset++;
         }
 
-        if (bit_i == 63) {
-            res_offset++;
+        if (dst_bit + to_copy == 64) {
+            dst_offset++;
+            dst[dst_offset] = 0;
         }
+        i += to_copy;
     }
 
     pool->consumed += bit_count;
