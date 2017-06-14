@@ -10,6 +10,7 @@
 #define LOG_AUTOSHRINK 0
 
 static autoshrink_prng_fun *get_prng(struct theft *t, struct theft_autoshrink_env *env);
+static uint64_t get_mask(uint8_t bits);
 
 bool theft_autoshrink_wrap(struct theft *t,
         struct theft_type_info *type_info, struct theft_type_info *wrapper) {
@@ -135,7 +136,7 @@ static void fill_buf(struct theft_autoshrink_bit_pool *pool,
         /* Figure out how many bits can be copied at once, based on the
          * current bit offsets into the src and dst buffers. */
         const uint8_t to_copy = (dst_req < src_rem ? dst_req : src_rem);
-        const uint64_t mask = (1LLU << to_copy) - 1;
+        const uint64_t mask = get_mask(to_copy);
         const uint64_t bits = (src[src_offset] >> src_bit) & mask;
 
         LOG(5, "src_bit %u, dst_bit %u, src_rem %u, dst_req %u, to_copy %u, mask 0x%"
@@ -162,6 +163,10 @@ static void fill_buf(struct theft_autoshrink_bit_pool *pool,
     }
 
     pool->consumed += bit_count;
+}
+
+static uint64_t get_mask(uint8_t bits) {
+    return (bits == 64U ? (uint64_t)-1 : ((1LLU << bits) - 1));
 }
 
 static size_t get_aligned_size(size_t size, uint8_t alignment) {
@@ -703,7 +708,7 @@ choose_and_mutate_request(struct theft *t,
         /* Clear each bit with 1/4 probability */
         uint8_t mask_size = (size <= 64 ? size : 64);
         uint64_t mask = prng(mask_size, env->udata) | prng(mask_size, env->udata);
-        if (mask == (1LU << mask_size) - 1) {
+        if (mask == (uint64_t)(-1)) {
             // always clear at least 1 bit
             const uint8_t one_bit = prng(8, env->udata) % mask_size;
             mask &=- (1LU << one_bit);
