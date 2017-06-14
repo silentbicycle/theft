@@ -192,7 +192,7 @@ HASH_SCALAR(int16_t, int16_t)
 HASH_SCALAR(int32_t, int32_t)
 HASH_SCALAR(int64_t, int64_t)
 
-#ifdef THEFT_USE_FLOATING_POINT
+#if THEFT_USE_FLOATING_POINT
 #include <math.h>
 #include <float.h>
 ALLOC_FSCALAR(float, float, fmodf, 8*sizeof(float),
