@@ -4,6 +4,9 @@
 #include <assert.h>
 #include <sys/time.h>
 
+/* Name used when no property name is set. */
+static const char def_prop_name[] = "(anonymous)";
+
 theft_seed theft_seed_of_time(void) {
     struct timeval tv = { 0, 0 };
     if (-1 == gettimeofday(&tv, NULL)) {
@@ -126,8 +129,9 @@ theft_print_counterexample(const struct theft_hook_counterexample_info *info,
 
 void theft_print_run_pre_info(FILE *f,
         const struct theft_hook_run_pre_info *info) {
+    const char *prop_name = info->prop_name ? info->prop_name : def_prop_name;
     fprintf(f, "\n== PROP '%s': %zd trials, seed 0x%016" PRIx64 "\n",
-        info->prop_name, info->total_trials,
+        prop_name, info->total_trials,
         info->run_seed);
 }
 
@@ -142,8 +146,9 @@ theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info,
 void theft_print_run_post_info(FILE *f,
         const struct theft_hook_run_post_info *info) {
     const struct theft_run_report *r = &info->report;
+    const char *prop_name = info->prop_name ? info->prop_name : def_prop_name;
     fprintf(f, "\n== %s '%s': pass %zd, fail %zd, skip %zd, dup %zd\n",
-        r->fail > 0 ? "FAIL" : "PASS", info->prop_name,
+        r->fail > 0 ? "FAIL" : "PASS", prop_name,
         r->pass, r->fail, r->skip, r->dup);
 }
 
