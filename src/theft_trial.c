@@ -91,7 +91,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
 
 void theft_trial_free_args(struct theft_run_info *run_info,
         void **args) {
-    for (int i = 0; i < run_info->arity; i++) {
+    for (uint8_t i = 0; i < run_info->arity; i++) {
         struct theft_type_info *ti = run_info->type_info[i];
         if (ti->free && args[i] != NULL) {
             ti->free(args[i], ti->env);

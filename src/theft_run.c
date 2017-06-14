@@ -298,7 +298,7 @@ static bool
 check_all_args(uint8_t arity, const struct theft_run_config *cfg,
         bool *all_hashable) {
     bool ah = true;
-    for (int i = 0; i < arity; i++) {
+    for (uint8_t i = 0; i < arity; i++) {
         const struct theft_type_info *ti = cfg->type_info[i];
         if (ti->alloc == NULL) { return false; }
         if (ti->hash == NULL && !ti->autoshrink_config.enable) {
@@ -313,7 +313,7 @@ check_all_args(uint8_t arity, const struct theft_run_config *cfg,
 static enum all_gen_res_t
 gen_all_args(struct theft *t, struct theft_run_info *run_info,
         void *args[THEFT_MAX_ARITY]) {
-    for (int i = 0; i < run_info->arity; i++) {
+    for (uint8_t i = 0; i < run_info->arity; i++) {
         struct theft_type_info *ti = run_info->type_info[i];
         void *p = NULL;
         enum theft_alloc_res res = ti->alloc(t, ti->env, &p);
