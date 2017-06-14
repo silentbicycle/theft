@@ -10,6 +10,7 @@ enum behavior {
 };
 
 struct err_env {
+    uint8_t tag;
     enum behavior b;
     bool shrinking;
 };
@@ -22,6 +23,7 @@ static enum theft_alloc_res
 bits_alloc(struct theft *t, void *penv, void **output) {
     assert(penv);
     struct err_env *env = (struct err_env *)penv;
+    assert(env->tag = 'e');
     if (env->b == BEH_SKIP_ALL) {
         return THEFT_ALLOC_SKIP;
     } else if (env->b == BEH_ERROR_ALL) {
@@ -48,6 +50,7 @@ bits_alloc(struct theft *t, void *penv, void **output) {
 
 TEST alloc_returns_skip(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_SKIP_ALL,
     };
 
@@ -77,6 +80,7 @@ TEST alloc_returns_skip(void) {
 
 TEST alloc_returns_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_ERROR_ALL,
     };
 
@@ -109,12 +113,14 @@ shrink_pre_set_shrinking(const struct theft_hook_shrink_pre_info *info,
         void *penv) {
     (void)info;
     struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     env->shrinking = true;
     return THEFT_HOOK_SHRINK_PRE_CONTINUE;
 }
 
 TEST alloc_returns_skip_during_autoshrink(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_SKIP_DURING_AUTOSHRINK,
     };
 
@@ -145,6 +151,7 @@ TEST alloc_returns_skip_during_autoshrink(void) {
 
 TEST alloc_returns_error_during_autoshrink(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_FAIL_DURING_AUTOSHRINK,
     };
 
@@ -199,6 +206,7 @@ bits_shrink(struct theft *t, const void *instance, uint32_t tactic,
 
 TEST error_from_both_autoshrink_and_shrink_cb(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -227,6 +235,7 @@ TEST error_from_both_autoshrink_and_shrink_cb(void) {
 
 TEST shrinking_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_SHRINK_ERROR,
     };
 
@@ -254,14 +263,16 @@ TEST shrinking_error(void) {
 
 static enum theft_hook_run_pre_res
 hook_run_pre_error(const struct theft_hook_run_pre_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     return THEFT_HOOK_RUN_PRE_ERROR;
 }
 
 TEST run_pre_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -291,14 +302,16 @@ TEST run_pre_hook_error(void) {
 
 static enum theft_hook_run_post_res
 hook_run_post_error(const struct theft_hook_run_post_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     return THEFT_HOOK_RUN_POST_ERROR;
 }
 
 TEST run_post_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -328,14 +341,16 @@ TEST run_post_hook_error(void) {
 
 static enum theft_hook_trial_pre_res
 hook_trial_pre_error(const struct theft_hook_trial_pre_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     return THEFT_HOOK_TRIAL_PRE_ERROR;
 }
 
 TEST trial_pre_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -365,14 +380,16 @@ TEST trial_pre_hook_error(void) {
 
 static enum theft_hook_trial_post_res
 hook_trial_post_error(const struct theft_hook_trial_post_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     return THEFT_HOOK_TRIAL_POST_ERROR;
 }
 
 TEST trial_post_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -402,14 +419,16 @@ TEST trial_post_hook_error(void) {
 
 static enum theft_hook_shrink_pre_res
 hook_shrink_pre_error(const struct theft_hook_shrink_pre_info *info,
-    void *env) {
-    (void)env;
+    void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
     return THEFT_HOOK_SHRINK_PRE_ERROR;
 }
 
 TEST shrink_pre_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -440,14 +459,16 @@ TEST shrink_pre_hook_error(void) {
 
 static enum theft_hook_shrink_post_res
 hook_shrink_post_error(const struct theft_hook_shrink_post_info *info,
-    void *env) {
-    (void)env;
+    void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
     return THEFT_HOOK_SHRINK_POST_ERROR;
 }
 
 TEST shrink_post_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -477,14 +498,16 @@ TEST shrink_post_hook_error(void) {
 
 static enum theft_hook_shrink_trial_post_res
 hook_shrink_trial_post_error(const struct theft_hook_shrink_trial_post_info *info,
-    void *env) {
-    (void)env;
+    void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
     return THEFT_HOOK_SHRINK_TRIAL_POST_ERROR;
 }
 
 TEST shrink_trial_post_hook_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -519,6 +542,7 @@ static enum theft_trial_res prop_always_skip(uint8_t *x) {
 
 TEST trial_skip(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -553,6 +577,7 @@ static enum theft_trial_res prop_always_error(uint8_t *x) {
 
 TEST trial_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -591,15 +616,17 @@ static enum theft_trial_res prop_error_if_autoshrinking(uint8_t *x) {
 
 static enum theft_hook_shrink_pre_res
 shrink_pre_set_shrinking_global_flag(const struct theft_hook_shrink_pre_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     trial_error_during_autoshrink_flag = true;
     return THEFT_HOOK_SHRINK_PRE_CONTINUE;
 }
 
 TEST trial_error_during_autoshrink(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -630,14 +657,16 @@ TEST trial_error_during_autoshrink(void) {
 
 static enum theft_hook_counterexample_res
 hook_counterexample_error(const struct theft_hook_counterexample_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     return THEFT_HOOK_COUNTEREXAMPLE_ERROR;
 }
 
 TEST counterexample_error(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 
@@ -674,14 +703,16 @@ static enum theft_trial_res prop_ignore_input_fail_then_pass(uint8_t *x) {
 
 static enum theft_hook_trial_post_res
 trial_post_repeat_once(const struct theft_hook_trial_post_info *info,
-        void *env) {
+        void *penv) {
+    struct err_env *env = (struct err_env *)penv;
+    assert(env->tag == 'e');
     (void)info;
-    (void)env;
     return THEFT_HOOK_TRIAL_POST_REPEAT_ONCE;
 }
 
 TEST fail_but_pass_when_rerun(void) {
     struct err_env env = {
+        .tag = 'e',
         .b = BEH_NONE,
     };
 

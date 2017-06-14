@@ -875,14 +875,16 @@ prop_no_seq_of_3(struct ll *head) {
 }
 
 struct hook_env {
+    uint8_t tag;
     struct theft_print_trial_result_env print_env;
     bool minimal;
 };
 
 static enum theft_hook_trial_pre_res
-trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *env) {
-    (void)env;
-    return info->failures == 5
+ll_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
+    struct hook_env *env = (struct hook_env *)penv;
+    assert(env->tag == 'E');
+    return (env->minimal || info->failures == 5)
       ? THEFT_HOOK_TRIAL_PRE_HALT
       : THEFT_HOOK_TRIAL_PRE_CONTINUE;
 }
@@ -891,14 +893,14 @@ TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
-    struct hook_env env = { .minimal = false };
+    struct hook_env env = { .tag = 'E', .minimal = false };
 
     struct theft_run_config cfg = {
         .name = name,
         .fun = prop,
         .type_info = { &ll_info },
         .hooks = {
-            .trial_pre = trial_pre_hook,
+            .trial_pre = ll_trial_pre_hook,
             .env = &env,
         },
         .trials = trials,
@@ -919,14 +921,14 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
-    struct hook_env env = { .minimal = false };
+    struct hook_env env = { .tag = 'E', .minimal = false };
 
     struct theft_run_config cfg = {
         .name = name,
         .fun = prop,
         .type_info = { &ia_info },
         .hooks = {
-            .trial_pre = trial_pre_hook,
+            .trial_pre = ll_trial_pre_hook,
             .env = &env,
         },
         .trials = 50000,
@@ -967,9 +969,10 @@ bulk_trial_post_hook(const struct theft_hook_trial_post_info *info, void *penv) 
 }
 
 static enum theft_hook_trial_pre_res
-bulk_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *env) {
-    (void)env;
-    return info->failures == 25
+bulk_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
+    struct hook_env *env = (struct hook_env *)penv;
+    return (env->minimal ||
+        info->failures == 25)
       ? THEFT_HOOK_TRIAL_PRE_HALT
       : THEFT_HOOK_TRIAL_PRE_CONTINUE;
 }
@@ -986,8 +989,8 @@ TEST bulk_random_bits(void) {
         .type_info = { &bb_info },
         .bloom_bits = 20,
         .hooks = {
-            .trial_post = bulk_trial_post_hook,
             .trial_pre = bulk_trial_pre_hook,
+            .trial_post = bulk_trial_post_hook,
             .env = &env,
         },
         .trials = 1000,
