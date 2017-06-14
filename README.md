@@ -40,9 +40,11 @@ see their files for copyright info.
 [fnv]: http://www.isthe.com/chongo/tech/comp/fnv/
 
 
-To build:
+To build, using GNU make:
 
     $ make
+
+Note: You may need to call it as `gmake`, especially if building on BSD.
 
 To build and run the tests:
 
