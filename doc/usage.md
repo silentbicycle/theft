@@ -19,7 +19,7 @@ struct for each with callbacks. (This definition can be shared between
 all properties that have the same input type.)
 
 For example:
-   
+
     static struct theft_type_info random_buffer_info = {
         /* allocate a buffer based on random bitstream */
         .alloc = random_buffer_alloc_cb,
@@ -55,10 +55,10 @@ Finally, call `theft_run` with a configuration struct:
 
     bool test_encode_decode_roundtrip(void) {
         struct repeat_once_env env = { .fail = false };
-    
+
         /* Get a seed based on the current time */
         theft_seed seed = theft_seed_of_time();
-    
+
         /* Property test configuration.
          * Note that the number of type_info struct pointers in
          * the .type_info field MUST match the number of arguments
@@ -69,7 +69,7 @@ Finally, call `theft_run` with a configuration struct:
             .type_info = { &random_buffer_info },
             .seed = seed,
         };
-    
+
         /* Run the property test. */
         enum theft_run_res res = theft_run(&config);
         return res == THEFT_RUN_PASS;
@@ -191,10 +191,10 @@ shrinkers, using autoshrinking, and so on, see
     typedef void
     theft_print_cb(FILE *f, const void *instance, void *env);
 
-Print the instance to a given file stream, behaving like: 
+Print the instance to a given file stream, behaving like:
 
     fprintf(f, "%s", instance_to_string(instance, env));
-   
+
 If not provided, theft will just print the random number seeds that led
 to discovering counter-examples.
 
@@ -250,9 +250,9 @@ By default:
 
 All other callbacks default to just returning their `*_CONTINUE` result.
 
-These hooks can be overridden to add test-specific behavior:
+These hooks can be overridden to add test-specific behavior. For example:
 
-- Custom reporting (several callbacks)
+- Reporting can be customized (by changing any of several callbacks)
 
 - Halting after a certain number of failures (`gen_args_pre` or
   `trial_pre`)
@@ -264,3 +264,42 @@ These hooks can be overridden to add test-specific behavior:
   changes (`trial_post` or `shrink_trial_post`)
 
 - Halting shrinking after a certain amount of time (`shrink_pre`)
+
+
+### Example Output
+
+Here is what example output for a property test might looks like
+with the default hooks, indicating what output comes from which hook:
+
+`run_pre` (a banner when starting the run):
+
+    == PROP 'property name': 100 trials, seed 0xa4894b4f1ec336b1
+
+(`gen_args_pre` and then `trial_pre` hooks would be called before each trial)
+
+`trial_post` (printing dots for progress, and a 'd' for a duplicate trial):
+
+    ....d
+
+(`shrink_pre`, `shrink_post`, and `shrink_trial_post` hooks would be
+called at this point)
+
+`counterexample` (a failure was found -- printing the arguments):
+
+     -- Counter-Example: property name
+        Trial 5, Seed 0xa4894b4f1ec336b1
+        Argument 0:
+    [106 106 ]
+    -- autoshrink_bit_pool@0x223edc0[24 bits, 24 consumed, 24 limit, 5 requests, gen 10]
+    51 8b 1a
+    0x1 (3), 0x6a (8), 0x1 (3), 0x6a (8), 0x0 (2),
+
+`trial_post` (printing an 'F' for the failure, and moving on):
+
+    F..................
+
+...
+
+`run_post`:
+
+    == FAIL 'property name': pass 26, fail 5, skip 0, dup 1
