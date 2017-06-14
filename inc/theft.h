@@ -20,6 +20,11 @@
 enum theft_run_res
 theft_run(const struct theft_run_config *cfg);
 
+/* Should the floating-point generators be built? */
+#ifndef THEFT_USE_FLOATING_POINT
+#define THEFT_USE_FLOATING_POINT 1
+#endif
+
 
 /***********************
  * Getting random bits *
@@ -27,22 +32,28 @@ theft_run(const struct theft_run_config *cfg);
 
 /* Get a random 64-bit integer from the test runner's PRNG.
  *
- * NOTE: This is equivalent to `theft_random_bits(t, 64)`, and
- * will be removed in a future release. */
+ * DEPRECATED: This is equivalent to `theft_random_bits(t, 64)`, but
+ * theft works better when the caller only requests as many bits as
+ * it needs. This will be removed in a future release! */
 uint64_t theft_random(struct theft *t);
 
-/* Get BITS random bits from the test runner's PRNG.
- * Bits can be retrieved at most 64 at a time. */
+/* Get BITS random bits from the test runner's PRNG, which will be
+ * returned as a little-endian uint64_t. At most 64 bits can be
+ * retrieved at once -- requesting more is a checked error.
+ *
+ * For more than 64 bits, use theft_random_bits_bulk. */
 uint64_t theft_random_bits(struct theft *t, uint8_t bits);
 
 /* Get BITS random bits, in bulk, and put them in BUF.
  * BUF is assumed to be large enough, and will be zeroed
- * before any bits are copied to it. */
+ * before any bits are copied to it. Bits will be copied
+ * little-endian. */
 void theft_random_bits_bulk(struct theft *t, uint32_t bits, uint64_t *buf);
 
+#if THEFT_USE_FLOATING_POINT
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t);
-
+#endif
 
 /***********
  * Hashing *
@@ -58,7 +69,8 @@ void theft_hash_init(struct theft_hasher *h);
 void theft_hash_sink(struct theft_hasher *h,
     const uint8_t *data, size_t bytes);
 
-/* Finish hashing and get the result. */
+/* Finish hashing and get the result.
+ * (This also resets the internal hasher state.) */
 theft_hash theft_hash_done(struct theft_hasher *h);
 
 
@@ -143,18 +155,23 @@ const char *theft_trial_res_str(enum theft_trial_res res);
  * Built-in generators *
  ***********************/
 
-/* Should the floating-point generators be built? */
-#ifndef THEFT_USE_FLOATING_POINT
-#define THEFT_USE_FLOATING_POINT 1
-#endif
-
 enum theft_builtin_type_info {
     THEFT_BUILTIN_bool,
 
     /* Built-in unsigned types.
-     * If env is non-NULL, it will be cast to
-     * a pointer of this type and dereferenced
-     * for a limit. */
+     *
+     * If env is non-NULL, it will be cast to a pointer to this type and
+     * dereferenced for a limit.
+     *
+     * For example, if the theft_type_info struct's env field is set
+     * like this:
+     *
+     *     uint8_t limit = 64;
+     *     struct theft_type_info info;
+     *     theft_copy_builtin_type_info(THEFT_BUILTIN_uint8_t, &info);
+     *     info.env = &limit;
+     *
+     * then the generator will produce uint8_t values 0 <= x < 64. */
     THEFT_BUILTIN_uint,  // platform-specific
     THEFT_BUILTIN_uint8_t,
     THEFT_BUILTIN_uint16_t,
@@ -163,11 +180,19 @@ enum theft_builtin_type_info {
     THEFT_BUILTIN_size_t,
 
     /* Built-in signed types.
-     * If env is non-NULL, it will be cast to
-     * a pointer of this type and dereferenced
-     * for a +/- limit (i.e., a pointer to an
-     * int16_t of 100 will lead to generated
-     * values from -100 to 100, inclusive). */
+     *
+     * If env is non-NULL, it will be cast to a pointer to this type and
+     * dereferenced for a +/- limit.
+     *
+     * For example, if if the theft_type_info struct's env field is set
+     * like this:
+     *
+     *     int16_t limit = 1000;  // limit must be positive
+     *     struct theft_type_info info;
+     *     theft_copy_builtin_type_info(THEFT_BUILTIN_int16_t, &info);
+     *     info.env = &limit;
+     *
+     * then the generator will produce uint8_t values -1000 <= x < 1000. */
     THEFT_BUILTIN_int,
     THEFT_BUILTIN_int8_t,
     THEFT_BUILTIN_int16_t,
@@ -176,21 +201,20 @@ enum theft_builtin_type_info {
 
 #if THEFT_USE_FLOATING_POINT
     /* Built-in floating point types.
-     * If env is non-NULL, it will be cast to a
-     * pointer of this type and dereferenced for
-     * a +/- limit. */
+     * If env is non-NULL, it will be cast to a pointer of this type and
+     * dereferenced for a +/- limit. */
     THEFT_BUILTIN_float,
     THEFT_BUILTIN_double,
 #endif
 
     /* Built-in array types.
-     * If env is non-NULL, it will be cast to a
-     * `size_t *` and deferenced for a max length. */
+     * If env is non-NULL, it will be cast to a `size_t *` and
+     * deferenced for a max length. */
     THEFT_BUILTIN_char_ARRAY,
     THEFT_BUILTIN_uint8_t_ARRAY,
 };
 
-/* Get a connst pointer to built-in type_info callbacks for
+/* Get a const pointer to built-in type_info callbacks for
  * TYPE. See the comments for each type above for details.
  *
  * NOTE: All built-ins have autoshrink enabled. */

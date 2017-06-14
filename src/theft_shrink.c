@@ -210,6 +210,18 @@ shrink_post_hook(struct theft_run_info *run_info,
         uint8_t arg_index, void *arg, uint32_t tactic,
         enum theft_shrink_res sres) {
     if (run_info->hooks.shrink_post != NULL) {
+        enum theft_shrink_post_state state;
+        switch (sres) {
+        case THEFT_SHRINK_OK:
+            state = THEFT_SHRINK_POST_SHRUNK; break;
+        case THEFT_SHRINK_NO_MORE_TACTICS:
+            state = THEFT_SHRINK_POST_DONE_SHRINKING; break;
+        case THEFT_SHRINK_DEAD_END:
+            state = THEFT_SHRINK_POST_SHRINK_FAILED; break;
+        default:
+            assert(false);
+        }
+
         struct theft_hook_shrink_post_info hook_info = {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
@@ -223,8 +235,7 @@ shrink_post_hook(struct theft_run_info *run_info,
             .arg_index = arg_index,
             .arg = arg,
             .tactic = tactic,
-            .shrunk = (sres == THEFT_SHRINK_OK),
-            .done = (sres == THEFT_SHRINK_NO_MORE_TACTICS),
+            .state = state,
         };
         return run_info->hooks.shrink_post(&hook_info, run_info->hooks.env);
     } else {

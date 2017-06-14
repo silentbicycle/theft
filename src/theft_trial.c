@@ -113,6 +113,7 @@ report_on_failure(struct theft *t,
         struct theft_hook_counterexample_info hook_info = {
             .t = t,
             .prop_name = run_info->name,
+            .total_trials = run_info->trial_count,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
             .arity = run_info->arity,

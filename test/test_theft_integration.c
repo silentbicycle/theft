@@ -802,7 +802,7 @@ halt_after_third_shrink_shrink_post(const struct theft_hook_shrink_post_info *in
         info->failed_shrinks);
     uint32_t *pnum = (uint32_t *)info->arg;
     printf("    AFTER: %u, done? %d\n",
-        *pnum, info->done);
+        *pnum, info->state == THEFT_SHRINK_POST_DONE_SHRINKING);
     return THEFT_HOOK_SHRINK_POST_CONTINUE;
 }
 
@@ -844,7 +844,7 @@ static enum theft_hook_shrink_post_res
 shrink_all_the_way_shrink_post(const struct theft_hook_shrink_post_info *info,
     void *venv) {
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
-    if (info->done) {
+    if (info->state == THEFT_SHRINK_POST_DONE_SHRINKING) {
         uint32_t *pnum = (uint32_t *)info->arg;
         env->local_minimum = *pnum;
         printf("Saving local minimum %u after %zd shrinks (succ %zd, fail %zd) -- %p\n",

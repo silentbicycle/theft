@@ -97,12 +97,14 @@ theft_seed theft_random(struct theft *t) {
     return theft_random_bits(t, 8*sizeof(uint64_t));
 }
 
+#if THEFT_USE_FLOATING_POINT
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t) {
     double res = theft_mt_uint64_to_double(theft_random_bits(t, 64));
     LOG(4, "RANDOM_DOUBLE: %g\n", res);
     return res;
 }
+#endif
 
 static uint64_t get_mask(uint8_t bits) {
     if (bits == 64) {

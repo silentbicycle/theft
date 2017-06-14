@@ -190,7 +190,7 @@ enum theft_hook_run_pre_res {
 };
 struct theft_hook_run_pre_info {
     const char *prop_name;
-    size_t total_trials;
+    size_t total_trials;        /* total number of trials */
     theft_seed run_seed;
 };
 typedef enum theft_hook_run_pre_res
@@ -224,9 +224,9 @@ enum theft_hook_gen_args_pre_res {
 struct theft_hook_gen_args_pre_info {
     const char *prop_name;
     size_t total_trials;
-    size_t failures;
-    theft_seed run_seed;
     size_t trial_id;
+    size_t failures;            /* failures so far */
+    theft_seed run_seed;
     theft_seed trial_seed;
     uint8_t arity;
 };
@@ -245,9 +245,9 @@ enum theft_hook_trial_pre_res {
 struct theft_hook_trial_pre_info {
     const char *prop_name;
     size_t total_trials;
+    size_t trial_id;
     size_t failures;
     theft_seed run_seed;
-    size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     void **args;
@@ -270,9 +270,9 @@ struct theft_hook_trial_post_info {
     struct theft *t;
     const char *prop_name;
     size_t total_trials;
+    size_t trial_id;
     size_t failures;
     theft_seed run_seed;
-    size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     void **args;
@@ -294,6 +294,7 @@ enum theft_hook_counterexample_res {
 struct theft_hook_counterexample_info {
     struct theft *t;
     const char *prop_name;
+    size_t total_trials;
     size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
@@ -315,9 +316,9 @@ enum theft_hook_shrink_pre_res {
 struct theft_hook_shrink_pre_info {
     const char *prop_name;
     size_t total_trials;
+    size_t trial_id;
     size_t failures;
     theft_seed run_seed;
-    size_t trial_id;
     theft_seed trial_seed;
     uint8_t arity;
     size_t shrink_count;
@@ -337,11 +338,16 @@ enum theft_hook_shrink_post_res {
     THEFT_HOOK_SHRINK_POST_ERROR,
     THEFT_HOOK_SHRINK_POST_CONTINUE,
 };
+enum theft_shrink_post_state {
+    THEFT_SHRINK_POST_SHRINK_FAILED,
+    THEFT_SHRINK_POST_SHRUNK,
+    THEFT_SHRINK_POST_DONE_SHRINKING,
+};
 struct theft_hook_shrink_post_info {
     const char *prop_name;
     size_t total_trials;
-    theft_seed run_seed;
     size_t trial_id;
+    theft_seed run_seed;
     theft_seed trial_seed;
     uint8_t arity;
     size_t shrink_count;
@@ -350,10 +356,9 @@ struct theft_hook_shrink_post_info {
     uint8_t arg_index;
     void *arg;
     uint32_t tactic;
-    /* Did shrink() simplify the instance? */
-    bool shrunk;
-    /* Did shrink() indicate that we're at a local minimum? */
-    bool done;
+    /* Did this shrinking attempt make any progress?
+     * If not, is shrinking done overall? */
+    enum theft_shrink_post_state state;
 };
 typedef enum theft_hook_shrink_post_res
 theft_hook_shrink_post_cb(const struct theft_hook_shrink_post_info *info,
@@ -372,9 +377,9 @@ enum theft_hook_shrink_trial_post_res {
 struct theft_hook_shrink_trial_post_info {
     const char *prop_name;
     size_t total_trials;
-    theft_seed run_seed;
-    size_t failures;
     size_t trial_id;
+    size_t failures;
+    theft_seed run_seed;
     theft_seed trial_seed;
     uint8_t arity;
     size_t shrink_count;
