@@ -11,27 +11,11 @@ failure.
 theft is distributed under the ISC license.
 
 
-## Usage
-
-For usage documentation, see [doc/usage.md](blob/master/doc/usage.md).
-
-
-## Properties
-
-See [doc/properties.md](blob/master/doc/properties.md).
-
-
-## Shrinking and Auto-shrinking
-
-For more info about shrinking, see
-[doc/shrinking.md](blob/master/doc/properties.md).
-
-
 ## Installation & Dependencies
 
 theft does not depend on anything beyond C99 and a Unix-like
 environment. Its internal tests use [greatest][], but there is not any
-coupling between them. It also contains implementations of the
+coupling between them. It contains implementations of the
 [Mersenne Twister][mt] PRNG and the [FNV-1a][fnv] hashing algorithm -
 see their files for copyright info.
 
@@ -56,3 +40,24 @@ and confirm that failures have been found.
 To install libtheft and its headers:
 
     $ make install    # using sudo, if necessary
+
+theft can also be vendored inside of projects -- in that case, just make
+sure the headers in `${VENDOR}/theft/inc/` are added to the `-I` include
+path, and `${VENDOR}/theft/build/libtheft.a` is linked.
+
+
+## Usage
+
+For usage documentation, see [doc/usage.md](blob/master/doc/usage.md).
+
+
+## Properties
+
+For some examples of properties to test, see
+[doc/properties.md](blob/master/doc/properties.md).
+
+
+## Shrinking and Auto-shrinking
+
+For more info about shrinking and auto-shrinking, see
+[doc/shrinking.md](blob/master/doc/shrinking.md).
