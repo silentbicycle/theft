@@ -70,7 +70,7 @@ struct theft_type_info;         /* (forward reference) */
  * instance can be constructed later from the same initial seed and
  * environment.
  *
- * The allocated instance should be written into *instance.
+ * The allocated instance should be written into *output.
  *
  * If autoshrinking is used, then alloc has an additional requirement:
  * getting smaller values from `theft_random_bits` should correspond to
@@ -82,7 +82,7 @@ enum theft_alloc_res {
     THEFT_ALLOC_ERROR,
 };
 typedef enum theft_alloc_res
-theft_alloc_cb(struct theft *t, void *env, void **instance);
+theft_alloc_cb(struct theft *t, void *env, void **output);
 
 /* Free an instance. */
 typedef void

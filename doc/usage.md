@@ -1,6 +1,9 @@
 # Usage
 
-First, define a property function:
+First, `#include "theft.h"` in your code that uses theft. (It will
+include `theft_types.h` internally -- no need to include that directly.)
+
+Then, define a property function:
 
     static enum theft_trial_res
     prop_encoded_and_decoded_data_should_match(struct buffer *input) {
@@ -49,7 +52,7 @@ can be handled internally:
     };
 
 Note that this has implications for how the alloc callback is written --
-for details, see [shrinking.md](shrinking.md).
+for details, see "Auto-shrinking" in [shrinking.md](shrinking.md).
 
 Finally, call `theft_run` with a configuration struct:
 
@@ -107,19 +110,22 @@ hashed accordingly.
     typedef enum theft_alloc_res
     theft_alloc_cb(struct theft *t, void *env, void **instance);
 
+This is the only required callback.
+
 Construct an argument instance, based off of the random bit stream.
 To request random bits, use `theft_random_bits(t, bit_count)` or
 `theft_random_bits_bulk(t, bit_count, buffer)`. The bitstream is
 produced from a known seed, so it can be constructed again if
-necessary. (These streams of random bits are not expected to be
-consistent between versions of the library, though.)
+necessary. These streams of random bits are not expected to be
+consistent between versions of the library.
 
-Either write the instance into `(*instance*)` and return
-`THEFT_ALLOC_OK`, return `THEFT_ALLOC_SKIP` if the current
-bit stream should be skipped, or return `THEFT_ALLOC_ERROR`
-to halt the entire test run with an error.
+- On success, write the instance into `(*instance*)` and return
+  `THEFT_ALLOC_OK`.
 
-This is the only required callback.
+- If the current bit stream should be skipped, return
+  `THEFT_ALLOC_SKIP`.
+
+- To halt the entire test run with an error, return `THEFT_ALLOC_ERROR`.
 
 If **autoshrinking** is used, there is an additional constraint: smaller
 random bit values should lead to simpler instances. In particular, a
@@ -289,10 +295,16 @@ called at this point)
      -- Counter-Example: property name
         Trial 5, Seed 0xa4894b4f1ec336b1
         Argument 0:
-    [106 106 ]
-    -- autoshrink_bit_pool@0x223edc0[24 bits, 24 consumed, 24 limit, 5 requests, gen 10]
-    51 8b 1a
-    0x1 (3), 0x6a (8), 0x1 (3), 0x6a (8), 0x0 (2),
+    [0 9 0 ]
+    -- autoshrink [generation: 17, requests: 5 -- 24/24 bits consumed]
+    raw:  01 48 42
+
+    requests: (5)
+    0 -- 3 bits: 1 (0x1)
+    1 -- 8 bits: 0 (0x0)
+    2 -- 3 bits: 1 (0x1)
+    3 -- 8 bits: 9 (0x9)
+    4 -- 2 bits: 1 (0x1)
 
 `trial_post` (printing an 'F' for the failure, and moving on):
 

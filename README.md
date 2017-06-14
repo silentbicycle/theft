@@ -1,17 +1,17 @@
 # theft: property-based testing for C
 
-theft is a C library for property-based testing. Rather than checking
-test results for specific input, general properties are asserted ("for
-any possible input, [some condition] should hold"), and theft generates
-input and searches for counter-examples. If it finds arguments that make
-the test fail, it also knows how to search for progressively simpler
-failing input, and ultimately reports minimal steps to reproduce the
-failure.
+theft is a C library for property-based testing. Where example-based
+testing checks test results for specific input, theft tests assert
+general properties ("for any possible input, [some condition] should
+hold"), generate input, and search for counter-examples that make the
+test fail. If theft finds any failures, it also knows how to generate
+and test simpler variants of the input, and then report the simplest
+counter-example found.
 
 theft is distributed under the ISC license.
 
 
-## Installation & Dependencies
+## Installation
 
 theft does not depend on anything beyond C99 and a Unix-like
 environment. Its internal tests use [greatest][], but there is not any

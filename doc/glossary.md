@@ -6,7 +6,7 @@ A particurlar combination of one or more instance(s) that
 cause a property test function to fail (i.e., the property
 does not hold for that input).
 
-## dup
+## dup (duplicate)
 
 A duplicate trial (one whose combination of input instances have
 already been tried).
@@ -22,7 +22,7 @@ A mathematical fingerprint derived from some data. theft uses
 hashes to check whether a particular combination of instances
 has already been tested (via a bloom filter).
 
-Also, the act of computing a hash for some data.
+Also, the act of computing the hash of some data.
 
 ## instance
 
@@ -40,7 +40,7 @@ counter-example.
 
 ## run
 
-A group of trials (typically 100), checking a property test
+A batch of trials (typically 100), checking a property test
 function with a variety of input instances.
 
 ## seed
