@@ -42,11 +42,8 @@ static struct theft_type_info uint_type_info = {
 };
 
 static enum theft_trial_res is_pos(uint32_t *n) {
-    if ((*n) >= 0) {  // tautological
-        return THEFT_TRIAL_PASS;
-    } else {
-        return THEFT_TRIAL_FAIL;
-    }
+    (void)n;
+    return THEFT_TRIAL_PASS;
 }
 
 TEST generated_unsigned_ints_are_positive() {

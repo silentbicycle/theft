@@ -22,8 +22,7 @@ LDFLAGS +=	-lm
 all: ${BUILD}/lib${PROJECT}.a
 all: ${BUILD}/test_${PROJECT}
 
-# A tautological compare is expected in the test suite.
-TEST_CFLAGS += 	${CFLAGS} -I${SRC} -Wno-tautological-compare -Wno-type-limits
+TEST_CFLAGS += 	${CFLAGS} -I${SRC}
 TEST_LDFLAGS +=	${LDFLAGS}
 
 OBJS= 		${BUILD}/theft.o \
