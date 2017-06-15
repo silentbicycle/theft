@@ -18,7 +18,7 @@ don't contribute code you aren't legally able to share.)
 
 Please report bugs at [the Issues page][issues].
 
-[issues]: https://github.com/silentbicycle/theft/issues).
+[issues]: https://github.com/silentbicycle/theft/issues
 
 If you are reporting a bug, please include:
 
