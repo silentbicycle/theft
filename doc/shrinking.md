@@ -81,9 +81,11 @@ auto-shrinking are aligned to those requests' bits.
 
 To enable auto-shrinking, set:
 
+```c
     .autoshrink_config = {
         .enabled = true,
     },
+```
 
 in the `theft_type_info` struct. There are other optional configuration
 fields in this struct -- see the definition for `struct

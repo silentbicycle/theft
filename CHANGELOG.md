@@ -107,9 +107,11 @@ Added this changelog.
 
 Added documentation under `doc/`, and updated the `README.md`.
 
+Added improved syntax highlighting to the README. (Thanks @lochsh).
+
 Added `CONTRIBUTING.md`.
 
-Fixed bug in error checking code path. (Thanks iximeow.)
+Fixed bug in error checking code path. (Thanks @iximeow.)
 
 Updated vendored version of greatest.
 

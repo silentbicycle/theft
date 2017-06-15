@@ -5,11 +5,13 @@ include `theft_types.h` internally -- no need to include that directly.)
 
 Then, define a property function:
 
+```c
     static enum theft_trial_res
     prop_encoded_and_decoded_data_should_match(struct buffer *input) {
         // [compress & uncompress input, compare output & original input]
         // return THEFT_TRIAL_PASS, FAIL, SKIP, or ERROR
     }
+```
 
 This should take one or more arguments and return `THEFT_TRIAL_PASS`,
 `THEFT_TRIAL_FAIL` if a counter-example to the property was found,
@@ -23,6 +25,7 @@ all properties that have the same input type.)
 
 For example:
 
+```c
     static struct theft_type_info random_buffer_info = {
         /* allocate a buffer based on random bitstream */
         .alloc = random_buffer_alloc_cb,
@@ -35,6 +38,7 @@ For example:
         /* print an instance */
         .print = random_buffer_print_cb,
     };
+```
 
 All of these callbacks except 'alloc' are optional. For more details,
 see the **Type Info Callbacks** subsection below.
@@ -42,6 +46,7 @@ see the **Type Info Callbacks** subsection below.
 If *autoshrinking* is used, type-specific shrinking and hashing
 can be handled internally:
 
+```c
     static struct theft_type_info random_buffer_info = {
         .alloc = random_buffer_alloc_cb,
         .free = random_buffer_free_cb,
@@ -50,12 +55,14 @@ can be handled internally:
             .enable = true,
         },
     };
+```
 
 Note that this has implications for how the alloc callback is written --
 for details, see "Auto-shrinking" in [shrinking.md](shrinking.md).
 
 Finally, call `theft_run` with a configuration struct:
 
+```c
     bool test_encode_decode_roundtrip(void) {
         struct repeat_once_env env = { .fail = false };
 
@@ -77,6 +84,7 @@ Finally, call `theft_run` with a configuration struct:
         enum theft_run_res res = theft_run(&config);
         return res == THEFT_RUN_PASS;
     }
+```
 
 The return value will indicate whether it was able to find any failures.
 
@@ -102,6 +110,7 @@ hashed accordingly.
 
 ### alloc - allocate an instance from a random bit stream
 
+```c
     enum theft_alloc_res {
         THEFT_ALLOC_OK,
         THEFT_ALLOC_SKIP,
@@ -109,6 +118,7 @@ hashed accordingly.
     };
     typedef enum theft_alloc_res
     theft_alloc_cb(struct theft *t, void *env, void **instance);
+```
 
 This is the only required callback.
 
@@ -135,8 +145,10 @@ For more details, see [shrinking.md](shrinking.md).
 
 ### free - free an instance and any associated resources
 
+```c
     typedef void
     theft_free_cb(void *instance, void *env);
+```
 
 Free the memory and other resources associated with the instance. If not
 provided, theft will just leak resources. If only a single
@@ -145,8 +157,10 @@ provided, theft will just leak resources. If only a single
 
 ### hash - get a hash for an instance
 
+```c
     typedef theft_hash
     theft_hash_cb(const void *instance, void *env);
+```
 
 Using the included `theft_hash_*` functionality, produce a hash value
 based on a given instance. This will usually consist of
@@ -162,6 +176,7 @@ be fed into the hash.
 
 ### shrink - produce a simpler copy of an instance
 
+```c
     enum theft_shrink_res {
         THEFT_SHRINK_OK,
         THEFT_SHRINK_DEAD_END,
@@ -171,6 +186,7 @@ be fed into the hash.
     typedef enum theft_shrink_res
     theft_shrink_cb(struct theft *t, const void *instance,
         uint32_t tactic, void *env, void **output);
+```
 
 For a given instance, producer a simpler copy, using the numerical value
 in TACTIC to choose between multiple options. If not provided, theft
@@ -194,12 +210,16 @@ shrinkers, using autoshrinking, and so on, see
 
 ### print - print an instance to the output stream
 
+```c
     typedef void
     theft_print_cb(FILE *f, const void *instance, void *env);
+```
 
 Print the instance to a given file stream, behaving like:
 
+```c
     fprintf(f, "%s", instance_to_string(instance, env));
+```
 
 If not provided, theft will just print the random number seeds that led
 to discovering counter-examples.
@@ -210,6 +230,7 @@ to discovering counter-examples.
 `theft_run_config` has several **hook** fields, which can be used to
 control theft's behavior:
 
+```c
     struct {
         theft_hook_run_pre_cb *run_pre;
         theft_hook_run_post_cb *run_post;
@@ -224,6 +245,7 @@ control theft's behavior:
          * itself, but will be passed to all callbacks. */
         void *env;
     } hooks;
+```
 
 Each one of these is called with a callback-specific `info` struct (with
 progress info such as the currently generated argument instances, the
