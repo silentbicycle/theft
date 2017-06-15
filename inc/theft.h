@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Version 0.2.0 */
+/* Version 0.3.0 */
 #define THEFT_VERSION_MAJOR 0
-#define THEFT_VERSION_MINOR 2
+#define THEFT_VERSION_MINOR 3
 #define THEFT_VERSION_PATCH 0
 
 #include "theft_types.h"
