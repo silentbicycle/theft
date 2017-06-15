@@ -893,19 +893,28 @@ write_bits_at_offset(struct theft_autoshrink_bit_pool *pool,
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
                                     const struct theft_autoshrink_bit_pool *pool,
                                     enum theft_autoshrink_print_mode print_mode) {
-    fprintf(f, "\n-- autoshrink_bit_pool@%p[%zd bits, %zd consumed, %zd limit, %zd requests, gen %zd]\n",
-        (void *)pool, pool->bits_filled, pool->consumed,
-        pool->limit, pool->request_count, pool->generation);
+    fprintf(f, "\n-- autoshrink [generation: %zd, requests: %zd -- %zd/%zd bits consumed]\n",
+        pool->generation, pool->request_count, pool->consumed,
+        pool->limit == (size_t)-1 ? pool->bits_filled : pool->limit);
     bool prev = false;
+
+    /* Print the raw buffer. */
     if (print_mode & THEFT_AUTOSHRINK_PRINT_BIT_POOL) {
         prev = true;
         const uint8_t *bits = pool->bits;
         const size_t byte_count = bit_count / 8;
+        const char prefix[] = "raw:  ";
+        const char left_pad[] = "      ";
+        assert(strlen(prefix) == strlen(left_pad));
+
+        fprintf(f, "%s", prefix);
         for (size_t i = 0; i < byte_count; i++) {
-            const uint8_t byte = bits[i];
+            const uint8_t byte = read_bits_at_offset(pool, 8*i, 8);
+            const uint8_t byte2 = bits[i];
+            assert(byte == byte2);
             fprintf(f, "%02x ", byte);
             if ((i & 0x0f) == 0x0f) {
-                fprintf(f, "\n");
+                fprintf(f, "\n%s", left_pad);
             } else if ((i & 0x03) == 0x03) {
                 fprintf(f, " ");
             }
@@ -920,25 +929,60 @@ void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
             }
         }
     }
+
+    /* Print the bit pool, grouped into requests -- this corresponds to
+     * the actual values the caller gets from `theft_random_bits`. */
     if (print_mode & THEFT_AUTOSHRINK_PRINT_REQUESTS) {
         if (prev) {
-            fprintf(f, "\n");
+            fprintf(f, "\n\n");
         }
         size_t offset = 0;
+        if (pool->request_count > 0) {
+            fprintf(f, "requests: (%zd)\n", pool->request_count);
+        }
         for (size_t i = 0; i < pool->request_count; i++) {
             uint32_t req_size = pool->requests[i];
             if (offset + req_size > pool->bits_filled) {
                 req_size = pool->bits_filled - offset;
             }
-            uint64_t bits = read_bits_at_offset(pool, offset, req_size);
-            fprintf(f, "0x%" PRIx64 " (%u), ", bits, req_size);
-            if ((i & 0x07) == 0x07) {
-                fprintf(f, "\n");
+            if (req_size <= 64) { /* fits in a uint64_t */
+                uint64_t bits = read_bits_at_offset(pool, offset, req_size);
+                /* Print as e.g. "3 -- 20 bits: 72 (0x48), " */
+                fprintf(f, "%zd -- %u bits: %" PRIu64 " (0x%" PRIx64 ")\n",
+                    i, req_size, bits, bits);
+            } else {            /* bulk request */
+                /* Print as e.g. "4 -- 72 bits: [ a5 52 29 14 0a 05 82 c1 60 ]" */
+                char header[64];
+                size_t header_used = snprintf(header, sizeof(header),
+                    "%zd -- %u bits: [ ", i, req_size);
+                assert(header_used < sizeof(header));
+                char left_pad[header_used + 1];
+                for (size_t pad_i = 0; pad_i < header_used; pad_i++) {
+                    left_pad[pad_i] = ' ';
+                }
+                left_pad[header_used] = '\0';
+
+                fprintf(f, "%s", header);
+                const uint32_t byte_count = req_size / 8;
+                const uint32_t rem = req_size % 8;
+
+                for (size_t bi = 0; bi < byte_count; bi++) {
+                    uint8_t bits = read_bits_at_offset(pool, offset + 8*bi, 8);
+                    fprintf(f, "%02x ", bits);
+                    if ((bi & 15) == 15) {
+                        /* Add enough spaces to align with the previous line */
+                        fprintf(f, "\n%s", left_pad);
+                    } else if ((bi & 3) == 3) {
+                        fprintf(f, " ");
+                    }
+                }
+                if (rem > 0) {
+                    uint8_t bits = read_bits_at_offset(pool, offset + byte_count, rem);
+                    fprintf(f, "%02x/%u ", bits, rem);
+                }
+                fprintf(f, "]\n");
             }
             offset += req_size;
-        }
-        if ((pool->request_count % 0x07) != 0x07) {
-            fprintf(f, "\n");
         }
     }
 }
