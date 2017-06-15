@@ -14,6 +14,8 @@ usually port well.
 
 - ["Oracles for Random Testing"](https://blog.regehr.org/archives/856) by John Regehr
 
+- ["QuickCheck Advice"](https://medium.com/@jlouis666/quickcheck-advice-c357efb4e7e6) by Jesper L. Andersen
+
 
 ## Testing Stateful Systems
 
