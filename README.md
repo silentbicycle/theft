@@ -48,16 +48,16 @@ path, and `${VENDOR}/theft/build/libtheft.a` is linked.
 
 ## Usage
 
-For usage documentation, see [doc/usage.md](blob/master/doc/usage.md).
+For usage documentation, see [doc/usage.md](doc/usage.md).
 
 
 ## Properties
 
 For some examples of properties to test, see
-[doc/properties.md](blob/master/doc/properties.md).
+[doc/properties.md](doc/properties.md).
 
 
 ## Shrinking and Auto-shrinking
 
 For more info about shrinking and auto-shrinking, see
-[doc/shrinking.md](blob/master/doc/shrinking.md).
+[doc/shrinking.md](doc/shrinking.md).
