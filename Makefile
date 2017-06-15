@@ -93,7 +93,8 @@ coverage: test | ${BUILD} ${BUILD}/cover
 	@echo moving coverage files to ${BUILD}/cover
 	mv *.gcov ${BUILD}/cover
 
-${BUILD}/theft_autoshrink.o: ${BUILD}/bits_lut.h | ${BUILD}
+${BUILD}/theft_bloom.o: ${BUILD}/bits_lut.h
+${BUILD}/theft_autoshrink.o: ${BUILD}/bits_lut.h
 
 ${BUILD}/bits_lut.h: | ${BUILD}
 	${SCRIPTS}/mk_bits_lut > $@
