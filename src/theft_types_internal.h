@@ -73,6 +73,11 @@ struct theft_run_info {
         void *env;
     } hooks;
 
+    struct {
+        bool enable;
+        size_t timeout;
+    } fork;
+
     struct theft_print_trial_result_env *print_trial_result_env;
 
     /* Counters passed to hook callback */

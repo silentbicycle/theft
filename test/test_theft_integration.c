@@ -1030,6 +1030,105 @@ TEST repeat_first_successful_shrink_once_then_halt(void) {
     PASS();
 }
 
+struct crash_env {
+    bool minimum;
+};
+
+static enum theft_hook_trial_post_res
+found_10(const struct theft_hook_trial_post_info *info,
+        void *venv) {
+    struct crash_env *env = (struct crash_env *)venv;
+
+    if (info->result == THEFT_TRIAL_FAIL) {
+        const uint16_t v = *(const uint16_t *)info->args[0];
+        if (v == 10) {
+            env->minimum = true;
+        }
+    }
+
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+static enum theft_hook_trial_pre_res
+halt_if_found_10(const struct theft_hook_trial_pre_info *info,
+        void *venv) {
+    (void)info;
+    struct crash_env *env = (struct crash_env *)venv;
+    return env->minimum
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
+#include <poll.h>
+static enum theft_trial_res prop_crash_with_int_gte_10(uint16_t *v) {
+    if (*v >= 10) {
+        //poll(NULL, 0, (*v) / 10);
+        assert(false);
+    }
+    return THEFT_TRIAL_PASS;
+}
+
+TEST shrink_crash(void) {
+    enum theft_run_res res;
+
+    struct crash_env env = { .minimum = false };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_crash_with_int_gte_10,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1000,
+        .fork = {
+            .enable = true,
+            .timeout = 10000,
+        },
+        .hooks = {
+            .trial_pre = halt_if_found_10,
+            .trial_post = found_10,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
+    ASSERT(env.minimum);
+    PASS();
+}
+
+static enum theft_trial_res prop_infinite_loop_with_int_gte_10(uint16_t *v) {
+    if (*v >= 10) {
+        for (;;) {}
+    }
+    return THEFT_TRIAL_PASS;
+}
+
+TEST shrink_infinite_loop(void) {
+    enum theft_run_res res;
+
+    struct crash_env env = { .minimum = false };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_infinite_loop_with_int_gte_10,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1000,
+        .fork = {
+            .enable = true,
+            .timeout = 100,
+        },
+        .hooks = {
+            .trial_pre = halt_if_found_10,
+            .trial_post = found_10,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
+    ASSERT(env.minimum);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(alloc_and_free);
     RUN_TEST(generated_unsigned_ints_are_positive);
@@ -1046,6 +1145,9 @@ SUITE(integration) {
     RUN_TEST(save_local_minimum_and_re_run);
     RUN_TEST(repeat_local_minimum_once);
     RUN_TEST(repeat_first_successful_shrink_once_then_halt);
+
+    RUN_TEST(shrink_crash);
+    RUN_TEST(shrink_infinite_loop);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);

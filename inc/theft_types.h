@@ -457,6 +457,11 @@ struct theft_run_config {
      * longer used, and will be removed in a future release. */
     uint8_t bloom_bits;
 
+    struct {
+        bool enable;
+        size_t timeout;
+    } fork;
+
     /* These functions are called in several contexts to report on
      * progress, halt shrinking early, repeat trials with different
      * logging, etc.
