@@ -1,5 +1,24 @@
 # theft Changes By Release
 
+## v0.4.0 - TBD
+
+### API Changes
+
+Manual Bloom filter configuration is deprecated, because the Bloom
+filter now resizes automatically -- The bloom_bits setting in
+`struct theft_run_config` and related constants are ignored,
+and will be removed in a future release.
+
+
+### Other Improvements
+
+Switch to a dynamic blocked Bloom filter instead of a fixed-size Bloom
+filter. This makes manual filter size configuration unnecessary, and
+significantly reduces theft's memory overhead -- instead of a single
+large Bloom filter, it now uses a set of small filters, which can
+individually grow as necessary.
+
+
 ## v0.3.0 - 2017-06-15
 
 ### API Changes
@@ -71,7 +90,7 @@ Renamed `struct theft_cfg` to `struct theft_run_config`.
 
 The `struct theft` type is now opaque.
 
-`THEFT_BLOOM_DISABLE` has been removed -- the bloom filter
+`THEFT_BLOOM_DISABLE` has been removed -- the Bloom filter
 is always allocated now.
 
 In `struct theft_run_config`, `always_seed_count` and `trials` are now
@@ -133,7 +152,7 @@ Added Makefile targets for coverage checking and profiling.
 
 ### API Changes
 
-Add `THEFT_BLOOM_DISABLE` to explicitly disable bloom filter.
+Add `THEFT_BLOOM_DISABLE` to explicitly disable Bloom filter.
 
 Switch to 64-bit Mersenne Twister.
 

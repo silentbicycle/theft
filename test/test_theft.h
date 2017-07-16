@@ -13,6 +13,7 @@ void theft_free(struct theft *t);
 SUITE_EXTERN(prng);
 SUITE_EXTERN(autoshrink);
 SUITE_EXTERN(aux);
+SUITE_EXTERN(bloom);
 SUITE_EXTERN(error);
 SUITE_EXTERN(integration);
 

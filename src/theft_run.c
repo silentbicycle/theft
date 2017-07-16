@@ -66,10 +66,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     /* If all arguments are hashable, then attempt to use
      * a bloom filter to avoid redundant checking. */
     if (all_hashable) {
-        if (t->requested_bloom_bits == 0) {
-            t->requested_bloom_bits = theft_bloom_recommendation(run_info.trial_count);
-        }
-        t->bloom = theft_bloom_init(t->requested_bloom_bits);
+        t->bloom = theft_bloom_init(NULL);
     }
 
     if (run_info.hooks.trial_post == theft_hook_trial_post_print_result) {

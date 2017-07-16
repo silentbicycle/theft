@@ -415,7 +415,10 @@ enum theft_run_res {
 
 /* Min and max bits used to determine bloom filter size.
  * (A larger value uses more memory, but reduces the odds of an
- * untested argument combination being falsely skipped.) */
+ * untested argument combination being falsely skipped.)
+ *
+ * These constants are no longer used, and will be removed
+ * in a future release.*/
 #define THEFT_BLOOM_BITS_MIN 13 /* 1 KB */
 #define THEFT_BLOOM_BITS_MAX 33 /* 1 GB */
 
@@ -450,11 +453,8 @@ struct theft_run_config {
     /* Seed for the random number generator. */
     theft_seed seed;
 
-    /* The number of bits to use for the bloom filter, which
-     * detects combinations of arguments that have already
-     * been tested. If 0, a default size will be chosen
-     * based on the trial count. (This will only be used if
-     * all property types have hash callbacks defined.) */
+    /* Bits to use for the bloom filter -- this field is no
+     * longer used, and will be removed in a future release. */
     uint8_t bloom_bits;
 
     /* These functions are called in several contexts to report on

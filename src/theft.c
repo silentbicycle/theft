@@ -11,7 +11,7 @@
 /* Forward references.
  * These functions are not static because some tests
  * need to construct theft instances. */
-struct theft *theft_init(uint8_t bloom_bits);
+struct theft *theft_init(void);
 void theft_free(struct theft *t);
 
 /* Initialize a theft test runner, with the configuration
@@ -19,12 +19,7 @@ void theft_free(struct theft *t);
  *
  * Returns a NULL if malloc fails or the provided configuration
  * is invalid. */
-struct theft *theft_init(uint8_t bloom_bits) {
-    if ((bloom_bits != 0 && (bloom_bits < THEFT_BLOOM_BITS_MIN))
-        || (bloom_bits > THEFT_BLOOM_BITS_MAX)) {
-        return NULL;
-    }
-
+struct theft *theft_init(void) {
     struct theft *t = malloc(sizeof(*t));
     if (t == NULL) { return NULL; }
     memset(t, 0, sizeof(*t));
@@ -35,7 +30,6 @@ struct theft *theft_init(uint8_t bloom_bits) {
         return NULL;
     } else {
         t->out = stdout;
-        t->requested_bloom_bits = bloom_bits;
         return t;
     }
 }
@@ -51,7 +45,7 @@ void theft_set_output_stream(struct theft *t, FILE *out) {
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
 theft_run(const struct theft_run_config *cfg) {
-    struct theft *t = theft_init(cfg->bloom_bits);
+    struct theft *t = theft_init();
     if (t == NULL) {
         return THEFT_RUN_ERROR;
     }
@@ -69,7 +63,6 @@ theft_run(const struct theft_run_config *cfg) {
 /* Free a property-test runner. */
 void theft_free(struct theft *t) {
     if (t->bloom) {
-        theft_bloom_dump(t->bloom);
         theft_bloom_free(t->bloom);
         t->bloom = NULL;
     }
