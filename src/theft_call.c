@@ -1,8 +1,10 @@
 #include "theft_call_internal.h"
 
+#include <time.h>
 #include <sys/time.h>
 
 #define LOG_CALL 0
+#define MAX_FORK_RETRIES 10
 
 /* Actually call the property function. Its number of arguments is not
  * constrained by the typedef, but will be defined at the call site
@@ -13,11 +15,31 @@ theft_call(struct theft_run_info *run_info, void **args) {
     enum theft_trial_res res = THEFT_TRIAL_ERROR;
 
     if (run_info->fork.enable) {
+        struct timespec tv = { .tv_nsec = 1 };
         int fds[2];
         if (-1 == pipe(fds)) {
             return THEFT_TRIAL_ERROR;
         }
-        pid_t pid = fork();
+        pid_t pid = -1;
+        for (;;) {
+            pid = fork();
+            if (pid == -1) {
+                if (errno == EAGAIN) {
+                    errno = 0;
+                    if (tv.tv_nsec >= (1 << MAX_FORK_RETRIES)) {
+                        perror("fork");
+                        return THEFT_TRIAL_ERROR;
+                    }
+                    tv.tv_nsec <<= 1;
+                    continue;
+                } else {
+                    perror("fork");
+                    return THEFT_TRIAL_ERROR;
+                }
+            } else {
+                break;
+            }
+        }
         if (pid == -1) {
             close(fds[0]);
             close(fds[1]);
@@ -26,8 +48,8 @@ theft_call(struct theft_run_info *run_info, void **args) {
             close(fds[0]);
             res = theft_call_inner(run_info, args);
             uint8_t byte = (uint8_t)res;
-            write(fds[1], (const void *)&byte, sizeof(byte));
-            exit(0);
+            ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
+            exit(wr == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
         } else {                /* parent */
             close(fds[1]);
             res = parent_handle_child_call(run_info, pid, fds[0]);
