@@ -1155,10 +1155,9 @@ static void adjust(struct autoshrink_model *model,
 
 void
 theft_autoshrink_update_model(struct theft *t,
-        struct theft_run_info *run_info,
         uint8_t arg_id, enum theft_trial_res res,
         uint8_t adjustment) {
-    (void)t;
+    struct theft_run_info *run_info = t->run_info;
 
     /* If this type isn't using autoshrink, there's nothing to do. */
     if (run_info->type_info[arg_id]->autoshrink_config.enable == false) {

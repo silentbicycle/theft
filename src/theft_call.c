@@ -12,7 +12,8 @@
  * constrained by the typedef, but will be defined at the call site
  * here. (If info->arity is wrong, it will probably crash.) */
 enum theft_trial_res
-theft_call(struct theft_run_info *run_info, void **args) {
+theft_call(struct theft *t, void **args) {
+    struct theft_run_info *run_info = t->run_info;
     assert(run_info);
     enum theft_trial_res res = THEFT_TRIAL_ERROR;
 
@@ -59,7 +60,7 @@ theft_call(struct theft_run_info *run_info, void **args) {
             return THEFT_TRIAL_ERROR;
         } else if (pid == 0) {  /* child */
             close(fds[0]);
-            res = theft_call_inner(run_info, args);
+            res = theft_call_inner(t, args);
             uint8_t byte = (uint8_t)res;
             ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
             exit(wr == 1 && res == THEFT_TRIAL_PASS
@@ -67,7 +68,7 @@ theft_call(struct theft_run_info *run_info, void **args) {
                 : EXIT_FAILURE);
         } else {                /* parent */
             close(fds[1]);
-            res = parent_handle_child_call(run_info, pid, fds[0]);
+            res = parent_handle_child_call(t, pid, fds[0]);
             int stat_loc = 0;
             pid_t wait_res = waitpid(pid, &stat_loc, WNOHANG);
             LOG(2 - LOG_CALL, "%s: waitpid %d ? %d\n",
@@ -77,14 +78,14 @@ theft_call(struct theft_run_info *run_info, void **args) {
             return res;
         }
     } else {                    /* just call */
-        res = theft_call_inner(run_info, args);
+        res = theft_call_inner(t, args);
     }
     return res;
 }
 
 static enum theft_trial_res
-parent_handle_child_call(struct theft_run_info *run_info,
-        pid_t pid, int fd) {
+parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
+    struct theft_run_info *run_info = t->run_info;
     struct pollfd pfd[1] = {
         { .fd = fd, .events = POLLIN },
     };
@@ -170,7 +171,8 @@ parent_handle_child_call(struct theft_run_info *run_info,
 }
 
 static enum theft_trial_res
-theft_call_inner(struct theft_run_info *run_info, void **args) {
+theft_call_inner(struct theft *t, void **args) {
+    struct theft_run_info *run_info = t->run_info;
     switch (run_info->arity) {
     case 1:
         return run_info->fun(args[0]);
@@ -226,8 +228,8 @@ get_arg_hash_buffer(theft_hash *buffer,
 }
 
 /* Check if this combination of argument instances has been called. */
-bool theft_call_check_called(struct theft *t,
-        struct theft_run_info *run_info, void **args) {
+bool theft_call_check_called(struct theft *t, void **args) {
+    struct theft_run_info *run_info = t->run_info;
     theft_hash buffer[THEFT_MAX_ARITY];
     get_arg_hash_buffer(buffer, run_info, args);
     return theft_bloom_check(t->bloom, (uint8_t *)buffer,
@@ -235,8 +237,8 @@ bool theft_call_check_called(struct theft *t,
 }
 
 /* Mark the tuple of argument instances as called in the bloom filter. */
-void theft_call_mark_called(struct theft *t,
-        struct theft_run_info *run_info, void **args) {
+void theft_call_mark_called(struct theft *t, void **args) {
+    struct theft_run_info *run_info = t->run_info;
     theft_hash buffer[THEFT_MAX_ARITY];
     get_arg_hash_buffer(buffer, run_info, args);
     theft_bloom_mark(t->bloom, (uint8_t *)buffer,

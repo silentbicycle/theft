@@ -10,9 +10,10 @@
 /* Now that arguments have been generated, run the trial and update
  * counters, call cb with results, etc. */
 bool
-theft_trial_run(struct theft *t, struct theft_run_info *run_info,
+theft_trial_run(struct theft *t,
         struct theft_trial_info *trial_info,
         enum theft_hook_trial_post_res *tpres) {
+    struct theft_run_info *run_info = t->run_info;
     assert(trial_info->args);
     assert(trial_info->arity > 0);
 
@@ -21,11 +22,11 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
     theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
 
     if (t->bloom) {
-        theft_call_mark_called(t, run_info, trial_info->args);
+        theft_call_mark_called(t, trial_info->args);
     }
 
     bool repeated = false;
-    enum theft_trial_res tres = theft_call(run_info, real_args);
+    enum theft_trial_res tres = theft_call(t, real_args);
     theft_hook_trial_post_cb *trial_post = run_info->hooks.trial_post;
     void *trial_post_env = (trial_post == theft_hook_trial_post_print_result
         ? run_info->print_trial_result_env
@@ -51,7 +52,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         *tpres = trial_post(&hook_info, trial_post_env);
         break;
     case THEFT_TRIAL_FAIL:
-        if (theft_shrink(t, run_info, trial_info) != SHRINK_OK) {
+        if (theft_shrink(t, trial_info) != SHRINK_OK) {
             hook_info.result = THEFT_TRIAL_ERROR;
             /* We may not have a valid reference to the arguments
              * anymore, so remove the stale pointers. */
@@ -66,7 +67,7 @@ theft_trial_run(struct theft *t, struct theft_run_info *run_info,
         if (!repeated) {
             run_info->fail++;
         }
-        *tpres = report_on_failure(t, run_info, trial_info,
+        *tpres = report_on_failure(t, trial_info,
             &hook_info, trial_post, trial_post_env);
         break;
     case THEFT_TRIAL_SKIP:
@@ -102,11 +103,11 @@ void theft_trial_free_args(struct theft_run_info *run_info,
 /* Print info about a failure. */
 static enum theft_hook_trial_post_res
 report_on_failure(struct theft *t,
-        struct theft_run_info *run_info,
         struct theft_trial_info *trial_info,
         struct theft_hook_trial_post_info *hook_info,
         theft_hook_trial_post_cb *trial_post,
         void *trial_post_env) {
+    struct theft_run_info *run_info = t->run_info;
 
     theft_hook_counterexample_cb *counterexample = run_info->hooks.counterexample;
     if (counterexample != NULL) {
@@ -133,7 +134,7 @@ report_on_failure(struct theft *t,
 
     while (res == THEFT_HOOK_TRIAL_POST_REPEAT
         || res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
-        enum theft_trial_res tres = theft_call(run_info, trial_info->args);
+        enum theft_trial_res tres = theft_call(t, trial_info->args);
         if (tres == THEFT_TRIAL_FAIL) {
             res = trial_post(hook_info, run_info->hooks.env);
             if (res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {

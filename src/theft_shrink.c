@@ -10,8 +10,8 @@
  * progress is made, i.e., until a local minima is reached. */
 enum shrink_res
 theft_shrink(struct theft *t,
-        struct theft_run_info *run_info,
         struct theft_trial_info *trial_info) {
+    struct theft_run_info *run_info = t->run_info;
     bool progress = false;
     assert(trial_info->arity > 0);
 
@@ -24,7 +24,7 @@ theft_shrink(struct theft *t,
         greedy_continue:
             if (ti->shrink) {
                 /* attempt to simplify this argument by one step */
-                enum shrink_res rres = attempt_to_shrink_arg(t, run_info,
+                enum shrink_res rres = attempt_to_shrink_arg(t,
                     trial_info, arg_i);
                 switch (rres) {
                 case SHRINK_OK:
@@ -57,8 +57,8 @@ theft_shrink(struct theft *t,
  * space that have probably already been tried. */
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t,
-        struct theft_run_info *run_info,
         struct theft_trial_info *trial_info, uint8_t arg_i) {
+    struct theft_run_info *run_info = t->run_info;
     struct theft_type_info *ti = run_info->type_info[arg_i];
 
     void **args = trial_info->args;
@@ -106,14 +106,14 @@ attempt_to_shrink_arg(struct theft *t,
 
         args[arg_i] = candidate;
         if (t->bloom) {
-            if (theft_call_check_called(t, run_info, args)) {
+            if (theft_call_check_called(t, args)) {
                 LOG(3 - LOG_SHRINK,
                     "%s: already called, skipping\n", __func__);
                 if (ti->free) { ti->free(candidate, ti->env); }
                 args[arg_i] = cur;
                 continue;
             } else {
-                theft_call_mark_called(t, run_info, args);
+                theft_call_mark_called(t, args);
             }
         }
 
@@ -123,13 +123,13 @@ attempt_to_shrink_arg(struct theft *t,
             void *real_args[THEFT_MAX_ARITY];
             theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
 
-            res = theft_call(run_info, real_args);
+            res = theft_call(t, real_args);
             LOG(3 - LOG_SHRINK, "%s: call -> res %d\n", __func__, res);
 
             if (!repeated) {
                 if (res == THEFT_TRIAL_FAIL) {
                     trial_info->successful_shrinks++;
-                    theft_autoshrink_update_model(t, run_info, arg_i, res, 3);
+                    theft_autoshrink_update_model(t, arg_i, res, 3);
                 } else {
                     trial_info->failed_shrinks++;
                 }
@@ -152,7 +152,7 @@ attempt_to_shrink_arg(struct theft *t,
             }
         }
 
-        theft_autoshrink_update_model(t, run_info, arg_i, res, 8);
+        theft_autoshrink_update_model(t, arg_i, res, 8);
 
         switch (res) {
         case THEFT_TRIAL_PASS:

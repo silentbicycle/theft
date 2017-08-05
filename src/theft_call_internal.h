@@ -13,10 +13,9 @@
 #include <errno.h>
 
 static enum theft_trial_res
-theft_call_inner(struct theft_run_info *run_info, void **args);
+theft_call_inner(struct theft *t, void **args);
 
 static enum theft_trial_res
-parent_handle_child_call(struct theft_run_info *run_info,
-    pid_t pid, int fd);
+parent_handle_child_call(struct theft *t, pid_t pid, int fd);
 
 #endif

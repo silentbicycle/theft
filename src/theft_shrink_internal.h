@@ -5,7 +5,6 @@
 
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t,
-    struct theft_run_info *run_info,
     struct theft_trial_info *trial_info, uint8_t arg_i);
 
 static enum theft_hook_shrink_pre_res

@@ -27,6 +27,7 @@ struct theft {
     uint8_t bits_available;
     /* Bit pool, only used during autoshrinking. */
     struct theft_autoshrink_bit_pool *bit_pool;
+    struct theft_run_info *run_info;
 };
 
 enum all_gen_res_t {

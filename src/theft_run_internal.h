@@ -13,19 +13,17 @@ enum run_step_res {
     RUN_STEP_TRIAL_ERROR,
 };
 static enum run_step_res
-run_step(struct theft *t, struct theft_run_info *run_info,
-    size_t trial, void **args, theft_seed *seed);
+run_step(struct theft *t, size_t trial,
+    void **args, theft_seed *seed);
 
 static bool
 check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     bool *all_hashable);
 
 static enum all_gen_res_t
-gen_all_args(struct theft *t, struct theft_run_info *info,
-    void *args[THEFT_MAX_ARITY]);
+gen_all_args(struct theft *t, void *args[THEFT_MAX_ARITY]);
 
-static bool wrap_any_autoshrinks(struct theft *t,
-    struct theft_run_info *info);
+static bool wrap_any_autoshrinks(struct theft *t);
 
 static void free_any_autoshrink_wrappers(struct theft_run_info *info);
 

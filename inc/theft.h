@@ -139,6 +139,10 @@ theft_hook_trial_post_print_result(const struct theft_hook_trial_post_info *info
 enum theft_hook_run_post_res
 theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info, void *env);
 
+/* Get the hook environment pointer.
+ * This is the contents of theft_run_config.hooks.env. */
+void *theft_hook_get_env(struct theft *t);
+
 
 /***************************
  * Other utility functions *
