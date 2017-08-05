@@ -22,7 +22,8 @@ void theft_generic_free_cb(void *instance, void *env) {
 }
 
 /* Print a tally marker for a trial result, but if there have been
- * 10 consecutive ones, increase the scale by an order of magnitude. */
+ * SCALE_FACTOR consecutive ones, increase the scale by an
+ * order of magnitude. */
 static size_t
 autoscale_tally(char *buf, size_t buf_size, size_t scale_factor,
         char *name, size_t *cur_scale, char tally, size_t *count) {

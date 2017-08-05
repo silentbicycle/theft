@@ -171,8 +171,47 @@ TEST a_squared_lt_b(void) {
     PASS();
 }
 
+static enum theft_trial_res prop_pass(uint64_t *v) {
+    (void)v;
+    return THEFT_TRIAL_PASS;
+}
+
+TEST pass_autoscaling(void) {
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_pass,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 1000000,
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+
+    /* This test needs to be checked by visual inspection -- it should
+     * look something like this:
+     *
+     * == PROP 'pass_autoscaling': 1000000 trials, seed 0x00a600d64b175eed
+     * .........d.............d.d...d.............d...........................
+     * ................................d..(PASS x 100).dddd(DUP x 10)d.dd.d.dd
+     * .d.d.d(DUP x 100)d.......d.......d........d.......d........d......d....
+     * ....d......d.......(DUP x 1000)d............................
+     * (PASS x 10000).d.dd.dd.dd.d(DUP x 10000)d..d..d.dd.ddd.d(DUP x 100000)d
+     * .ddddddd
+     * == PASS 'pass_autoscaling': pass 136572, fail 0, skip 0, dup 863428
+     *
+     * where the acceptance criteria is that it prints `PASS x 10000`
+     * rather than million different '.' and 'd' characters along the
+     * way. (If it fails, it should completely overwhelm the test output
+     * in an obvious way.) */
+    (void)res;
+
+    PASS();
+}
+
 SUITE(aux) {
     // builtins
     RUN_TEST(a_squared_lte_fixed);
     RUN_TEST(a_squared_lt_b);
+
+    /* Tests for other misc. aux stuff */
+    RUN_TEST(pass_autoscaling);
 }
