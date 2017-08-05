@@ -1095,6 +1095,47 @@ TEST shrink_crash(void) {
     PASS();
 }
 
+static enum theft_trial_res prop_just_abort(uint64_t *v) {
+    (void)v;
+    abort();
+    return THEFT_TRIAL_PASS;
+}
+
+/* This calls a property test that just aborts immediately,
+ * but has a much larger state space due to the uint64_t
+ * argument -- this will lead to lots and lots of forking,
+ * and should eventually run into fork failures with EAGAIN
+ * due to RLIMIT_NPROC. This should exercise theft's
+ * exponential back-off and cleaning up of terminated
+ * child processes. */
+TEST shrink_abort_immediately_to_stress_forking(void) {
+    enum theft_run_res res;
+
+    struct crash_env env = { .minimum = false };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_just_abort,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 1000,
+        .fork = {
+            .enable = true,
+            .timeout = 10000,
+        },
+        .hooks = {
+            .trial_pre = halt_if_found_10,
+            .trial_post = found_10,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should fail, but recover from temporary fork failures",
+        THEFT_RUN_FAIL, res);
+
+    PASS();
+}
+
 static enum theft_trial_res prop_infinite_loop_with_int_gte_10(uint16_t *v) {
     if (*v >= 10) {
         for (;;) {}
@@ -1148,6 +1189,7 @@ SUITE(integration) {
 
     RUN_TEST(shrink_crash);
     RUN_TEST(shrink_infinite_loop);
+    RUN_TEST(shrink_abort_immediately_to_stress_forking);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);

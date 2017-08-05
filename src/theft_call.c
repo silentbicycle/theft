@@ -25,11 +25,22 @@ theft_call(struct theft_run_info *run_info, void **args) {
             pid = fork();
             if (pid == -1) {
                 if (errno == EAGAIN) {
-                    errno = 0;
-                    if (tv.tv_nsec >= (1 << MAX_FORK_RETRIES)) {
+                    /* If we get EAGAIN, then wait for terminated
+                     * child processes a chance to clean up -- forking
+                     * is probably failing due to RLIMIT_NPROC. */
+                    const int pre_sleep_errno = errno;
+                    int stat_loc = 0;
+                    (void)waitpid(-1, &stat_loc, WNOHANG);
+                    if (-1 == nanosleep(&tv, NULL)) {
+                        perror("nanosleep");
+                        return THEFT_TRIAL_ERROR;
+                    }
+                    if (tv.tv_nsec >= (1L << MAX_FORK_RETRIES)) {
+                        errno = pre_sleep_errno;
                         perror("fork");
                         return THEFT_TRIAL_ERROR;
                     }
+                    errno = 0;
                     tv.tv_nsec <<= 1;
                     continue;
                 } else {
