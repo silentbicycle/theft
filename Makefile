@@ -12,7 +12,7 @@ OPTIMIZE = 	-O3
 #OPTIMIZE = 	-O0 ${PROFILE}
 
 WARN = 		-Wall -Wextra -pedantic
-CDEFS +=
+CDEFS +=	-D_DEFAULT_SOURCE
 CINCS += 	-I${INC} -I${VENDOR} -I${BUILD}
 CFLAGS += 	-std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE} ${CINCS}
 
