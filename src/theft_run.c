@@ -56,6 +56,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         .fork = {
             .enable = cfg->fork.enable,
             .timeout = cfg->fork.timeout,
+            .signal = cfg->fork.signal,
         },
     };
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));

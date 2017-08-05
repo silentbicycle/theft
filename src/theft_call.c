@@ -4,7 +4,9 @@
 #include <sys/time.h>
 
 #define LOG_CALL 0
+
 #define MAX_FORK_RETRIES 10
+#define DEF_KILL_SIGNAL SIGTERM
 
 /* Actually call the property function. Its number of arguments is not
  * constrained by the typedef, but will be defined at the call site
@@ -60,13 +62,15 @@ theft_call(struct theft_run_info *run_info, void **args) {
             res = theft_call_inner(run_info, args);
             uint8_t byte = (uint8_t)res;
             ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
-            exit(wr == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
+            exit(wr == 1 && res == THEFT_TRIAL_PASS
+                ? EXIT_SUCCESS
+                : EXIT_FAILURE);
         } else {                /* parent */
             close(fds[1]);
             res = parent_handle_child_call(run_info, pid, fds[0]);
             int stat_loc = 0;
             pid_t wait_res = waitpid(pid, &stat_loc, WNOHANG);
-            LOG(2 - LOG_CALL, "%s: WAITPID %d ? %d\n",
+            LOG(2 - LOG_CALL, "%s: waitpid %d ? %d\n",
                 __func__, pid, wait_res);
             close(fds[0]);
             return res;
@@ -114,7 +118,14 @@ parent_handle_child_call(struct theft_run_info *run_info,
     }
 
     if (res == 0) {     /* timeout */
-        if (-1 == kill(pid, SIGTERM)) {
+        int kill_signal = run_info->fork.signal;
+        if (kill_signal == 0) {
+            kill_signal = DEF_KILL_SIGNAL;
+        }
+        LOG(2 - LOG_CALL, "%s: kill(%d, %d)\n",
+            __func__, pid, kill_signal);
+        assert(pid != -1);      /* do not do this. */
+        if (-1 == kill(pid, kill_signal)) {
             return THEFT_TRIAL_ERROR;
         }
         int stat_loc = 0;
@@ -122,7 +133,15 @@ parent_handle_child_call(struct theft_run_info *run_info,
         LOG(2 - LOG_CALL, "%s: kill waitpid: %d ? %d\n",
             __func__, pid, wait_res);
         assert(wait_res == pid);
-        return THEFT_TRIAL_FAIL;
+        /* If the child called exit(EXIT_SUCCESS) then
+         * consider it a PASS, even though it timed out. */
+        LOG(2 - LOG_CALL, "exited? %d, exit_status %d\n",
+            WIFEXITED(stat_loc), WEXITSTATUS(stat_loc));
+        if (WIFEXITED(stat_loc) && WEXITSTATUS(stat_loc) == EXIT_SUCCESS) {
+            return THEFT_TRIAL_PASS;
+        } else {
+            return THEFT_TRIAL_FAIL;
+        }
     } else {
         uint8_t res_byte = 0xFF;
         ssize_t rd = 0;

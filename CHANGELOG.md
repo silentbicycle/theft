@@ -4,6 +4,13 @@
 
 ### API Changes
 
+Added the `.fork` structure to `struct theft_run_config` -- if
+`.fork.enable` is set, then theft will fork before running the property
+function. This can be used to shrink input that causes the code under
+test to crash. If forking is enabled, `.fork.timeout` adds a timeout (in
+milliseconds) for the property, to shrink input that causes infinite
+loops.
+
 Manual Bloom filter configuration is deprecated, because the Bloom
 filter now resizes automatically -- The bloom_bits setting in
 `struct theft_run_config` and related constants are ignored,

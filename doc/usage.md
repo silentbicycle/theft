@@ -98,6 +98,8 @@ customized ones are:
 - hooks: There are several hooks that can be used to control the test
   runner behavior -- see the **Hooks** subsection below.
 
+- fork: For details about forking, see [forking.md](forking.md).
+
 
 ## Type Info Callbacks
 

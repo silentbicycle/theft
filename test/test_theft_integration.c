@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <signal.h>
 
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
 
@@ -1170,6 +1171,56 @@ TEST shrink_infinite_loop(void) {
     PASS();
 }
 
+static volatile bool sigusr1_handled_flag = false;
+
+static void sigusr1_handler(int sig) {
+    if (sig == SIGUSR1) {
+        sigusr1_handled_flag = true;
+    }
+}
+
+static enum theft_trial_res prop_wait_for_SIGUSR1(bool *v) {
+    (void)v;
+    struct sigaction action = {
+        .sa_handler = sigusr1_handler,
+    };
+    struct sigaction old_action;
+    if (-1 == sigaction(SIGUSR1, &action, &old_action)) {
+        return THEFT_TRIAL_ERROR;
+    }
+
+    sigusr1_handled_flag = false;
+
+    for (;;) {
+        poll(NULL, 0, 10);
+        if (sigusr1_handled_flag) {
+            return THEFT_TRIAL_PASS;
+        }
+    }
+
+    return THEFT_TRIAL_FAIL;
+}
+
+TEST shrink_and_SIGUSR1_on_timeout(void) {
+    enum theft_run_res res;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_wait_for_SIGUSR1,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_bool) },
+        .trials = 1,
+        .fork = {
+            .enable = true,
+            .timeout = 10,
+            .signal = SIGUSR1,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should pass due to exit(EXIT_SUCCESS)", THEFT_RUN_PASS, res);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(alloc_and_free);
     RUN_TEST(generated_unsigned_ints_are_positive);
@@ -1187,9 +1238,11 @@ SUITE(integration) {
     RUN_TEST(repeat_local_minimum_once);
     RUN_TEST(repeat_first_successful_shrink_once_then_halt);
 
+    /* Tests for forking/timeouts */
     RUN_TEST(shrink_crash);
     RUN_TEST(shrink_infinite_loop);
     RUN_TEST(shrink_abort_immediately_to_stress_forking);
+    RUN_TEST(shrink_and_SIGUSR1_on_timeout);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);

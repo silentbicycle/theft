@@ -457,9 +457,13 @@ struct theft_run_config {
      * longer used, and will be removed in a future release. */
     uint8_t bloom_bits;
 
+    /* Fork before running the property test, in case generated
+     * arguments can cause the code under test to crash. */
     struct {
         bool enable;
-        size_t timeout;
+        size_t timeout;         /* in milliseconds (or 0, for none) */
+        /* signal to send after timeout, defaults to SIGTERM */
+        int signal;
     } fork;
 
     /* These functions are called in several contexts to report on
