@@ -72,6 +72,7 @@ theft_call(struct theft_run_info *run_info, void **args) {
             pid_t wait_res = waitpid(pid, &stat_loc, WNOHANG);
             LOG(2 - LOG_CALL, "%s: waitpid %d ? %d\n",
                 __func__, pid, wait_res);
+            (void)wait_res;
             close(fds[0]);
             return res;
         }
