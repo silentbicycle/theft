@@ -155,11 +155,13 @@ static void fill_buf(struct theft_autoshrink_bit_pool *pool,
             src_offset++;
         }
 
+        i += to_copy;
         if (dst_bit + to_copy == 64) {
             dst_offset++;
-            dst[dst_offset] = 0;
+            if (i < bit_count) {
+                dst[dst_offset] = 0;
+            }
         }
-        i += to_copy;
     }
 
     pool->consumed += bit_count;
