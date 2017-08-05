@@ -8,8 +8,9 @@ Added the `.fork` structure to `struct theft_run_config` -- if
 `.fork.enable` is set, then theft will fork before running the property
 function. This can be used to shrink input that causes the code under
 test to crash. If forking is enabled, `.fork.timeout` adds a timeout (in
-milliseconds) for the property, to shrink input that causes infinite
-loops.
+milliseconds) for each property trial, to shrink input that causes
+infinite loops or wide runtime variation. `.fork.signal` customizes
+the signal sent on timeout. See `doc/forking.md` for details.
 
 Manual Bloom filter configuration is deprecated, because the Bloom
 filter now resizes automatically -- The bloom_bits setting in
