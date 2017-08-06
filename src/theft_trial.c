@@ -130,7 +130,9 @@ report_on_failure(struct theft *t,
 
     while (res == THEFT_HOOK_TRIAL_POST_REPEAT
         || res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
-        enum theft_trial_res tres = theft_call(t, trial_info->args);
+        void *real_args[THEFT_MAX_ARITY];
+        theft_autoshrink_get_real_args(t, real_args, trial_info->args);
+        enum theft_trial_res tres = theft_call(t, real_args);
         if (tres == THEFT_TRIAL_FAIL) {
             res = trial_post(hook_info, t->hooks.env);
             if (res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
