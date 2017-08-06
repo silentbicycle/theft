@@ -1235,6 +1235,82 @@ TEST shrink_and_SIGUSR1_on_timeout(void) {
     PASS();
 }
 
+static bool printed_verbose_msg = false;
+
+static enum theft_trial_res
+prop_even_and_not_between_100_and_5000(struct theft *t, uint64_t *pv) {
+    bool *verbose = theft_hook_get_env(t);
+    if (verbose == NULL) { return THEFT_TRIAL_ERROR; }
+
+    uint64_t v = *pv;
+    if (v & 0x01) {
+        if (*verbose) {
+            fprintf(stdout, "Failing: %" PRIu64 " is odd\n", v);
+            printed_verbose_msg = true;
+        }
+        return THEFT_TRIAL_FAIL;
+    }
+
+    if (v >= 100 && v <= 5000) {
+        if (*verbose) {
+            fprintf(stdout, "Failing: %" PRIu64 " is between 100 and 5000\n", v);
+            printed_verbose_msg = true;
+        }
+        return THEFT_TRIAL_FAIL;
+    }
+
+    return THEFT_TRIAL_PASS;
+}
+
+static enum theft_hook_trial_pre_res
+halt_after_one_failure(const struct theft_hook_trial_pre_info *info,
+    void *env) {
+    (void)env;
+    return info->failures >= 1
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
+/* Re-run each failure once, with the verbose flag set. */
+enum theft_hook_trial_post_res
+trial_post_repeat_with_verbose_set(const struct theft_hook_trial_post_info *info,
+    void *env) {
+    bool *verbose = (bool *)env;
+    *verbose = false;
+
+    if (info->result == THEFT_TRIAL_FAIL) {
+        *verbose = !info->repeat; /* verbose next time */
+        return THEFT_HOOK_TRIAL_POST_REPEAT_ONCE;
+    }
+
+    return theft_hook_trial_post_print_result(info, env);
+}
+
+TEST repeat_with_verbose_set_after_shrinking(void) {
+    enum theft_run_res res;
+
+    bool verbose = false;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_even_and_not_between_100_and_5000,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 100,
+        .hooks = {
+            .trial_pre = halt_after_one_failure,
+            .trial_post = trial_post_repeat_with_verbose_set,
+            .env = &verbose,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should find counterexamples",
+        THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERTm("should repeat once with verbose set on failure",
+        printed_verbose_msg);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -1256,6 +1332,8 @@ SUITE(integration) {
     RUN_TEST(shrink_infinite_loop);
     RUN_TEST(shrink_abort_immediately_to_stress_forking);
     RUN_TEST(shrink_and_SIGUSR1_on_timeout);
+
+    RUN_TEST(repeat_with_verbose_set_after_shrinking);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);
