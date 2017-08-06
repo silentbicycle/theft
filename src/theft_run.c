@@ -10,6 +10,8 @@
 #include <string.h>
 #include <assert.h>
 
+#define LOG_RUN 0
+
 enum theft_run_init_res
 theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     enum theft_run_init_res res = THEFT_RUN_INIT_OK;
@@ -86,7 +88,9 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     };
     memcpy(&t->hooks, &hooks, sizeof(hooks));
 
-    LOG(3, "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n", __func__, t->seeds.run_seed);
+    LOG(3 - LOG_RUN,
+        "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n",
+        __func__, t->seeds.run_seed);
     theft_random_set_seed(t, t->seeds.run_seed);
     enum wrap_any_autoshrinks_res wrap_res = wrap_any_autoshrinks(t);
     switch (wrap_res) {
@@ -160,7 +164,8 @@ theft_run_trials(struct theft *t) {
     for (size_t trial = 0; trial < limit; trial++) {
         void *args[THEFT_MAX_ARITY];
         enum run_step_res res = run_step(t, trial, args, &seed);
-        LOG(3, "  -- trial %zd/%zd, new seed 0x%016" PRIx64 "\n",
+        LOG(3 - LOG_RUN,
+            "  -- trial %zd/%zd, new seed 0x%016" PRIx64 "\n",
             trial, limit, seed);
         theft_trial_free_args(t, args);
 
@@ -258,7 +263,8 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     }
 
     /* Set seed for this trial */
-    LOG(3, "%s: SETTING TRIAL SEED TO 0x%016" PRIx64 "\n", __func__, trial_info.seed);
+    LOG(3 - LOG_RUN,
+        "%s: SETTING TRIAL SEED TO 0x%016" PRIx64 "\n", __func__, trial_info.seed);
     theft_random_set_seed(t, trial_info.seed);
 
     enum all_gen_res gres = gen_all_args(t, args);
@@ -284,14 +290,14 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     switch (gres) {
     case ALL_GEN_SKIP:
         /* skip generating these args */
-        LOG(3, "gen -- skip\n");
+        LOG(3 - LOG_RUN, "gen -- skip\n");
         t->counters.skip++;
         hook_info.result = THEFT_TRIAL_SKIP;
         pres = post_cb(&hook_info, hook_env);
         break;
     case ALL_GEN_DUP:
         /* skip these args -- probably already tried */
-        LOG(3, "gen -- dup\n");
+        LOG(3 - LOG_RUN, "gen -- dup\n");
         t->counters.dup++;
         hook_info.result = THEFT_TRIAL_DUP;
         pres = post_cb(&hook_info, hook_env);
@@ -299,12 +305,12 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     default:
     case ALL_GEN_ERROR:
         /* Error while generating args */
-        LOG(1, "gen -- error\n");
+        LOG(1 - LOG_RUN, "gen -- error\n");
         hook_info.result = THEFT_TRIAL_ERROR;
         pres = post_cb(&hook_info, hook_env);
         return RUN_STEP_GEN_ERROR;
     case ALL_GEN_OK:
-        LOG(4, "gen -- ok\n");
+        LOG(4 - LOG_RUN, "gen -- ok\n");
         if (t->hooks.trial_pre != NULL) {
             struct theft_hook_trial_pre_info info = {
                 .prop_name = t->prop.name,
@@ -336,7 +342,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
 
     /* Update seed for next trial */
     *seed = theft_random(t);
-    LOG(3, "end of trial, new seed is 0x%016" PRIx64 "\n", *seed);
+    LOG(3 - LOG_RUN, "end of trial, new seed is 0x%016" PRIx64 "\n", *seed);
     return RUN_STEP_OK;
 }
 
@@ -384,6 +390,8 @@ gen_all_args(struct theft *t, void *args[THEFT_MAX_ARITY]) {
             }
         } else {
             args[i] = p;
+            LOG(3 - LOG_RUN, "%s: arg %u -- %p\n",
+                __func__, i, p);
         }
     }
 
