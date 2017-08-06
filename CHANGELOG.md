@@ -30,6 +30,9 @@ it's now combined with `THEFT_RUN_ERROR_BAD_ARGS`.
 Added `THEFT_RUN_ERROR_MEMORY` to `enum theft_run_res`. This is
 returned if internal memory allocation fails.
 
+Added `repeat` flag to the info struct associated with the
+`trial_post` hook. This is set when a test is being repeated.
+
 
 ### Other Improvements
 

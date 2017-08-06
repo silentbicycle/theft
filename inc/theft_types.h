@@ -273,6 +273,7 @@ struct theft_hook_trial_post_info {
     uint8_t arity;
     void **args;
     enum theft_trial_res result;
+    bool repeat;
 };
 typedef enum theft_hook_trial_post_res
 theft_hook_trial_post_cb(const struct theft_hook_trial_post_info *info,
