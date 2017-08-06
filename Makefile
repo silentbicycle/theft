@@ -75,10 +75,7 @@ ${BUILD}/%.o: ${TEST}/%.c ${SRC}/*.h ${INC}/* | ${BUILD}
 ${BUILD}/TAGS: ${SRC}/*.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
 
-${SRC}/*.c: Makefile
-${INT}/*.c: Makefile
-${TEST}/*.c: Makefile
-
+${BUILD}/*.o: Makefile
 
 ${BUILD}:
 	mkdir ${BUILD}
