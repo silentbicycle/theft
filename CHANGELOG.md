@@ -42,6 +42,8 @@ significantly reduces theft's memory overhead -- instead of a single
 large Bloom filter, it now uses a set of small filters, which can
 individually grow as necessary.
 
+Lots of internal refactoring.
+
 
 ## v0.3.0 - 2017-06-15
 
