@@ -53,7 +53,13 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bits, uint64_t *buf);
 #if THEFT_USE_FLOATING_POINT
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t);
+
+/* Get a random uint64_t less than CEIL.
+ * For example, `theft_random_choice(t, 5)` will return
+ * approximately evenly distributed values from [0, 1, 2, 3, 4]. */
+uint64_t theft_random_choice(struct theft *t, uint64_t ceil);
 #endif
+
 
 /***********
  * Hashing *

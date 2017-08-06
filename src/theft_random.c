@@ -104,6 +104,40 @@ double theft_random_double(struct theft *t) {
     LOG(4, "RANDOM_DOUBLE: %g\n", res);
     return res;
 }
+
+uint64_t theft_random_choice(struct theft *t, uint64_t ceil) {
+    if (ceil < 2) { return 0; }
+    uint64_t bits;
+    double limit;
+
+    /* If ceil is a power of two, just return that many bits. */
+    if ((ceil & (ceil - 1)) == 0) {
+        uint8_t log2_ceil = 1;
+        while (ceil > (1LLU << log2_ceil)) {
+            log2_ceil++;
+        }
+        assert((1LLU << log2_ceil) == ceil);
+        return theft_random_bits(t, log2_ceil);
+    }
+
+    /* If the choice values are fairly small (which shoud be
+     * the common case), sample less than 64 bits to reduce
+     * time spent managing the random bitstream. */
+    if (ceil < UINT8_MAX) {
+        bits = theft_random_bits(t, 16);
+        limit = (double)(1LLU << 16);
+    } else if (ceil < UINT16_MAX) {
+        bits = theft_random_bits(t, 32);
+        limit = (double)(1LLU << 32);
+    } else {
+        bits = theft_random_bits(t, 64);
+        limit = (double)UINT64_MAX;
+    }
+
+    double mul = (double)bits / limit;
+    uint64_t res = (uint64_t)(mul * ceil);
+    return res;
+}
 #endif
 
 static uint64_t get_mask(uint8_t bits) {

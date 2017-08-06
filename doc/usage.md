@@ -131,6 +131,11 @@ produced from a known seed, so it can be constructed again if
 necessary. These streams of random bits are not expected to be
 consistent between versions of the library.
 
+To choose a random unsigned int, use `theft_random_choice(t, LIMIT)`,
+which will return approximately evenly distributed `uint64_t`
+values less than LIMIT. For example, `theft_random_choice(t, 5)` will
+return values from `[0, 1, 2, 3, 4]`.
+
 - On success, write the instance into `(*instance*)` and return
   `THEFT_ALLOC_OK`.
 

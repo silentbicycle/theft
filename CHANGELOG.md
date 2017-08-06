@@ -17,6 +17,9 @@ filter now resizes automatically -- The bloom_bits setting in
 `struct theft_run_config` and related constants are ignored,
 and will be removed in a future release.
 
+Added `theft_random_choice`, which can be used to get an approximately
+evenly distributed random `uint64_t` values less than an upper bound.
+
 
 ### Other Improvements
 

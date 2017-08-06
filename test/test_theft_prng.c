@@ -166,6 +166,52 @@ TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
     PASS();
 }
 
+#if THEFT_USE_FLOATING_POINT
+TEST check_random_choice_0(void) {
+    struct theft_run_config cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    struct theft *t = theft_init(0);
+
+    const size_t trials = 10000;
+    for (size_t i = 0; i < trials; i++) {
+        uint64_t v = theft_random_choice(t, 0);
+        ASSERT_EQ_FMTm("limit of 0 should always return 0",
+            0, v, "%" PRIu64);
+    }
+
+    theft_free(t);
+    PASS();
+}
+
+TEST check_random_choice_distribution(uint64_t limit, float tolerance) {
+    struct theft_run_config cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    struct theft *t = theft_init(0);
+
+    size_t *counts = calloc(limit, sizeof(size_t));
+
+    const size_t trials = limit < 10000 ? 10000000 : 1000 * limit;
+    for (size_t i = 0; i < trials; i++) {
+        uint64_t v = theft_random_choice(t, limit);
+        ASSERT(v < limit);
+        counts[v]++;
+    }
+
+    /* Count, if the trials were perfectly evenly distributed */
+    size_t even = trials / (double)limit;
+
+    for (size_t i = 0; i < limit; i++) {
+        size_t count = counts[i];
+        ASSERT_IN_RANGEm("distribution is too uneven",
+            even, count, tolerance * even);
+    }
+
+    theft_free(t);
+    free(counts);
+    PASS();
+}
+#endif
+
 SUITE(prng) {
     RUN_TEST(prng_should_return_same_series_from_same_seeds);
 
@@ -177,4 +223,16 @@ SUITE(prng) {
     }
 
     RUN_TEST(seed_with_upper_32_bits_masked_should_produce_different_value);
+
+#if THEFT_USE_FLOATING_POINT
+    RUN_TEST(check_random_choice_0);
+
+    for (uint64_t limit = 1; limit < 300; limit++) {
+        RUN_TESTp(check_random_choice_distribution, limit, 0.05);
+    }
+
+    /* Relax the tolerance for these a bit, because we aren't running
+     * enough trials to smooth out the distribution. */
+    RUN_TESTp(check_random_choice_distribution, 10000, 0.20);
+#endif
 }
