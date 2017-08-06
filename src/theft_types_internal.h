@@ -44,6 +44,19 @@ struct prop_info {
     struct theft_type_info *type_info[THEFT_MAX_ARITY];
 };
 
+struct hook_info {
+    theft_hook_run_pre_cb *run_pre;
+    theft_hook_run_post_cb *run_post;
+    theft_hook_gen_args_pre_cb *gen_args_pre;
+    theft_hook_trial_pre_cb *trial_pre;
+    theft_hook_trial_post_cb *trial_post;
+    theft_hook_counterexample_cb *counterexample;
+    theft_hook_shrink_pre_cb *shrink_pre;
+    theft_hook_shrink_post_cb *shrink_post;
+    theft_hook_shrink_trial_post_cb *shrink_trial_post;
+    void *env;
+};
+
 struct theft {
     FILE *out;
     uint8_t requested_bloom_bits;
@@ -54,7 +67,6 @@ struct theft {
     uint8_t bits_available;
     /* Bit pool, only used during autoshrinking. */
     struct theft_autoshrink_bit_pool *bit_pool;
-    struct theft_run_info *run_info;
 
     struct prop_info prop;
 
@@ -69,26 +81,8 @@ struct theft {
     } counters;
 
     struct fork_info fork;
-};
-
-/* Testing context for a specific property function. */
-struct theft_run_info {
-
-    /* Progress callbacks. */
-    struct {
-        theft_hook_run_pre_cb *run_pre;
-        theft_hook_run_post_cb *run_post;
-        theft_hook_gen_args_pre_cb *gen_args_pre;
-        theft_hook_trial_pre_cb *trial_pre;
-        theft_hook_trial_post_cb *trial_post;
-        theft_hook_counterexample_cb *counterexample;
-        theft_hook_shrink_pre_cb *shrink_pre;
-        theft_hook_shrink_post_cb *shrink_post;
-        theft_hook_shrink_trial_post_cb *shrink_trial_post;
-        void *env;
-    } hooks;
-
     struct theft_print_trial_result_env *print_trial_result_env;
+    struct hook_info hooks;
 };
 
 /* Result from an individual trial. */

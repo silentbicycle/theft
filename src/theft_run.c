@@ -47,30 +47,28 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     memcpy(&prop.type_info, cfg->type_info, sizeof(prop.type_info));
     memcpy(&t->prop, &prop, sizeof(prop));
 
-    struct theft_run_info run_info = {
-        .hooks = {
-            .run_pre = (cfg->hooks.run_pre != NULL
-                ? cfg->hooks.run_pre
-                : theft_hook_run_pre_print_info),
-            .run_post = (cfg->hooks.run_post != NULL
-                ? cfg->hooks.run_post
-                : theft_hook_run_post_print_info),
-            .gen_args_pre = cfg->hooks.gen_args_pre,
-            .trial_pre = cfg->hooks.trial_pre,
-            .trial_post = (cfg->hooks.trial_post != NULL
-                ? cfg->hooks.trial_post
-                : theft_hook_trial_post_print_result),
+    struct hook_info hooks = {
+        .run_pre = (cfg->hooks.run_pre != NULL
+            ? cfg->hooks.run_pre
+            : theft_hook_run_pre_print_info),
+        .run_post = (cfg->hooks.run_post != NULL
+            ? cfg->hooks.run_post
+            : theft_hook_run_post_print_info),
+        .gen_args_pre = cfg->hooks.gen_args_pre,
+        .trial_pre = cfg->hooks.trial_pre,
+        .trial_post = (cfg->hooks.trial_post != NULL
+            ? cfg->hooks.trial_post
+            : theft_hook_trial_post_print_result),
 
-            .counterexample = (cfg->hooks.counterexample != NULL
-                ? cfg->hooks.counterexample
-                : theft_print_counterexample),
-            .shrink_pre = cfg->hooks.shrink_pre,
-            .shrink_post = cfg->hooks.shrink_post,
-            .shrink_trial_post = cfg->hooks.shrink_trial_post,
-            .env = cfg->hooks.env,
-        },
+        .counterexample = (cfg->hooks.counterexample != NULL
+            ? cfg->hooks.counterexample
+            : theft_print_counterexample),
+        .shrink_pre = cfg->hooks.shrink_pre,
+        .shrink_post = cfg->hooks.shrink_post,
+        .shrink_trial_post = cfg->hooks.shrink_trial_post,
+        .env = cfg->hooks.env,
     };
-    t->run_info = &run_info;
+    memcpy(&t->hooks, &hooks, sizeof(hooks));
 
     LOG(3, "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n", __func__, t->seeds.run_seed);
     theft_random_set_seed(t, t->seeds.run_seed);
@@ -84,21 +82,21 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         t->bloom = theft_bloom_init(NULL);
     }
 
-    if (run_info.hooks.trial_post == theft_hook_trial_post_print_result) {
-        run_info.print_trial_result_env = calloc(1,
-            sizeof(*run_info.print_trial_result_env));
-        if (run_info.print_trial_result_env == NULL) {
+    if (t->hooks.trial_post == theft_hook_trial_post_print_result) {
+        t->print_trial_result_env = calloc(1,
+            sizeof(*t->print_trial_result_env));
+        if (t->print_trial_result_env == NULL) {
             return THEFT_RUN_ERROR;
         }
     }
 
-    if (run_info.hooks.run_pre != NULL) {
+    if (t->hooks.run_pre != NULL) {
         struct theft_hook_run_pre_info hook_info = {
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .run_seed = t->seeds.run_seed,
         };
-        enum theft_hook_run_pre_res res = run_info.hooks.run_pre(&hook_info, run_info.hooks.env);
+        enum theft_hook_run_pre_res res = t->hooks.run_pre(&hook_info, t->hooks.env);
         if (res != THEFT_HOOK_RUN_PRE_CONTINUE) {
             free_any_autoshrink_wrappers(t);
             free_print_trial_result_env(t);
@@ -131,7 +129,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         }
     }
 
-    theft_hook_run_post_cb *run_post = run_info.hooks.run_post;
+    theft_hook_run_post_cb *run_post = t->hooks.run_post;
     if (run_post != NULL) {
         struct theft_hook_run_post_info hook_info = {
             .prop_name = t->prop.name,
@@ -145,7 +143,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
             },
         };
 
-        enum theft_hook_run_post_res res = run_post(&hook_info, run_info.hooks.env);
+        enum theft_hook_run_post_res res = run_post(&hook_info, t->hooks.env);
         if (res != THEFT_HOOK_RUN_POST_CONTINUE) {
             free_any_autoshrink_wrappers(t);
             free_print_trial_result_env(t);
@@ -168,8 +166,6 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
 static enum run_step_res
 run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     memset(args, 0x00, THEFT_MAX_ARITY * sizeof(args[0]));
-    struct theft_run_info *run_info = t->run_info;
-
     /* If any seeds to always run were specified, use those before
      * reverting to the specified starting seed. */
     const size_t always_seeds = t->seeds.always_seed_count;
@@ -186,7 +182,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
         .args = args
     };
 
-    theft_hook_gen_args_pre_cb *gen_args_pre = run_info->hooks.gen_args_pre;
+    theft_hook_gen_args_pre_cb *gen_args_pre = t->hooks.gen_args_pre;
     if (gen_args_pre != NULL) {
         struct theft_hook_gen_args_pre_info hook_info = {
             .prop_name = t->prop.name,
@@ -198,7 +194,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
             .arity = t->prop.arity
         };
         enum theft_hook_gen_args_pre_res res = gen_args_pre(&hook_info,
-            run_info->hooks.env);
+            t->hooks.env);
 
         switch (res) {
         case THEFT_HOOK_GEN_ARGS_PRE_CONTINUE:
@@ -217,10 +213,10 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     theft_random_set_seed(t, trial_info.seed);
 
     enum all_gen_res gres = gen_all_args(t, args);
-    theft_hook_trial_post_cb *post_cb = run_info->hooks.trial_post;
-    void *hook_env = (run_info->hooks.trial_post == theft_hook_trial_post_print_result
-        ? run_info->print_trial_result_env
-        : run_info->hooks.env);
+    theft_hook_trial_post_cb *post_cb = t->hooks.trial_post;
+    void *hook_env = (t->hooks.trial_post == theft_hook_trial_post_print_result
+        ? t->print_trial_result_env
+        : t->hooks.env);
 
     struct theft_hook_trial_post_info hook_info = {
         .t = t,
@@ -260,7 +256,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
         return RUN_STEP_GEN_ERROR;
     case ALL_GEN_OK:
         LOG(4, "gen -- ok\n");
-        if (run_info->hooks.trial_pre != NULL) {
+        if (t->hooks.trial_pre != NULL) {
             struct theft_hook_trial_pre_info info = {
                 .prop_name = t->prop.name,
                 .total_trials = t->prop.trial_count,
@@ -272,7 +268,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
                 .args = args,
             };
             enum theft_hook_trial_pre_res tpres;
-            tpres = run_info->hooks.trial_pre(&info, run_info->hooks.env);
+            tpres = t->hooks.trial_pre(&info, t->hooks.env);
             if (tpres == THEFT_HOOK_TRIAL_PRE_HALT) {
                 return RUN_STEP_HALT;
             } else if (tpres == THEFT_HOOK_TRIAL_PRE_ERROR) {
@@ -397,10 +393,9 @@ static void free_any_autoshrink_wrappers(struct theft *t) {
 }
 
 static void free_print_trial_result_env(struct theft *t) {
-    struct theft_run_info *run_info = t->run_info;
-    if (run_info->hooks.trial_post == theft_hook_trial_post_print_result
-        && run_info->print_trial_result_env != NULL) {
-        free(run_info->print_trial_result_env);
-        run_info->print_trial_result_env = NULL;
+    if (t->hooks.trial_post == theft_hook_trial_post_print_result
+        && t->print_trial_result_env != NULL) {
+        free(t->print_trial_result_env);
+        t->print_trial_result_env = NULL;
     }
 }

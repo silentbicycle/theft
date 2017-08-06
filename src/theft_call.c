@@ -13,8 +13,6 @@
  * here. (If info->arity is wrong, it will probably crash.) */
 enum theft_trial_res
 theft_call(struct theft *t, void **args) {
-    struct theft_run_info *run_info = t->run_info;
-    assert(run_info);
     enum theft_trial_res res = THEFT_TRIAL_ERROR;
 
     if (t->fork.enable) {

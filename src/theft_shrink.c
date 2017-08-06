@@ -180,8 +180,7 @@ static enum theft_hook_shrink_pre_res
 shrink_pre_hook(struct theft *t,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic) {
-    struct theft_run_info *run_info = t->run_info;
-    if (run_info->hooks.shrink_pre != NULL) {
+    if (t->hooks.shrink_pre != NULL) {
         struct theft_hook_shrink_pre_info hook_info = {
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
@@ -197,7 +196,7 @@ shrink_pre_hook(struct theft *t,
             .arg = arg,
             .tactic = tactic,
         };
-        return run_info->hooks.shrink_pre(&hook_info, run_info->hooks.env);
+        return t->hooks.shrink_pre(&hook_info, t->hooks.env);
     } else {
         return THEFT_HOOK_SHRINK_PRE_CONTINUE;
     }
@@ -208,8 +207,7 @@ shrink_post_hook(struct theft *t,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic,
         enum theft_shrink_res sres) {
-    struct theft_run_info *run_info = t->run_info;
-    if (run_info->hooks.shrink_post != NULL) {
+    if (t->hooks.shrink_post != NULL) {
         enum theft_shrink_post_state state;
         switch (sres) {
         case THEFT_SHRINK_OK:
@@ -237,7 +235,7 @@ shrink_post_hook(struct theft *t,
             .tactic = tactic,
             .state = state,
         };
-        return run_info->hooks.shrink_post(&hook_info, run_info->hooks.env);
+        return t->hooks.shrink_post(&hook_info, t->hooks.env);
     } else {
         return THEFT_HOOK_SHRINK_POST_CONTINUE;
     }
@@ -248,8 +246,7 @@ shrink_trial_post_hook(struct theft *t,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void **args, uint32_t last_tactic,
         enum theft_trial_res result) {
-    struct theft_run_info *run_info = t->run_info;
-    if (run_info->hooks.shrink_trial_post != NULL) {
+    if (t->hooks.shrink_trial_post != NULL) {
         struct theft_hook_shrink_trial_post_info hook_info = {
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
@@ -266,8 +263,8 @@ shrink_trial_post_hook(struct theft *t,
             .tactic = last_tactic,
             .result = result,
         };
-        return run_info->hooks.shrink_trial_post(&hook_info,
-            run_info->hooks.env);
+        return t->hooks.shrink_trial_post(&hook_info,
+            t->hooks.env);
     } else {
         return THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE;
     }

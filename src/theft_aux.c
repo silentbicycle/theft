@@ -161,10 +161,7 @@ theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info,
     return THEFT_HOOK_RUN_POST_CONTINUE;
 }
 
-void *theft_hook_get_env(struct theft *t) {
-    assert(t->run_info != NULL);
-    return t->run_info->hooks.env;
-}
+void *theft_hook_get_env(struct theft *t) { return t->hooks.env; }
 
 struct theft_aux_print_trial_result_env {
     FILE *f;                  // 0 -> default of stdout

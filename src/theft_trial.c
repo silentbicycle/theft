@@ -13,7 +13,6 @@ bool
 theft_trial_run(struct theft *t,
         struct theft_trial_info *trial_info,
         enum theft_hook_trial_post_res *tpres) {
-    struct theft_run_info *run_info = t->run_info;
     assert(trial_info->args);
     assert(trial_info->arity > 0);
 
@@ -27,10 +26,10 @@ theft_trial_run(struct theft *t,
 
     bool repeated = false;
     enum theft_trial_res tres = theft_call(t, real_args);
-    theft_hook_trial_post_cb *trial_post = run_info->hooks.trial_post;
+    theft_hook_trial_post_cb *trial_post = t->hooks.trial_post;
     void *trial_post_env = (trial_post == theft_hook_trial_post_print_result
-        ? run_info->print_trial_result_env
-        : run_info->hooks.env);
+        ? t->print_trial_result_env
+        : t->hooks.env);
 
     struct theft_hook_trial_post_info hook_info = {
         .t = t,
@@ -106,9 +105,7 @@ report_on_failure(struct theft *t,
         struct theft_hook_trial_post_info *hook_info,
         theft_hook_trial_post_cb *trial_post,
         void *trial_post_env) {
-    struct theft_run_info *run_info = t->run_info;
-
-    theft_hook_counterexample_cb *counterexample = run_info->hooks.counterexample;
+    theft_hook_counterexample_cb *counterexample = t->hooks.counterexample;
     if (counterexample != NULL) {
         struct theft_hook_counterexample_info hook_info = {
             .t = t,
@@ -122,7 +119,7 @@ report_on_failure(struct theft *t,
              * autoshrink_print expects the wrapped version. */
             .args = trial_info->args,
         };
-        if (counterexample(&hook_info, run_info->hooks.env)
+        if (counterexample(&hook_info, t->hooks.env)
             != THEFT_HOOK_COUNTEREXAMPLE_CONTINUE) {
             return THEFT_HOOK_TRIAL_POST_ERROR;
         }
@@ -135,7 +132,7 @@ report_on_failure(struct theft *t,
         || res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
         enum theft_trial_res tres = theft_call(t, trial_info->args);
         if (tres == THEFT_TRIAL_FAIL) {
-            res = trial_post(hook_info, run_info->hooks.env);
+            res = trial_post(hook_info, t->hooks.env);
             if (res == THEFT_HOOK_TRIAL_POST_REPEAT_ONCE) {
                 break;
             }
