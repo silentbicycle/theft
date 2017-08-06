@@ -57,6 +57,13 @@ struct hook_info {
     void *env;
 };
 
+struct counter_info {
+    size_t pass;
+    size_t fail;
+    size_t skip;
+    size_t dup;
+};
+
 struct theft {
     FILE *out;
     uint8_t requested_bloom_bits;
@@ -69,20 +76,11 @@ struct theft {
     struct theft_autoshrink_bit_pool *bit_pool;
 
     struct prop_info prop;
-
     struct seed_info seeds;
-
-    /* Counters passed to hook callback */
-    struct {
-        size_t pass;
-        size_t fail;
-        size_t skip;
-        size_t dup;
-    } counters;
-
     struct fork_info fork;
     struct theft_print_trial_result_env *print_trial_result_env;
     struct hook_info hooks;
+    struct counter_info counters;
 };
 
 /* Result from an individual trial. */
