@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 #include <poll.h>
 #include <signal.h>
 #include <errno.h>
