@@ -3,6 +3,13 @@
 
 #include "theft_types_internal.h"
 
+enum shrink_res {
+    SHRINK_OK,                  /* simplified argument further */
+    SHRINK_DEAD_END,            /* at local minima */
+    SHRINK_ERROR,               /* hard error during shrinking */
+    SHRINK_HALT,                /* don't shrink any further */
+};
+
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t,
     struct theft_trial_info *trial_info, uint8_t arg_i);

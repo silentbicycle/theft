@@ -52,7 +52,7 @@ theft_trial_run(struct theft *t,
         *tpres = trial_post(&hook_info, trial_post_env);
         break;
     case THEFT_TRIAL_FAIL:
-        if (theft_shrink(t, trial_info) != SHRINK_OK) {
+        if (!theft_shrink(t, trial_info)) {
             hook_info.result = THEFT_TRIAL_ERROR;
             /* We may not have a valid reference to the arguments
              * anymore, so remove the stale pointers. */

@@ -33,20 +33,6 @@ struct theft {
     struct theft_run_info *run_info;
 };
 
-enum all_gen_res_t {
-    ALL_GEN_OK,                 /* all arguments generated okay */
-    ALL_GEN_SKIP,               /* skip due to user constraints */
-    ALL_GEN_DUP,                /* skip probably duplicated trial */
-    ALL_GEN_ERROR,              /* memory error or other failure */
-} all_gen_res_t;
-
-enum shrink_res {
-    SHRINK_OK,                  /* simplified argument further */
-    SHRINK_DEAD_END,            /* at local minima */
-    SHRINK_ERROR,               /* hard error during shrinking */
-    SHRINK_HALT,                /* don't shrink any further */
-};
-
 /* Testing context for a specific property function. */
 struct theft_run_info {
     const char *name;           /* property name, can be NULL */

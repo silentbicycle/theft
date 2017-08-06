@@ -20,7 +20,14 @@ static bool
 check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     bool *all_hashable);
 
-static enum all_gen_res_t
+enum all_gen_res {
+    ALL_GEN_OK,                 /* all arguments generated okay */
+    ALL_GEN_SKIP,               /* skip due to user constraints */
+    ALL_GEN_DUP,                /* skip probably duplicated trial */
+    ALL_GEN_ERROR,              /* memory error or other failure */
+};
+
+static enum all_gen_res
 gen_all_args(struct theft *t, void *args[THEFT_MAX_ARITY]);
 
 static bool wrap_any_autoshrinks(struct theft *t);

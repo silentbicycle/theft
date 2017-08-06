@@ -8,7 +8,7 @@
 
 /* Attempt to simplify all arguments, breadth first. Continue as long as
  * progress is made, i.e., until a local minima is reached. */
-enum shrink_res
+bool
 theft_shrink(struct theft *t,
         struct theft_trial_info *trial_info) {
     struct theft_run_info *run_info = t->run_info;
@@ -33,19 +33,19 @@ theft_shrink(struct theft *t,
                     goto greedy_continue; /* keep trying to shrink same argument */
                 case SHRINK_HALT:
                     LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
-                    return SHRINK_OK;
+                    return true;
                 case SHRINK_DEAD_END:
                     LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
                     continue;   /* try next argument, if any */
                 default:
                 case SHRINK_ERROR:
                     LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
-                    return SHRINK_ERROR;
+                    return false;
                 }
             }
         }
     } while (progress);
-    return SHRINK_OK;
+    return true;
 }
 
 /* Simplify an argument by trying all of its simplification tactics, in

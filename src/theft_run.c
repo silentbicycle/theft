@@ -206,7 +206,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     LOG(3, "%s: SETTING TRIAL SEED TO 0x%016" PRIx64 "\n", __func__, trial_info.seed);
     theft_random_set_seed(t, trial_info.seed);
 
-    enum all_gen_res_t gres = gen_all_args(t, args);
+    enum all_gen_res gres = gen_all_args(t, args);
     theft_hook_trial_post_cb *post_cb = run_info->hooks.trial_post;
     void *hook_env = (run_info->hooks.trial_post == theft_hook_trial_post_print_result
         ? run_info->print_trial_result_env
@@ -312,7 +312,7 @@ check_all_args(uint8_t arity, const struct theft_run_config *cfg,
 }
 
 /* Attempt to instantiate arguments, starting with the current seed. */
-static enum all_gen_res_t
+static enum all_gen_res
 gen_all_args(struct theft *t, void *args[THEFT_MAX_ARITY]) {
     struct theft_run_info *run_info = t->run_info;
     for (uint8_t i = 0; i < run_info->arity; i++) {
