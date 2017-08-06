@@ -158,7 +158,7 @@ attempt_to_shrink_arg(struct theft *t,
         case THEFT_TRIAL_PASS:
         case THEFT_TRIAL_SKIP:
             /* revert */
-            LOG(2 - LOG_SHRINK, "PASS: REVERTING %u: was %p, now %p\n",
+            LOG(2 - LOG_SHRINK, "PASS or SKIP: REVERTING %u: was %p, now %p\n",
                 arg_i, (void *)args[arg_i], (void *)cur);
             args[arg_i] = cur;
             if (ti->free) { ti->free(candidate, ti->env); }
