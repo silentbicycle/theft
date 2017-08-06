@@ -10,10 +10,6 @@ typedef uint64_t theft_seed;
 /* A hash of an instance. */
 typedef uint64_t theft_hash;
 
-/* These are opaque, as far as the API is concerned. */
-struct theft_bloom;             /* bloom filter */
-struct theft_mt;                /* mersenne twister PRNG */
-
 /* Configuration for a theft run. (Forward reference, defined below.) */
 struct theft_run_config;
 

@@ -16,6 +16,9 @@
         }                                                             \
     } while(0)
 
+struct theft_bloom;             /* bloom filter */
+struct theft_mt;                /* mersenne twister PRNG */
+
 struct theft {
     FILE *out;
     theft_seed seed;
