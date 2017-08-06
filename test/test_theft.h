@@ -5,6 +5,7 @@
 #include "theft.h"
 
 #include <assert.h>
+#include <inttypes.h>
 
 /* These are not part of the public API, but are exposed for testing. */
 struct theft *theft_init(uint8_t bloom_bits);

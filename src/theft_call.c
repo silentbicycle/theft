@@ -175,38 +175,38 @@ theft_call_inner(struct theft *t, void **args) {
     struct theft_run_info *run_info = t->run_info;
     switch (run_info->arity) {
     case 1:
-        return run_info->fun(args[0]);
+        return run_info->fun(t, args[0]);
         break;
     case 2:
-        return run_info->fun(args[0], args[1]);
+        return run_info->fun(t, args[0], args[1]);
         break;
     case 3:
-        return run_info->fun(args[0], args[1], args[2]);
+        return run_info->fun(t, args[0], args[1], args[2]);
         break;
     case 4:
-        return run_info->fun(args[0], args[1], args[2], args[3]);
+        return run_info->fun(t, args[0], args[1], args[2], args[3]);
         break;
     case 5:
-        return run_info->fun(args[0], args[1], args[2], args[3], args[4]);
+        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4]);
         break;
     case 6:
-        return run_info->fun(args[0], args[1], args[2], args[3], args[4],
+        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5]);
         break;
     case 7:
-        return run_info->fun(args[0], args[1], args[2], args[3], args[4],
+        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6]);
         break;
     case 8:
-        return run_info->fun(args[0], args[1], args[2], args[3], args[4],
+        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6], args[7]);
         break;
     case 9:
-        return run_info->fun(args[0], args[1], args[2], args[3], args[4],
+        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6], args[7], args[8]);
         break;
     case 10:
-        return run_info->fun(args[0], args[1], args[2], args[3], args[4],
+        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6], args[7], args[8], args[9]);
         break;
     /* ... */

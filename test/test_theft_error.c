@@ -15,7 +15,8 @@ struct err_env {
     bool shrinking;
 };
 
-static enum theft_trial_res prop_bits_gt_0(uint8_t *x) {
+static enum theft_trial_res prop_bits_gt_0(struct theft *t, uint8_t *x) {
+    (void)t;
     return (*x > 0 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL);
 }
 
@@ -535,7 +536,8 @@ TEST shrink_trial_post_hook_error(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_always_skip(uint8_t *x) {
+static enum theft_trial_res prop_always_skip(struct theft *t, uint8_t *x) {
+    (void)t;
     (void)x;
     return THEFT_TRIAL_SKIP;
 }
@@ -570,7 +572,8 @@ TEST trial_skip(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_always_error(uint8_t *x) {
+static enum theft_trial_res prop_always_error(struct theft *t, uint8_t *x) {
+    (void)t;
     (void)x;
     return THEFT_TRIAL_ERROR;
 }
@@ -607,11 +610,12 @@ TEST trial_error(void) {
 
 static bool trial_error_during_autoshrink_flag = false;
 
-static enum theft_trial_res prop_error_if_autoshrinking(uint8_t *x) {
+static enum theft_trial_res prop_error_if_autoshrinking(struct theft *t, uint8_t *x) {
+    (void)t;
     if (trial_error_during_autoshrink_flag) {
         return THEFT_TRIAL_ERROR;
     }
-    return prop_bits_gt_0(x);
+    return prop_bits_gt_0(t, x);
 }
 
 static enum theft_hook_shrink_pre_res
@@ -694,7 +698,8 @@ TEST counterexample_error(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_ignore_input_fail_then_pass(uint8_t *x) {
+static enum theft_trial_res prop_ignore_input_fail_then_pass(struct theft *t, uint8_t *x) {
+    (void)t;
     (void)x;
     static size_t runs = 0;
     runs++;

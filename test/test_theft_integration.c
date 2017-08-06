@@ -42,7 +42,11 @@ static struct theft_type_info uint_type_info = {
     .print = uint_print,
 };
 
-static enum theft_trial_res is_pos(uint32_t *n) {
+static enum theft_trial_res
+is_pos(struct theft *t, uint32_t *n) {
+    /* Ignoring the argument and returning true, because *n is positive
+     * by definition -- checking gets a tautological comparison warning. */
+    (void)t;
     (void)n;
     return THEFT_TRIAL_PASS;
 }
@@ -283,7 +287,8 @@ static struct theft_type_info list_info = {
     .print = list_print,
 };
 
-static enum theft_trial_res prop_gen_cons(list *l) {
+static enum theft_trial_res prop_gen_cons(struct theft *t, list *l) {
+    (void)t;
     list *nl = malloc(sizeof(list));
     if (nl == NULL) { return THEFT_TRIAL_ERROR; }
     nl->v = 0;
@@ -313,7 +318,8 @@ TEST generated_int_list_with_cons_is_longer() {
 }
 
 static enum theft_trial_res
-prop_gen_list_unique(list *l) {
+prop_gen_list_unique(struct theft *t, list *l) {
+    (void)t;
     /* For each link in the list, check that there are none later that
      * have the same value. (This should fail, as we're not constraining
      * against it in list generation.) */
@@ -369,7 +375,8 @@ TEST generated_int_list_does_not_repeat_values() {
 }
 
 static enum theft_trial_res
-prop_gen_list_unique_pair(list *a, list *b) {
+prop_gen_list_unique_pair(struct theft *t, list *a, list *b) {
+    (void)t;
     if (list_length(a) == list_length(b)) {
         list *la = a;
         list *lb = b;
@@ -521,7 +528,8 @@ static struct theft_type_info seed_info = {
 static uint64_t expected_value = 0;
 
 static enum theft_trial_res
-prop_expected_seed_is_used(theft_seed *s) {
+prop_expected_seed_is_used(struct theft *t, theft_seed *s) {
+    (void)t;
     if (*s == expected_value) {
         return THEFT_TRIAL_PASS;
     } else {
@@ -548,7 +556,8 @@ TEST expected_seed_should_be_used_first(void) {
 }
 
 static enum theft_trial_res
-prop_bool_tautology(bool *bp) {
+prop_bool_tautology(struct theft *t, bool *bp) {
+    (void)t;
     bool b = *bp;
     if (b || !b) {    // tautology to force shrinking
         return THEFT_TRIAL_FAIL;
@@ -636,7 +645,9 @@ error_in_gen_args_pre(const struct theft_hook_gen_args_pre_info *info, void *env
     return THEFT_HOOK_GEN_ARGS_PRE_ERROR;
 }
 
-static enum theft_trial_res should_never_run(void *x) {
+static enum theft_trial_res
+should_never_run(struct theft *t, void *x) {
+    (void)t;
     (void)x;
     assert(false);
     return THEFT_TRIAL_PASS;
@@ -663,7 +674,9 @@ TEST save_seed_and_error_before_generating_args(void) {
     PASS();
 }
 
-static enum theft_trial_res always_pass(void *x) {
+static enum theft_trial_res
+always_pass(struct theft *t, void *x) {
+    (void)t;
     (void)x;
     return THEFT_TRIAL_PASS;
 }
@@ -711,7 +724,8 @@ TEST gen_pre_halt(void) {
 
 
 static enum theft_trial_res
-prop_uint_is_lte_12345(uint32_t *arg) {
+prop_uint_is_lte_12345(struct theft *t, uint32_t *arg) {
+    (void)t;
     return *arg <= 12345 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL;
 }
 
@@ -1061,7 +1075,9 @@ halt_if_found_10(const struct theft_hook_trial_pre_info *info,
 }
 
 #include <poll.h>
-static enum theft_trial_res prop_crash_with_int_gte_10(uint16_t *v) {
+static enum theft_trial_res
+prop_crash_with_int_gte_10(struct theft *t, uint16_t *v) {
+    (void)t;
     if (*v >= 10) {
         //poll(NULL, 0, (*v) / 10);
         assert(false);
@@ -1096,7 +1112,9 @@ TEST shrink_crash(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_just_abort(uint64_t *v) {
+static enum theft_trial_res
+prop_just_abort(struct theft *t, uint64_t *v) {
+    (void)t;
     (void)v;
     abort();
     return THEFT_TRIAL_PASS;
@@ -1137,7 +1155,9 @@ TEST shrink_abort_immediately_to_stress_forking(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_infinite_loop_with_int_gte_10(uint16_t *v) {
+static enum theft_trial_res
+prop_infinite_loop_with_int_gte_10(struct theft *t, uint16_t *v) {
+    (void)t;
     if (*v >= 10) {
         for (;;) {}
     }
@@ -1179,7 +1199,9 @@ static void sigusr1_handler(int sig) {
     }
 }
 
-static enum theft_trial_res prop_wait_for_SIGUSR1(bool *v) {
+static enum theft_trial_res
+prop_wait_for_SIGUSR1(struct theft *t, bool *v) {
+    (void)t;
     (void)v;
     struct sigaction action = {
         .sa_handler = sigusr1_handler,

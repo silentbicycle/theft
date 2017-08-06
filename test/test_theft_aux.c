@@ -7,7 +7,8 @@ struct a_squared_env {
 
 /* Property: a^2 <= 12345 */
 static enum theft_trial_res
-prop_a_squared_lte_fixed(void *arg) {
+prop_a_squared_lte_fixed(struct theft *t, void *arg) {
+    (void)t;
     int8_t a = *(int8_t *)arg;
     uint16_t b = 12345;
     const size_t aa = a * a;
@@ -85,7 +86,8 @@ TEST a_squared_lte_fixed(void) {
 }
 
 static enum theft_trial_res
-prop_a_squared_lt_b(void *arg_a, void *arg_b) {
+prop_a_squared_lt_b(struct theft *t, void *arg_a, void *arg_b) {
+    (void)t;
     int8_t a = *(int8_t *)arg_a;
     uint16_t b = *(uint16_t *)arg_b;
     const size_t aa = a * a;
@@ -171,7 +173,8 @@ TEST a_squared_lt_b(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_pass(uint64_t *v) {
+static enum theft_trial_res prop_pass(struct theft *t, uint64_t *v) {
+    (void)t;
     (void)v;
     return THEFT_TRIAL_PASS;
 }
@@ -207,6 +210,41 @@ TEST pass_autoscaling(void) {
     PASS();
 }
 
+static enum theft_trial_res
+prop_check_and_update_magic(struct theft *t, uint64_t *unused) {
+    (void)unused;
+
+    uint64_t *magic = (uint64_t *)theft_hook_get_env(t);
+    if (magic == NULL || *magic != 0xABED) {
+        return THEFT_TRIAL_FAIL;
+    }
+
+    *magic = 0xfa1afe1;         /* update the magic value */
+    return THEFT_TRIAL_PASS;
+}
+
+TEST get_hook_env(void) {
+    uint64_t magic = 0xABED;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .fun = prop_check_and_update_magic,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 1,
+        .hooks = {
+            .env = (void *)&magic,
+        },
+    };
+    enum theft_run_res res = theft_run(&cfg);
+
+    ASSERT_EQ_FMTm("should get pointer to the magic value",
+        THEFT_RUN_PASS, res, "%d");
+    ASSERT_EQ_FMTm("should update the magic value",
+        0xfa1afe1, magic, "%" PRIx64);
+
+    PASS();
+}
+
 SUITE(aux) {
     // builtins
     RUN_TEST(a_squared_lte_fixed);
@@ -214,4 +252,5 @@ SUITE(aux) {
 
     /* Tests for other misc. aux stuff */
     RUN_TEST(pass_autoscaling);
+    RUN_TEST(get_hook_env);
 }
