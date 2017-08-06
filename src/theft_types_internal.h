@@ -34,6 +34,16 @@ struct fork_info {
     const int signal;
 };
 
+struct prop_info {
+    const char *name;           /* property name, can be NULL */
+    theft_propfun * const fun;  /* property function under test */
+    const size_t trial_count;
+
+    /* Type info for ARITY arguments. */
+    const uint8_t arity;        /* number of arguments */
+    struct theft_type_info *type_info[THEFT_MAX_ARITY];
+};
+
 struct theft {
     FILE *out;
     uint8_t requested_bloom_bits;
@@ -45,6 +55,8 @@ struct theft {
     /* Bit pool, only used during autoshrinking. */
     struct theft_autoshrink_bit_pool *bit_pool;
     struct theft_run_info *run_info;
+
+    struct prop_info prop;
 
     struct seed_info seeds;
 
@@ -61,13 +73,6 @@ struct theft {
 
 /* Testing context for a specific property function. */
 struct theft_run_info {
-    const char *name;           /* property name, can be NULL */
-    theft_propfun * const fun;  /* property function under test */
-    const size_t trial_count;
-
-    /* Type info for ARITY arguments. */
-    const uint8_t arity;        /* number of arguments */
-    struct theft_type_info *type_info[THEFT_MAX_ARITY];
 
     /* Progress callbacks. */
     struct {

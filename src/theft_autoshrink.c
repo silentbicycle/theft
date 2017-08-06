@@ -231,10 +231,10 @@ void theft_autoshrink_free_bit_pool(struct theft *t,
 }
 
 void
-theft_autoshrink_get_real_args(struct theft_run_info *run_info,
+theft_autoshrink_get_real_args(struct theft *t,
         void **dst, void **src) {
-    for (size_t i = 0; i < run_info->arity; i++) {
-        const struct theft_type_info *ti = run_info->type_info[i];
+    for (size_t i = 0; i < t->prop.arity; i++) {
+        const struct theft_type_info *ti = t->prop.type_info[i];
         if (ti->autoshrink_config.enable) {
             struct theft_autoshrink_bit_pool *bit_pool =
               (struct theft_autoshrink_bit_pool *)src[i];
@@ -1157,14 +1157,12 @@ void
 theft_autoshrink_update_model(struct theft *t,
         uint8_t arg_id, enum theft_trial_res res,
         uint8_t adjustment) {
-    struct theft_run_info *run_info = t->run_info;
-
     /* If this type isn't using autoshrink, there's nothing to do. */
-    if (run_info->type_info[arg_id]->autoshrink_config.enable == false) {
+    if (t->prop.type_info[arg_id]->autoshrink_config.enable == false) {
         return;
     }
 
-    CHECK_ENV_CAST(env, run_info->type_info[arg_id]->env);
+    CHECK_ENV_CAST(env, t->prop.type_info[arg_id]->env);
     const uint8_t cur_set = env->model.cur_set;
     if (cur_set == 0x00) {
         return;

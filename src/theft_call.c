@@ -171,41 +171,40 @@ parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
 
 static enum theft_trial_res
 theft_call_inner(struct theft *t, void **args) {
-    struct theft_run_info *run_info = t->run_info;
-    switch (run_info->arity) {
+    switch (t->prop.arity) {
     case 1:
-        return run_info->fun(t, args[0]);
+        return t->prop.fun(t, args[0]);
         break;
     case 2:
-        return run_info->fun(t, args[0], args[1]);
+        return t->prop.fun(t, args[0], args[1]);
         break;
     case 3:
-        return run_info->fun(t, args[0], args[1], args[2]);
+        return t->prop.fun(t, args[0], args[1], args[2]);
         break;
     case 4:
-        return run_info->fun(t, args[0], args[1], args[2], args[3]);
+        return t->prop.fun(t, args[0], args[1], args[2], args[3]);
         break;
     case 5:
-        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4]);
+        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4]);
         break;
     case 6:
-        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5]);
         break;
     case 7:
-        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6]);
         break;
     case 8:
-        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6], args[7]);
         break;
     case 9:
-        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6], args[7], args[8]);
         break;
     case 10:
-        return run_info->fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6], args[7], args[8], args[9]);
         break;
     /* ... */
@@ -217,9 +216,9 @@ theft_call_inner(struct theft *t, void **args) {
 /* Populate a buffer with hashes of all the arguments. */
 static void
 get_arg_hash_buffer(theft_hash *buffer,
-        struct theft_run_info *run_info, void **args) {
-    for (uint8_t i = 0; i < run_info->arity; i++) {
-        struct theft_type_info *ti = run_info->type_info[i];
+        struct theft *t, void **args) {
+    for (uint8_t i = 0; i < t->prop.arity; i++) {
+        struct theft_type_info *ti = t->prop.type_info[i];
         theft_hash h = ti->hash(args[i], ti->env);
         LOG(4, "%s: arg %d hash; 0x%016" PRIx64 "\n", __func__, i, h);
         buffer[i] = h;
@@ -228,18 +227,16 @@ get_arg_hash_buffer(theft_hash *buffer,
 
 /* Check if this combination of argument instances has been called. */
 bool theft_call_check_called(struct theft *t, void **args) {
-    struct theft_run_info *run_info = t->run_info;
     theft_hash buffer[THEFT_MAX_ARITY];
-    get_arg_hash_buffer(buffer, run_info, args);
+    get_arg_hash_buffer(buffer, t, args);
     return theft_bloom_check(t->bloom, (uint8_t *)buffer,
-        run_info->arity * sizeof(theft_hash));
+        t->prop.arity * sizeof(theft_hash));
 }
 
 /* Mark the tuple of argument instances as called in the bloom filter. */
 void theft_call_mark_called(struct theft *t, void **args) {
-    struct theft_run_info *run_info = t->run_info;
     theft_hash buffer[THEFT_MAX_ARITY];
-    get_arg_hash_buffer(buffer, run_info, args);
+    get_arg_hash_buffer(buffer, t, args);
     theft_bloom_mark(t->bloom, (uint8_t *)buffer,
-        run_info->arity * sizeof(theft_hash));
+        t->prop.arity * sizeof(theft_hash));
 }

@@ -144,7 +144,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
     uint64_t *buf);
 
 void
-theft_autoshrink_get_real_args(struct theft_run_info *run_info,
+theft_autoshrink_get_real_args(struct theft *t,
     void **dst, void **src);
 
 void

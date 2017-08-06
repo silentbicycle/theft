@@ -11,7 +11,6 @@
 bool
 theft_shrink(struct theft *t,
         struct theft_trial_info *trial_info) {
-    struct theft_run_info *run_info = t->run_info;
     bool progress = false;
     assert(trial_info->arity > 0);
 
@@ -19,8 +18,8 @@ theft_shrink(struct theft *t,
         progress = false;
         /* Greedily attempt to simplify each argument as much as
          * possible before switching to the next. */
-        for (uint8_t arg_i = 0; arg_i < run_info->arity; arg_i++) {
-            struct theft_type_info *ti = run_info->type_info[arg_i];
+        for (uint8_t arg_i = 0; arg_i < t->prop.arity; arg_i++) {
+            struct theft_type_info *ti = t->prop.type_info[arg_i];
         greedy_continue:
             if (ti->shrink) {
                 /* attempt to simplify this argument by one step */
@@ -58,8 +57,7 @@ theft_shrink(struct theft *t,
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t,
         struct theft_trial_info *trial_info, uint8_t arg_i) {
-    struct theft_run_info *run_info = t->run_info;
-    struct theft_type_info *ti = run_info->type_info[arg_i];
+    struct theft_type_info *ti = t->prop.type_info[arg_i];
 
     void **args = trial_info->args;
 
@@ -121,7 +119,7 @@ attempt_to_shrink_arg(struct theft *t,
         bool repeated = false;
         for (;;) {
             void *real_args[THEFT_MAX_ARITY];
-            theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
+            theft_autoshrink_get_real_args(t, real_args, trial_info->args);
 
             res = theft_call(t, real_args);
             LOG(3 - LOG_SHRINK, "%s: call -> res %d\n", __func__, res);
@@ -185,13 +183,13 @@ shrink_pre_hook(struct theft *t,
     struct theft_run_info *run_info = t->run_info;
     if (run_info->hooks.shrink_pre != NULL) {
         struct theft_hook_shrink_pre_info hook_info = {
-            .prop_name = run_info->name,
-            .total_trials = run_info->trial_count,
+            .prop_name = t->prop.name,
+            .total_trials = t->prop.trial_count,
             .failures = t->counters.fail,
             .run_seed = t->seeds.run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
+            .arity = t->prop.arity,
             .shrink_count = trial_info->shrink_count,
             .successful_shrinks = trial_info->successful_shrinks,
             .failed_shrinks = trial_info->failed_shrinks,
@@ -225,12 +223,12 @@ shrink_post_hook(struct theft *t,
         }
 
         struct theft_hook_shrink_post_info hook_info = {
-            .prop_name = run_info->name,
-            .total_trials = run_info->trial_count,
+            .prop_name = t->prop.name,
+            .total_trials = t->prop.trial_count,
             .run_seed = t->seeds.run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
+            .arity = t->prop.arity,
             .shrink_count = trial_info->shrink_count,
             .successful_shrinks = trial_info->successful_shrinks,
             .failed_shrinks = trial_info->failed_shrinks,
@@ -253,13 +251,13 @@ shrink_trial_post_hook(struct theft *t,
     struct theft_run_info *run_info = t->run_info;
     if (run_info->hooks.shrink_trial_post != NULL) {
         struct theft_hook_shrink_trial_post_info hook_info = {
-            .prop_name = run_info->name,
-            .total_trials = run_info->trial_count,
+            .prop_name = t->prop.name,
+            .total_trials = t->prop.trial_count,
             .failures = t->counters.fail,
             .run_seed = t->seeds.run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
+            .arity = t->prop.arity,
             .shrink_count = trial_info->shrink_count,
             .successful_shrinks = trial_info->successful_shrinks,
             .failed_shrinks = trial_info->failed_shrinks,
