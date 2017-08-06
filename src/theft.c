@@ -24,8 +24,8 @@ struct theft *theft_init(void) {
     if (t == NULL) { return NULL; }
     memset(t, 0, sizeof(*t));
 
-    t->mt = theft_mt_init(DEFAULT_THEFT_SEED);
-    if (t->mt == NULL) {
+    t->prng.mt = theft_mt_init(DEFAULT_THEFT_SEED);
+    if (t->prng.mt == NULL) {
         free(t);
         return NULL;
     } else {
@@ -66,6 +66,6 @@ void theft_free(struct theft *t) {
         theft_bloom_free(t->bloom);
         t->bloom = NULL;
     }
-    theft_mt_free(t->mt);
+    theft_mt_free(t->prng.mt);
     free(t);
 }

@@ -109,7 +109,7 @@ static void lazily_fill_bit_pool(struct theft *t,
         uint64_t *bits64 = (uint64_t *)pool->bits;
         size_t offset = pool->bits_filled / 64;
         assert(offset * 64 < pool->bits_ceil);
-        bits64[offset] = theft_mt_random(t->mt);
+        bits64[offset] = theft_mt_random(t->prng.mt);
         LOG(3, "filling bit64[%zd]: 0x%016" PRIx64 "\n",
             offset, bits64[offset]);
         pool->bits_filled += 64;
@@ -222,7 +222,7 @@ fail:
 void theft_autoshrink_free_bit_pool(struct theft *t,
         struct theft_autoshrink_bit_pool *pool) {
     if (t) {
-        assert(t->bit_pool == NULL);  // don't free while still in use
+        assert(t->prng.bit_pool == NULL);  // don't free while still in use
     }
     assert(pool->instance == NULL);
     free(pool->bits);
@@ -587,7 +587,7 @@ static void mutate_bit_pool(struct theft *t,
 
     /* Ensure that we aren't getting random bits from a pool while trying
      * to shrink the pool. */
-    assert(t->bit_pool == NULL);
+    assert(t->prng.bit_pool == NULL);
 
     /* Get some random bits, and for each 1 bit, we will make one change in
      * the pool copy. */

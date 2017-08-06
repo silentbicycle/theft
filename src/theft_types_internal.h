@@ -64,16 +64,18 @@ struct counter_info {
     size_t dup;
 };
 
-struct theft {
-    FILE *out;
-    struct theft_bloom *bloom;  /* bloom filter */
-
+struct prng_info {
     struct theft_mt *mt;        /* random number generator */
-    uint64_t prng_buf;          /* buffer for PRNG bits */
+    uint64_t buf;               /* buffer for PRNG bits */
     uint8_t bits_available;
     /* Bit pool, only used during autoshrinking. */
     struct theft_autoshrink_bit_pool *bit_pool;
+};
 
+struct theft {
+    FILE *out;
+    struct theft_bloom *bloom;  /* bloom filter */
+    struct prng_info prng;
     struct prop_info prop;
     struct seed_info seeds;
     struct fork_info fork;
