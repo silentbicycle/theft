@@ -1,6 +1,7 @@
 #include "theft_run_internal.h"
 
 #include "theft_bloom.h"
+#include "theft_mt.h"
 #include "theft_call.h"
 #include "theft_trial.h"
 #include "theft_random.h"
@@ -9,17 +10,32 @@
 #include <string.h>
 #include <assert.h>
 
-/* Actually run the trials, with all arguments made explicit. */
-enum theft_run_res
-theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
+enum theft_run_init_res
+theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
+    enum theft_run_init_res res = THEFT_RUN_INIT_OK;
+    struct theft *t = malloc(sizeof(*t));
+    if (t == NULL) {
+        return THEFT_RUN_INIT_ERROR_MEMORY;
+    }
+    memset(t, 0, sizeof(*t));
+
+    t->out = stdout;
+    t->prng.mt = theft_mt_init(DEFAULT_THEFT_SEED);
+    if (t->prng.mt == NULL) {
+        free(t);
+        return THEFT_RUN_INIT_ERROR_MEMORY;
+    }
+
     const uint8_t arity = infer_arity(cfg);
     if (arity == 0) {
-        return THEFT_RUN_ERROR_BAD_ARGS;
+        res = THEFT_RUN_INIT_ERROR_BAD_ARGS;
+        goto cleanup;
     }
 
     bool all_hashable = false;
     if (!check_all_args(arity, cfg, &all_hashable)) {
-        return THEFT_RUN_ERROR_MISSING_CALLBACK;
+        res = THEFT_RUN_INIT_ERROR_BAD_ARGS;
+        goto cleanup;
     }
 
     struct seed_info seeds = {
@@ -72,8 +88,16 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
 
     LOG(3, "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n", __func__, t->seeds.run_seed);
     theft_random_set_seed(t, t->seeds.run_seed);
-    if (!wrap_any_autoshrinks(t)) {
-        return THEFT_RUN_ERROR;
+    enum wrap_any_autoshrinks_res wrap_res = wrap_any_autoshrinks(t);
+    switch (wrap_res) {
+    case WRAP_ANY_AUTOSHRINKS_ERROR_MEMORY:
+        res = THEFT_RUN_INIT_ERROR_MEMORY;
+        goto cleanup;
+    case WRAP_ANY_AUTOSHRINKS_ERROR_MISUSE:
+        res = THEFT_RUN_INIT_ERROR_BAD_ARGS;
+        goto cleanup;
+    case WRAP_ANY_AUTOSHRINKS_OK:
+        break;                  /* continue below */
     }
 
     /* If all arguments are hashable, then attempt to use
@@ -90,6 +114,34 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         }
     }
 
+    *output = t;
+    return res;
+
+cleanup:
+    theft_mt_free(t->prng.mt);
+    free(t);
+    return res;
+}
+
+void theft_run_free(struct theft *t) {
+    if (t->bloom) {
+        theft_bloom_free(t->bloom);
+        t->bloom = NULL;
+    }
+    theft_mt_free(t->prng.mt);
+
+    if (t->print_trial_result_env != NULL) {
+        free(t->print_trial_result_env);
+    }
+
+    free_any_autoshrink_wrappers(t);
+
+    free(t);
+}
+
+/* Actually run the trials, with all arguments made explicit. */
+enum theft_run_res
+theft_run_trials(struct theft *t) {
     if (t->hooks.run_pre != NULL) {
         struct theft_hook_run_pre_info hook_info = {
             .prop_name = t->prop.name,
@@ -98,9 +150,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         };
         enum theft_hook_run_pre_res res = t->hooks.run_pre(&hook_info, t->hooks.env);
         if (res != THEFT_HOOK_RUN_PRE_CONTINUE) {
-            free_any_autoshrink_wrappers(t);
-            free_print_trial_result_env(t);
-            return THEFT_RUN_ERROR;
+            goto cleanup;
         }
     }
 
@@ -123,9 +173,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         default:
         case RUN_STEP_GEN_ERROR:
         case RUN_STEP_TRIAL_ERROR:
-            free_any_autoshrink_wrappers(t);
-            free_print_trial_result_env(t);
-            return THEFT_RUN_ERROR;
+            goto cleanup;
         }
     }
 
@@ -145,13 +193,10 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
 
         enum theft_hook_run_post_res res = run_post(&hook_info, t->hooks.env);
         if (res != THEFT_HOOK_RUN_POST_CONTINUE) {
-            free_any_autoshrink_wrappers(t);
-            free_print_trial_result_env(t);
-            return THEFT_RUN_ERROR;
+            goto cleanup;
         }
     }
 
-    free_any_autoshrink_wrappers(t);
     free_print_trial_result_env(t);
 
     if (t->counters.fail > 0) {
@@ -161,6 +206,10 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     } else {
         return THEFT_RUN_SKIP;
     }
+
+cleanup:
+    free_print_trial_result_env(t);
+    return THEFT_RUN_ERROR;
 }
 
 static enum run_step_res
@@ -346,25 +395,38 @@ gen_all_args(struct theft *t, void *args[THEFT_MAX_ARITY]) {
     return ALL_GEN_OK;
 }
 
-static bool wrap_any_autoshrinks(struct theft *t) {
+static enum wrap_any_autoshrinks_res
+wrap_any_autoshrinks(struct theft *t) {
+    enum wrap_any_autoshrinks_res res = WRAP_ANY_AUTOSHRINKS_OK;
     uint8_t wrapped = 0;
     for (uint8_t i = 0; i < t->prop.arity; i++) {
         struct theft_type_info *ti = t->prop.type_info[i];
         if (ti->autoshrink_config.enable) {
             struct theft_type_info *new_ti = calloc(1, sizeof(*new_ti));
             if (new_ti == NULL) {
+                res = WRAP_ANY_AUTOSHRINKS_ERROR_MEMORY;
                 goto cleanup;
             }
-            if (!theft_autoshrink_wrap(t, ti, new_ti)) {
+            enum theft_autoshrink_wrap wrap_res;
+            wrap_res = theft_autoshrink_wrap(t, ti, new_ti);
+            switch (wrap_res) {
+            case THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY:
+                res = WRAP_ANY_AUTOSHRINKS_ERROR_MEMORY;
                 goto cleanup;
+            default:
+                assert(false);
+            case THEFT_AUTOSHRINK_WRAP_ERROR_MISUSE:
+                res = WRAP_ANY_AUTOSHRINKS_ERROR_MISUSE;
+                goto cleanup;
+            case THEFT_AUTOSHRINK_WRAP_OK:
+                break;          /* continue below */
             }
             wrapped++;
-
             t->prop.type_info[i] = new_ti;
         }
     }
 
-    return true;
+    return res;
 cleanup:
     for (uint8_t i = 0; i < wrapped; i++) {
         struct theft_type_info *ti = t->prop.type_info[i];
@@ -376,7 +438,7 @@ cleanup:
             free(ti);
         }
     }
-    return false;
+    return res;
 }
 
 static void free_any_autoshrink_wrappers(struct theft *t) {

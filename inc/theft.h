@@ -160,6 +160,8 @@ void theft_generic_free_cb(void *instance, void *env);
 /* Return a string name of a trial result. */
 const char *theft_trial_res_str(enum theft_trial_res res);
 
+/* Return a string name of a run result. */
+const char *theft_run_res_str(enum theft_run_res res);
 
 /***********************
  * Built-in generators *

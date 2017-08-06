@@ -72,6 +72,7 @@ struct prng_info {
     struct theft_autoshrink_bit_pool *bit_pool;
 };
 
+/* Handle to state for the entire run. */
 struct theft {
     FILE *out;
     struct theft_bloom *bloom;  /* bloom filter */

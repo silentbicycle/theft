@@ -401,9 +401,8 @@ enum theft_run_res {
     THEFT_RUN_FAIL = 1,             /* 1 or more failures */
     THEFT_RUN_SKIP = 2,             /* no failures, but no passes either */
     THEFT_RUN_ERROR = 3,            /* an error occurred */
-    THEFT_RUN_ERROR_BAD_ARGS = -1,  /* API misuse */
-    /* Missing required callback for 1 or more types */
-    THEFT_RUN_ERROR_MISSING_CALLBACK = -2,
+    THEFT_RUN_ERROR_MEMORY = -1,    /* memory allocation failure */
+    THEFT_RUN_ERROR_BAD_ARGS = -2,  /* API misuse */
 };
 
 /* Default number of trials to run. */

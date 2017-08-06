@@ -131,7 +131,13 @@ struct change_info {
     } u;
 };
 
-bool theft_autoshrink_wrap(struct theft *t,
+enum theft_autoshrink_wrap {
+    THEFT_AUTOSHRINK_WRAP_OK,
+    THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY = -1,
+    THEFT_AUTOSHRINK_WRAP_ERROR_MISUSE = -2,
+};
+enum theft_autoshrink_wrap
+theft_autoshrink_wrap(struct theft *t,
     struct theft_type_info *type_info, struct theft_type_info *wrapper);
 
 void theft_autoshrink_free_bit_pool(struct theft *t,

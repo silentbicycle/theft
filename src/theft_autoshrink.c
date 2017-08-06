@@ -12,17 +12,18 @@
 static autoshrink_prng_fun *get_prng(struct theft *t, struct theft_autoshrink_env *env);
 static uint64_t get_mask(uint8_t bits);
 
-bool theft_autoshrink_wrap(struct theft *t,
+enum theft_autoshrink_wrap
+theft_autoshrink_wrap(struct theft *t,
         struct theft_type_info *type_info, struct theft_type_info *wrapper) {
     (void)t;
     if (type_info->alloc == NULL || type_info->shrink != NULL) {
         free(wrapper);
-        return false;           /* API misuse */
+        return THEFT_AUTOSHRINK_WRAP_ERROR_MISUSE;
     }
 
     struct theft_autoshrink_env *env = calloc(1, sizeof(*env));
     if (env == NULL) {
-        return false;
+        return THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY;
     }
 
     *env = (struct theft_autoshrink_env) {
@@ -45,7 +46,7 @@ bool theft_autoshrink_wrap(struct theft *t,
         .env = env,
     };
 
-    return true;
+    return THEFT_AUTOSHRINK_WRAP_OK;
 }
 
 void

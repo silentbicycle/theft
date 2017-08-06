@@ -17,8 +17,18 @@ filter now resizes automatically -- The bloom_bits setting in
 `struct theft_run_config` and related constants are ignored,
 and will be removed in a future release.
 
+
 Added `theft_random_choice`, which can be used to get an approximately
 evenly distributed random `uint64_t` values less than an upper bound.
+
+Added `theft_run_res_str`, which returns a string (e.g. "PASS") for an
+`enum theft_run_res` value.
+
+Removed `THEFT_RUN_ERROR_MISSING_CALLBACK` from `enum theft_run_res`;
+it's now combined with `THEFT_RUN_ERROR_BAD_ARGS`.
+
+Added `THEFT_RUN_ERROR_MEMORY` to `enum theft_run_res`. This is
+returned if internal memory allocation fails.
 
 
 ### Other Improvements

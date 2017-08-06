@@ -230,7 +230,8 @@ TEST error_from_both_autoshrink_and_shrink_cb(void) {
     };
 
     enum theft_run_res res = theft_run(&cfg);
-    ASSERT_EQ_FMT(THEFT_RUN_ERROR, res, "%d");
+    ASSERT_ENUM_EQm("defining shrink and autoshrink should error",
+        THEFT_RUN_ERROR_BAD_ARGS, res, theft_run_res_str);
     PASS();
 }
 

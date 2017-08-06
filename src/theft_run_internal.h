@@ -2,6 +2,7 @@
 #define THEFT_RUN_INTERNAL_H
 
 #include "theft_types_internal.h"
+#include "theft_run.h"
 
 static uint8_t
 infer_arity(const struct theft_run_config *cfg);
@@ -30,7 +31,13 @@ enum all_gen_res {
 static enum all_gen_res
 gen_all_args(struct theft *t, void *args[THEFT_MAX_ARITY]);
 
-static bool wrap_any_autoshrinks(struct theft *t);
+enum wrap_any_autoshrinks_res {
+    WRAP_ANY_AUTOSHRINKS_OK,
+    WRAP_ANY_AUTOSHRINKS_ERROR_MEMORY = -1,
+    WRAP_ANY_AUTOSHRINKS_ERROR_MISUSE = -2,
+};
+static enum wrap_any_autoshrinks_res
+wrap_any_autoshrinks(struct theft *t);
 
 static void free_any_autoshrink_wrappers(struct theft *t);
 

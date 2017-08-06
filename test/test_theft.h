@@ -7,10 +7,6 @@
 #include <assert.h>
 #include <inttypes.h>
 
-/* These are not part of the public API, but are exposed for testing. */
-struct theft *theft_init(uint8_t bloom_bits);
-void theft_free(struct theft *t);
-
 SUITE_EXTERN(prng);
 SUITE_EXTERN(autoshrink);
 SUITE_EXTERN(aux);

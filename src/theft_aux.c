@@ -172,6 +172,19 @@ struct theft_aux_print_trial_result_env {
     size_t consec_fail;
 };
 
+const char *theft_run_res_str(enum theft_run_res res) {
+    switch (res) {
+    case THEFT_RUN_PASS: return "PASS";
+    case THEFT_RUN_FAIL: return "FAIL";
+    case THEFT_RUN_SKIP: return "SKIP";
+    case THEFT_RUN_ERROR: return "ERROR";
+    case THEFT_RUN_ERROR_MEMORY: return "ERROR_MEMORY";
+    case THEFT_RUN_ERROR_BAD_ARGS: return "ERROR_BAD_ARGS";
+    default:
+        return "(matchfail)";
+    }
+}
+
 const char *theft_trial_res_str(enum theft_trial_res res) {
     switch (res) {
     case THEFT_TRIAL_PASS: return "PASS";

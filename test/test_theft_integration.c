@@ -9,13 +9,6 @@
 
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
 
-TEST alloc_and_free() {
-    struct theft *t = theft_init(0);
-
-    theft_free(t);
-    PASS();
-}
-
 static enum theft_alloc_res
 uint_alloc(struct theft *t, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
@@ -650,7 +643,7 @@ should_never_run(struct theft *t, void *x) {
     (void)t;
     (void)x;
     assert(false);
-    return THEFT_TRIAL_PASS;
+    return THEFT_TRIAL_ERROR;
 }
 
 TEST save_seed_and_error_before_generating_args(void) {
@@ -1079,8 +1072,7 @@ static enum theft_trial_res
 prop_crash_with_int_gte_10(struct theft *t, uint16_t *v) {
     (void)t;
     if (*v >= 10) {
-        //poll(NULL, 0, (*v) / 10);
-        assert(false);
+        abort();
     }
     return THEFT_TRIAL_PASS;
 }
@@ -1244,7 +1236,6 @@ TEST shrink_and_SIGUSR1_on_timeout(void) {
 }
 
 SUITE(integration) {
-    RUN_TEST(alloc_and_free);
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
     RUN_TEST(generated_int_list_does_not_repeat_values);
