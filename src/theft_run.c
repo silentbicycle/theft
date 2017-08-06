@@ -30,6 +30,13 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     };
     memcpy(&t->seeds, &seeds, sizeof(seeds));
 
+    struct fork_info fork = {
+        .enable = cfg->fork.enable,
+        .timeout = cfg->fork.timeout,
+        .signal = cfg->fork.signal,
+    };
+    memcpy(&t->fork, &fork, sizeof(fork));
+
     struct theft_run_info run_info = {
         .name = cfg->name,
         .fun = cfg->fun,
@@ -56,11 +63,6 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
             .shrink_post = cfg->hooks.shrink_post,
             .shrink_trial_post = cfg->hooks.shrink_trial_post,
             .env = cfg->hooks.env,
-        },
-        .fork = {
-            .enable = cfg->fork.enable,
-            .timeout = cfg->fork.timeout,
-            .signal = cfg->fork.signal,
         },
     };
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));

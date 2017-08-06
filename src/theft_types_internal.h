@@ -28,6 +28,12 @@ struct seed_info {
     const theft_seed *always_seeds;   /* seeds to always run */
 };
 
+struct fork_info {
+    const bool enable;
+    const size_t timeout;
+    const int signal;
+};
+
 struct theft {
     FILE *out;
     uint8_t requested_bloom_bits;
@@ -49,6 +55,8 @@ struct theft {
         size_t skip;
         size_t dup;
     } counters;
+
+    struct fork_info fork;
 };
 
 /* Testing context for a specific property function. */
@@ -74,12 +82,6 @@ struct theft_run_info {
         theft_hook_shrink_trial_post_cb *shrink_trial_post;
         void *env;
     } hooks;
-
-    struct {
-        bool enable;
-        size_t timeout;
-        int signal;
-    } fork;
 
     struct theft_print_trial_result_env *print_trial_result_env;
 };

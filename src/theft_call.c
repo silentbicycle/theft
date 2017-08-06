@@ -17,7 +17,7 @@ theft_call(struct theft *t, void **args) {
     assert(run_info);
     enum theft_trial_res res = THEFT_TRIAL_ERROR;
 
-    if (run_info->fork.enable) {
+    if (t->fork.enable) {
         struct timespec tv = { .tv_nsec = 1 };
         int fds[2];
         if (-1 == pipe(fds)) {
@@ -85,11 +85,10 @@ theft_call(struct theft *t, void **args) {
 
 static enum theft_trial_res
 parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
-    struct theft_run_info *run_info = t->run_info;
     struct pollfd pfd[1] = {
         { .fd = fd, .events = POLLIN },
     };
-    const int timeout = run_info->fork.timeout;
+    const int timeout = t->fork.timeout;
     int res = 0;
     for (;;) {
         struct timeval tv_pre = { 0, 0 };
@@ -120,7 +119,7 @@ parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
     }
 
     if (res == 0) {     /* timeout */
-        int kill_signal = run_info->fork.signal;
+        int kill_signal = t->fork.signal;
         if (kill_signal == 0) {
             kill_signal = DEF_KILL_SIGNAL;
         }
