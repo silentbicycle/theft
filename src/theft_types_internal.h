@@ -31,6 +31,14 @@ struct theft {
     /* Bit pool, only used during autoshrinking. */
     struct theft_autoshrink_bit_pool *bit_pool;
     struct theft_run_info *run_info;
+
+    /* Counters passed to hook callback */
+    struct {
+        size_t pass;
+        size_t fail;
+        size_t skip;
+        size_t dup;
+    } counters;
 };
 
 /* Testing context for a specific property function. */
@@ -70,12 +78,6 @@ struct theft_run_info {
     } fork;
 
     struct theft_print_trial_result_env *print_trial_result_env;
-
-    /* Counters passed to hook callback */
-    size_t pass;
-    size_t fail;
-    size_t skip;
-    size_t dup;
 };
 
 /* Result from an individual trial. */

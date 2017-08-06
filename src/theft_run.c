@@ -128,10 +128,10 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
             .total_trials = run_info.trial_count,
             .run_seed = run_info.run_seed,
             .report = {
-                .pass = run_info.pass,
-                .fail = run_info.fail,
-                .skip = run_info.skip,
-                .dup = run_info.dup,
+                .pass = t->counters.pass,
+                .fail = t->counters.fail,
+                .skip = t->counters.skip,
+                .dup = t->counters.dup,
             },
         };
 
@@ -146,9 +146,9 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     free_any_autoshrink_wrappers(&run_info);
     free_print_trial_result_env(&run_info);
 
-    if (run_info.fail > 0) {
+    if (t->counters.fail > 0) {
         return THEFT_RUN_FAIL;
-    } else if (run_info.pass > 0) {
+    } else if (t->counters.pass > 0) {
         return THEFT_RUN_PASS;
     } else {
         return THEFT_RUN_SKIP;
@@ -181,7 +181,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
         struct theft_hook_gen_args_pre_info hook_info = {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
-            .failures = run_info->fail,
+            .failures = t->counters.fail,
             .run_seed = run_info->run_seed,
             .trial_id = trial,
             .trial_seed = trial_info.seed,
@@ -216,7 +216,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
         .t = t,
         .prop_name = run_info->name,
         .total_trials = run_info->trial_count,
-        .failures = run_info->fail,
+        .failures = t->counters.fail,
         .run_seed = *seed,
         .trial_id = trial,
         .trial_seed = trial_info.seed,
@@ -230,14 +230,14 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
     case ALL_GEN_SKIP:
         /* skip generating these args */
         LOG(3, "gen -- skip\n");
-        run_info->skip++;
+        t->counters.skip++;
         hook_info.result = THEFT_TRIAL_SKIP;
         pres = post_cb(&hook_info, hook_env);
         break;
     case ALL_GEN_DUP:
         /* skip these args -- probably already tried */
         LOG(3, "gen -- dup\n");
-        run_info->dup++;
+        t->counters.dup++;
         hook_info.result = THEFT_TRIAL_DUP;
         pres = post_cb(&hook_info, hook_env);
         break;
@@ -254,7 +254,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
             struct theft_hook_trial_pre_info info = {
                 .prop_name = run_info->name,
                 .total_trials = run_info->trial_count,
-                .failures = run_info->fail,
+                .failures = t->counters.fail,
                 .run_seed = run_info->run_seed,
                 .trial_id = trial,
                 .trial_seed = trial_info.seed,

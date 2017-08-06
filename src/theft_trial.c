@@ -47,7 +47,7 @@ theft_trial_run(struct theft *t,
     switch (tres) {
     case THEFT_TRIAL_PASS:
         if (!repeated) {
-            run_info->pass++;
+            t->counters.pass++;
         }
         *tpres = trial_post(&hook_info, trial_post_env);
         break;
@@ -65,14 +65,14 @@ theft_trial_run(struct theft *t,
 
         theft_autoshrink_get_real_args(run_info, hook_info.args, trial_info->args);
         if (!repeated) {
-            run_info->fail++;
+            t->counters.fail++;
         }
         *tpres = report_on_failure(t, trial_info,
             &hook_info, trial_post, trial_post_env);
         break;
     case THEFT_TRIAL_SKIP:
         if (!repeated) {
-            run_info->skip++;
+            t->counters.skip++;
         }
         *tpres = trial_post(&hook_info, trial_post_env);
         break;
