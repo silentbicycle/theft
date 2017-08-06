@@ -66,7 +66,6 @@ struct counter_info {
 
 struct theft {
     FILE *out;
-    uint8_t requested_bloom_bits;
     struct theft_bloom *bloom;  /* bloom filter */
 
     struct theft_mt *mt;        /* random number generator */
