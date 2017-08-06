@@ -136,7 +136,8 @@ bool theft_bloom_mark(struct theft_bloom *b, uint8_t *data, size_t data_size) {
         const uint64_t offset = v / 8;
         const uint8_t bit = 1 << (v & 0x07);
         LOG(4 - LOG_BLOOM,
-            "%s: marking %p @ %" PRIu64 " =>  offset %zd, bit 0x%02x\n",
+            "%s: marking %p @ %" PRIu64 " =>  offset %" PRIu64
+            ", bit 0x%02x\n",
             __func__, (void *)bf, v, offset, bit);
         if (0 == (bf->bits[offset] & bit)) {
             any_set = true;
@@ -196,7 +197,8 @@ bool theft_bloom_check(struct theft_bloom *b, uint8_t *data, size_t data_size) {
             const uint64_t offset = v / 8;
             const uint8_t bit = 1 << (v & 0x07);
             LOG(4 - LOG_BLOOM,
-                "%s: checking %p (bits %u) @ %" PRIu64 " => offset %zd, bit 0x%02x: 0x%02x\n",
+                "%s: checking %p (bits %u) @ %" PRIu64 " => offset %" PRIu64
+                ", bit 0x%02x: 0x%02x\n",
                 __func__, (void *)bf, block_size2, v, offset, bit,
                 (bf->bits[offset] & bit));
             if (0 == (bf->bits[offset] & bit)) {
