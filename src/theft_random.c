@@ -12,7 +12,6 @@ static uint64_t get_mask(uint8_t bits);
  * This stops using the current bit pool. */
 void theft_random_set_seed(struct theft *t, uint64_t seed) {
     theft_random_stop_using_bit_pool(t);
-    t->seed = seed;
     t->prng_buf = 0;
     t->bits_available = 0;
 

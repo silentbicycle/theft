@@ -19,9 +19,17 @@
 struct theft_bloom;             /* bloom filter */
 struct theft_mt;                /* mersenne twister PRNG */
 
+struct seed_info {
+    const theft_seed run_seed;
+
+    /* Optional array of seeds to always run.
+     * Can be used for regression tests. */
+    const size_t always_seed_count;   /* number of seeds */
+    const theft_seed *always_seeds;   /* seeds to always run */
+};
+
 struct theft {
     FILE *out;
-    theft_seed seed;
     uint8_t requested_bloom_bits;
     struct theft_bloom *bloom;  /* bloom filter */
 
@@ -31,6 +39,8 @@ struct theft {
     /* Bit pool, only used during autoshrinking. */
     struct theft_autoshrink_bit_pool *bit_pool;
     struct theft_run_info *run_info;
+
+    struct seed_info seeds;
 
     /* Counters passed to hook callback */
     struct {
@@ -46,16 +56,10 @@ struct theft_run_info {
     const char *name;           /* property name, can be NULL */
     theft_propfun * const fun;  /* property function under test */
     const size_t trial_count;
-    const theft_seed run_seed;
 
     /* Type info for ARITY arguments. */
     const uint8_t arity;        /* number of arguments */
     struct theft_type_info *type_info[THEFT_MAX_ARITY];
-
-    /* Optional array of seeds to always run.
-     * Can be used for regression tests. */
-    const size_t always_seed_count;   /* number of seeds */
-    const theft_seed *always_seeds;   /* seeds to always run */
 
     /* Progress callbacks. */
     struct {

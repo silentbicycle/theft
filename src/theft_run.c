@@ -22,16 +22,20 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         return THEFT_RUN_ERROR_MISSING_CALLBACK;
     }
 
+    struct seed_info seeds = {
+        .run_seed = cfg->seed ? cfg->seed : DEFAULT_THEFT_SEED,
+        .always_seed_count = (cfg->always_seeds == NULL
+            ? 0 : cfg->always_seed_count),
+        .always_seeds = cfg->always_seeds,
+    };
+    memcpy(&t->seeds, &seeds, sizeof(seeds));
+
     struct theft_run_info run_info = {
         .name = cfg->name,
         .fun = cfg->fun,
         .trial_count = cfg->trials == 0 ? THEFT_DEF_TRIALS : cfg->trials,
-        .run_seed = cfg->seed ? cfg->seed : DEFAULT_THEFT_SEED,
         .arity = arity,
         /* type_info is memcpy'd below */
-        .always_seed_count = (cfg->always_seeds == NULL
-            ? 0 : cfg->always_seed_count),
-        .always_seeds = cfg->always_seeds,
         .hooks = {
             .run_pre = (cfg->hooks.run_pre != NULL
                 ? cfg->hooks.run_pre
@@ -62,9 +66,8 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
     memcpy(&run_info.type_info, cfg->type_info, sizeof(run_info.type_info));
     t->run_info = &run_info;
 
-    theft_seed seed = run_info.run_seed;
-    LOG(3, "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n", __func__, seed);
-    theft_random_set_seed(t, seed);
+    LOG(3, "%s: SETTING RUN SEED TO 0x%016" PRIx64 "\n", __func__, t->seeds.run_seed);
+    theft_random_set_seed(t, t->seeds.run_seed);
     if (!wrap_any_autoshrinks(t)) {
         return THEFT_RUN_ERROR;
     }
@@ -87,7 +90,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         struct theft_hook_run_pre_info hook_info = {
             .prop_name = run_info.name,
             .total_trials = run_info.trial_count,
-            .run_seed = run_info.run_seed,
+            .run_seed = t->seeds.run_seed,
         };
         enum theft_hook_run_pre_res res = run_info.hooks.run_pre(&hook_info, run_info.hooks.env);
         if (res != THEFT_HOOK_RUN_PRE_CONTINUE) {
@@ -99,6 +102,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
 
     size_t limit = run_info.trial_count;
 
+    theft_seed seed = t->seeds.run_seed;
     for (size_t trial = 0; trial < limit; trial++) {
         void *args[THEFT_MAX_ARITY];
         enum run_step_res res = run_step(t, trial, args, &seed);
@@ -126,7 +130,7 @@ theft_run_trials(struct theft *t, const struct theft_run_config *cfg) {
         struct theft_hook_run_post_info hook_info = {
             .prop_name = run_info.name,
             .total_trials = run_info.trial_count,
-            .run_seed = run_info.run_seed,
+            .run_seed = t->seeds.run_seed,
             .report = {
                 .pass = t->counters.pass,
                 .fail = t->counters.fail,
@@ -162,11 +166,11 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
 
     /* If any seeds to always run were specified, use those before
      * reverting to the specified starting seed. */
-    const size_t always_seeds = run_info->always_seed_count;
+    const size_t always_seeds = t->seeds.always_seed_count;
     if (trial < always_seeds) {
-        *seed = run_info->always_seeds[trial];
+        *seed = t->seeds.always_seeds[trial];
     } else if ((always_seeds > 0) && (trial == always_seeds)) {
-        *seed = run_info->run_seed;
+        *seed = t->seeds.run_seed;
     }
 
     struct theft_trial_info trial_info = {
@@ -182,7 +186,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
             .prop_name = run_info->name,
             .total_trials = run_info->trial_count,
             .failures = t->counters.fail,
-            .run_seed = run_info->run_seed,
+            .run_seed = t->seeds.run_seed,
             .trial_id = trial,
             .trial_seed = trial_info.seed,
             .arity = run_info->arity
@@ -255,7 +259,7 @@ run_step(struct theft *t, size_t trial, void **args, theft_seed *seed) {
                 .prop_name = run_info->name,
                 .total_trials = run_info->trial_count,
                 .failures = t->counters.fail,
-                .run_seed = run_info->run_seed,
+                .run_seed = t->seeds.run_seed,
                 .trial_id = trial,
                 .trial_seed = trial_info.seed,
                 .arity = run_info->arity,
