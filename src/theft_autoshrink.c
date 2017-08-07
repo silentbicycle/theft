@@ -620,7 +620,7 @@ static void mutate_bit_pool(struct theft *t,
 
     /* Attempt to make up to CHANGE_COUNT changes, with limited retries
      * for when the random modifications have no effect. */
-    for (size_t i = 0; i < 10*change_count; i++) {
+    for (size_t i = 0; i < 10U * change_count; i++) {
         if (choose_and_mutate_request(t, env, orig, pool)) {
             changed++;
 
@@ -749,7 +749,7 @@ choose_and_mutate_request(struct theft *t,
         if (size > 64) {
             /* maybe swap two blocks non-overlapping within the request */
             uint8_t to_swap = prng(6, env->udata);
-            while (2*to_swap >= size) {
+            while (2U * to_swap >= size) {
                 to_swap /= 2;
             }
             if (to_swap == 0) {
