@@ -95,7 +95,7 @@ static struct theft_autoshrink_bit_pool test_pool = {
     .requests = test_pool_requests,
 };
 
-static enum theft_trial_res unused(struct theft *t, struct ll *v) {
+static enum theft_trial_res unused(struct theft *t, void *v) {
     (void)t;
     (void)v;
     return THEFT_TRIAL_ERROR;
@@ -104,7 +104,7 @@ static enum theft_trial_res unused(struct theft *t, struct ll *v) {
 static struct theft *init(void) {
     struct theft *t = NULL;
     struct theft_run_config cfg = {
-        .fun = unused,
+        .prop1 = unused,
         .type_info = { &ll_info },
     };
 
@@ -778,7 +778,8 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
 /* Property -- for a randomly generated linked list of numbers,
  * it will not have any duplicated numbers. */
 static enum theft_trial_res
-prop_no_duplicates(struct theft *t, struct ll *head) {
+prop_no_duplicates(struct theft *t, void *arg1) {
+    struct ll *head = (struct ll *)arg1;
     (void)t;
     struct ll *cur = head;
 
@@ -802,7 +803,8 @@ prop_no_duplicates(struct theft *t, struct ll *head) {
  * The PRNG will generate some runs of ascending numbers;
  * this is to test how well it can automatically shrink them. */
 static enum theft_trial_res
-prop_not_ascending(struct theft *t, struct ll *head) {
+prop_not_ascending(struct theft *t, void *arg1) {
+    struct ll *head = (struct ll *)arg1;
     (void)t;
     struct ll *cur = head;
     uint16_t prev = 0;
@@ -825,7 +827,8 @@ prop_not_ascending(struct theft *t, struct ll *head) {
 /* Property: There won't be any repeated values in the list, with a
  * single non-zero value between them. */
 static enum theft_trial_res
-prop_no_dupes_with_value_between(struct theft *t, struct ll *head) {
+prop_no_dupes_with_value_between(struct theft *t, void *arg1) {
+    struct ll *head = (struct ll *)arg1;
     (void)t;
     struct ll *cur = head;
     uint16_t window[3];
@@ -857,7 +860,8 @@ prop_no_dupes_with_value_between(struct theft *t, struct ll *head) {
 /* Property: There won't be any value in the list immediately
  * followed by its square. */
 static enum theft_trial_res
-prop_no_nonzero_numbers_followed_by_their_square(struct theft *t, struct ll *head) {
+prop_no_nonzero_numbers_followed_by_their_square(struct theft *t, void *arg1) {
+    struct ll *head = (struct ll *)arg1;
     (void)t;
     struct ll *cur = head;
 
@@ -879,7 +883,8 @@ prop_no_nonzero_numbers_followed_by_their_square(struct theft *t, struct ll *hea
 /* Property: There won't be three values in a row that are
  * [X, X + 1, X + 2]. */
 static enum theft_trial_res
-prop_no_seq_of_3(struct theft *t, struct ll *head) {
+prop_no_seq_of_3(struct theft *t, void *arg1) {
+    struct ll *head = (struct ll *)arg1;
     struct ll *cur = head;
     (void)t;
 
@@ -915,7 +920,7 @@ ll_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
       : THEFT_HOOK_TRIAL_PRE_CONTINUE;
 }
 
-TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
+TEST ll_prop(size_t trials, const char *name, theft_propfun1 *prop) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
@@ -923,7 +928,7 @@ TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
 
     struct theft_run_config cfg = {
         .name = name,
-        .fun = prop,
+        .prop1 = prop,
         .type_info = { &ll_info },
         .hooks = {
             .trial_pre = ll_trial_pre_hook,
@@ -939,12 +944,13 @@ TEST ll_prop(size_t trials, const char *name, theft_propfun *prop) {
 }
 
 static enum theft_trial_res
-prop_not_start_with_9(struct theft *t, uint8_t *ia) {
+prop_not_start_with_9(struct theft *t, void *arg1) {
+    uint8_t *ia = (uint8_t *)arg1;
     (void)t;
     return (ia[0] == 9 ? THEFT_TRIAL_FAIL : THEFT_TRIAL_PASS);
 }
 
-TEST ia_prop(const char *name, theft_propfun *prop) {
+TEST ia_prop(const char *name, theft_propfun1 *prop) {
     theft_seed seed = theft_seed_of_time();
     enum theft_run_res res;
 
@@ -952,7 +958,7 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
 
     struct theft_run_config cfg = {
         .name = name,
-        .fun = prop,
+        .prop1 = prop,
         .type_info = { &ia_info },
         .hooks = {
             .trial_pre = ll_trial_pre_hook,
@@ -968,7 +974,8 @@ TEST ia_prop(const char *name, theft_propfun *prop) {
 }
 
 static enum theft_trial_res
-random_bulk_bits_contains_23(struct theft *t, struct bulk_buffer *bb) {
+random_bulk_bits_contains_23(struct theft *t, void *arg1) {
+    struct bulk_buffer *bb = (struct bulk_buffer *)arg1;
     (void)t;
     const size_t limit = bb->size / 8;
     const uint8_t *buf8 = (const uint8_t *)bb->buf;
@@ -1013,7 +1020,7 @@ TEST bulk_random_bits(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = random_bulk_bits_contains_23,
+        .prop1 = random_bulk_bits_contains_23,
         .type_info = { &bb_info },
         .bloom_bits = 20,
         .hooks = {

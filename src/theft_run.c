@@ -57,11 +57,14 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
 
     struct prop_info prop = {
         .name = cfg->name,
-        .fun = cfg->fun,
         .arity = arity,
         .trial_count = cfg->trials == 0 ? THEFT_DEF_TRIALS : cfg->trials,
         /* .type_info is memcpy'd below */
     };
+    if (!copy_propfun_for_arity(cfg, &prop)) {
+        res = THEFT_RUN_INIT_ERROR_BAD_ARGS;
+        goto cleanup;
+    }
     memcpy(&prop.type_info, cfg->type_info, sizeof(prop.type_info));
     memcpy(&t->prop, &prop, sizeof(prop));
 
@@ -354,6 +357,34 @@ infer_arity(const struct theft_run_config *cfg) {
         }
     }
     return 0;
+}
+
+static bool copy_propfun_for_arity(const struct theft_run_config *cfg,
+    struct prop_info *prop) {
+    switch (prop->arity) {
+#define COPY_N(N)                                                     \
+        case N:                                                       \
+            if (cfg->prop ## N == NULL) {                             \
+                return false;                                         \
+            } else {                                                  \
+                prop->u.fun ## N = cfg->prop ## N;                    \
+                break;                                                \
+            }
+
+    default:
+    case 0:
+        assert(false);
+        return false;
+        COPY_N(1);
+        COPY_N(2);
+        COPY_N(3);
+        COPY_N(4);
+        COPY_N(5);
+        COPY_N(6);
+        COPY_N(7);
+#undef COPY_N
+    }
+    return true;
 }
 
 /* Check if all argument info structs have all required callbacks. */

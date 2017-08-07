@@ -4,6 +4,26 @@
 
 ### API Changes
 
+Changed the property function typedef (`theft_propfun`). Property
+functions are now called with a `struct theft *t` handle as a first
+argument -- this can be used to get the hooks' environment, with
+`theft_hook_get_env`.
+
+The property function pointer in the `theft_run_config` struct
+is now typesafe -- instead of a single function pointer type
+with unconstrained arguments, the config struct has fields
+`prop1`, `prop2`, ... `prop7`, where the number is the number
+of instance arguments the property takes: For example, `prop2`
+is:
+
+    enum theft_trial_res
+    two_instance_property(struct theft *t, void *arg1, void *arg2);
+
+The property function field has been rename from `fun` to
+`prop(argument count)`.
+
+Reduced `THEFT_MAX_ARITY` to 7.
+
 Added the `.fork` structure to `struct theft_run_config` -- if
 `.fork.enable` is set, then theft will fork before running the property
 function. This can be used to shrink input that causes the code under
@@ -16,7 +36,6 @@ Manual Bloom filter configuration is deprecated, because the Bloom
 filter now resizes automatically -- The bloom_bits setting in
 `struct theft_run_config` and related constants are ignored,
 and will be removed in a future release.
-
 
 Added `theft_random_choice`, which can be used to get an approximately
 evenly distributed random `uint64_t` values less than an upper bound.

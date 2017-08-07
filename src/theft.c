@@ -19,7 +19,7 @@ void theft_set_output_stream(struct theft *t, FILE *out) {
  * See the type definition in `theft_types.h`. */
 enum theft_run_res
 theft_run(const struct theft_run_config *cfg) {
-    if (cfg == NULL || cfg->fun == NULL) {
+    if (cfg == NULL) {
         return THEFT_RUN_ERROR_BAD_ARGS;
     }
 

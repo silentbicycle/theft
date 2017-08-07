@@ -171,39 +171,27 @@ static enum theft_trial_res
 theft_call_inner(struct theft *t, void **args) {
     switch (t->prop.arity) {
     case 1:
-        return t->prop.fun(t, args[0]);
+        return t->prop.u.fun1(t, args[0]);
         break;
     case 2:
-        return t->prop.fun(t, args[0], args[1]);
+        return t->prop.u.fun2(t, args[0], args[1]);
         break;
     case 3:
-        return t->prop.fun(t, args[0], args[1], args[2]);
+        return t->prop.u.fun3(t, args[0], args[1], args[2]);
         break;
     case 4:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3]);
+        return t->prop.u.fun4(t, args[0], args[1], args[2], args[3]);
         break;
     case 5:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4]);
+        return t->prop.u.fun5(t, args[0], args[1], args[2], args[3], args[4]);
         break;
     case 6:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.u.fun6(t, args[0], args[1], args[2], args[3], args[4],
             args[5]);
         break;
     case 7:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
+        return t->prop.u.fun7(t, args[0], args[1], args[2], args[3], args[4],
             args[5], args[6]);
-        break;
-    case 8:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
-            args[5], args[6], args[7]);
-        break;
-    case 9:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
-            args[5], args[6], args[7], args[8]);
-        break;
-    case 10:
-        return t->prop.fun(t, args[0], args[1], args[2], args[3], args[4],
-            args[5], args[6], args[7], args[8], args[9]);
         break;
     /* ... */
     default:

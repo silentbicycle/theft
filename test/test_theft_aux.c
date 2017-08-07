@@ -7,7 +7,8 @@ struct a_squared_env {
 
 /* Property: a^2 <= 12345 */
 static enum theft_trial_res
-prop_a_squared_lte_fixed(struct theft *t, void *arg) {
+prop_a_squared_lte_fixed(struct theft *t, void *arg1) {
+    void *arg = (void *)arg1;
     (void)t;
     int8_t a = *(int8_t *)arg;
     uint16_t b = 12345;
@@ -65,7 +66,7 @@ TEST a_squared_lte_fixed(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_a_squared_lte_fixed,
+        .prop1 = prop_a_squared_lte_fixed,
         .type_info = {
             theft_get_builtin_type_info(THEFT_BUILTIN_int8_t),
         },
@@ -86,10 +87,10 @@ TEST a_squared_lte_fixed(void) {
 }
 
 static enum theft_trial_res
-prop_a_squared_lt_b(struct theft *t, void *arg_a, void *arg_b) {
+prop_a_squared_lt_b(struct theft *t, void *arg1, void *arg2) {
     (void)t;
-    int8_t a = *(int8_t *)arg_a;
-    uint16_t b = *(uint16_t *)arg_b;
+    int8_t a = *(int8_t *)arg1;
+    uint16_t b = *(uint16_t *)arg2;
     const size_t aa = a * a;
 
     if (0) {
@@ -152,7 +153,7 @@ TEST a_squared_lt_b(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_a_squared_lt_b,
+        .prop2 = prop_a_squared_lt_b,
         .type_info = {
             theft_get_builtin_type_info(THEFT_BUILTIN_int8_t),
             theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t),
@@ -173,7 +174,8 @@ TEST a_squared_lt_b(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_pass(struct theft *t, uint64_t *v) {
+static enum theft_trial_res prop_pass(struct theft *t, void *arg1) {
+    uint64_t *v = (uint64_t *)arg1;
     (void)t;
     (void)v;
     return THEFT_TRIAL_PASS;
@@ -182,7 +184,7 @@ static enum theft_trial_res prop_pass(struct theft *t, uint64_t *v) {
 TEST pass_autoscaling(void) {
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_pass,
+        .prop1 = prop_pass,
         .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
         .trials = 1000000,
     };
@@ -211,7 +213,8 @@ TEST pass_autoscaling(void) {
 }
 
 static enum theft_trial_res
-prop_check_and_update_magic(struct theft *t, uint64_t *unused) {
+prop_check_and_update_magic(struct theft *t, void *arg1) {
+    uint64_t *unused = (uint64_t *)arg1;
     (void)unused;
 
     uint64_t *magic = (uint64_t *)theft_hook_get_env(t);
@@ -228,7 +231,7 @@ TEST get_hook_env(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_check_and_update_magic,
+        .prop1 = prop_check_and_update_magic,
         .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
         .trials = 1,
         .hooks = {

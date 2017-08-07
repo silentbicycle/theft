@@ -17,6 +17,9 @@ static enum run_step_res
 run_step(struct theft *t, size_t trial,
     void **args, theft_seed *seed);
 
+static bool copy_propfun_for_arity(const struct theft_run_config *cfg,
+    struct prop_info *prop);
+
 static bool
 check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     bool *all_hashable);

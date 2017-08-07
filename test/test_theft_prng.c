@@ -7,7 +7,8 @@
 #include "theft_run.h"
 #include "test_theft_autoshrink_ll.h"
 
-static enum theft_trial_res unused(struct theft *t, struct ll *v) {
+static enum theft_trial_res unused(struct theft *t, void *arg1) {
+    struct ll *v = (struct ll *)arg1;
     (void)t;
     (void)v;
     return THEFT_TRIAL_ERROR;
@@ -18,7 +19,7 @@ static struct theft *init(void) {
     struct theft_run_config cfg = {
         /* These aren't actually used, just defined so that
          * theft_run_init doesn't return an error. */
-        .fun = unused,
+        .prop1 = unused,
         .type_info = { &ll_info },
     };
 

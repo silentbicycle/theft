@@ -36,7 +36,16 @@ struct fork_info {
 
 struct prop_info {
     const char *name;           /* property name, can be NULL */
-    theft_propfun * const fun;  /* property function under test */
+    /* property function under test */
+    union {
+        theft_propfun1 *fun1;
+        theft_propfun2 *fun2;
+        theft_propfun3 *fun3;
+        theft_propfun4 *fun4;
+        theft_propfun5 *fun5;
+        theft_propfun6 *fun6;
+        theft_propfun7 *fun7;
+    } u;
     const size_t trial_count;
 
     /* Type info for ARITY arguments. */

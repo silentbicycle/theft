@@ -30,17 +30,31 @@ enum theft_trial_res {
     THEFT_TRIAL_ERROR,          /* unrecoverable error, halt */
 };
 
-/* A test property function. Arguments must match the types specified by
- * theft_config.type_info, or the result will be undefined. For example,
- * a propfun `prop_foo(A x, B y, C z)` must have a type_info array of
- * `{ info_A, info_B, info_C }`.
+/* A test property function.
+ * The argument count should match the number of callback structs
+ * provided in `theft_config.type_info`.
  *
  * Should return:
  *     THEFT_TRIAL_PASS if the property holds,
  *     THEFT_TRIAL_FAIL if a counter-example is found,
  *     THEFT_TRIAL_SKIP if the combination of args isn't applicable,
  *  or THEFT_TRIAL_ERROR if the whole run should be halted. */
-typedef enum theft_trial_res theft_propfun( /* arguments unconstrained */ );
+typedef enum theft_trial_res theft_propfun1(struct theft *t,
+    void *arg1);
+typedef enum theft_trial_res theft_propfun2(struct theft *t,
+    void *arg1, void *arg2);
+typedef enum theft_trial_res theft_propfun3(struct theft *t,
+    void *arg1, void *arg2, void *arg3);
+typedef enum theft_trial_res theft_propfun4(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4);
+typedef enum theft_trial_res theft_propfun5(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4, void *arg5);
+typedef enum theft_trial_res theft_propfun6(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4, void *arg5,
+    void *arg6);
+typedef enum theft_trial_res theft_propfun7(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4, void *arg5,
+    void *arg6, void *arg7);
 
 /* Internal state for incremental hashing. */
 struct theft_hasher {
@@ -423,14 +437,25 @@ enum theft_run_res {
 #define THEFT_DEF_MAX_COLUMNS 72
 
 /* A property can have at most this many arguments. */
-#define THEFT_MAX_ARITY 10
+#define THEFT_MAX_ARITY 7
 
 /* Configuration struct for a theft run. */
 struct theft_run_config {
-    /* Property function under test, and info about its arguments.
-     * The function is called with as many arguments are there
-     * are values in TYPE_INFO, so it can crash if that is wrong. */
-    theft_propfun *fun;
+    /* Property function under test.
+     * The number refers to the number of generated arguments, and
+     * should match the number of `theft_type_info` structs defined in
+     * `.type_info` below. (The fields with different argument counts
+     * are ignored.) */
+    theft_propfun1 *prop1;
+    theft_propfun2 *prop2;
+    theft_propfun3 *prop3;
+    theft_propfun4 *prop4;
+    theft_propfun5 *prop5;
+    theft_propfun6 *prop6;
+    theft_propfun7 *prop7;
+
+    /* Callbacks for allocating, freeing, printing, hashing,
+     * and shrinking each property function argument. */
     const struct theft_type_info *type_info[THEFT_MAX_ARITY];
 
     /* -- All fields after this point are optional. -- */
