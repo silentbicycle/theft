@@ -117,7 +117,7 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
         t->print_trial_result_env = calloc(1,
             sizeof(*t->print_trial_result_env));
         if (t->print_trial_result_env == NULL) {
-            return THEFT_RUN_ERROR;
+            return THEFT_RUN_INIT_ERROR_MEMORY;
         }
         t->print_trial_result_env->tag = THEFT_PRINT_TRIAL_RESULT_ENV_TAG;
     }
