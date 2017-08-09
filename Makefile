@@ -53,7 +53,7 @@ TEST_OBJS=	${BUILD}/test_theft.o \
 # Basic targets
 
 test: ${BUILD}/test_${PROJECT}
-	${BUILD}/test_${PROJECT}
+	${BUILD}/test_${PROJECT} ${ARG}
 
 clean:
 	rm -rf ${BUILD} gmon.out
