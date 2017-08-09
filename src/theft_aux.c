@@ -53,6 +53,20 @@ void theft_print_trial_result(
     assert(env);
     assert(info);
 
+    struct theft *t = info->t;
+    if (t->print_trial_result_env == env) {
+        assert(t->print_trial_result_env->tag == THEFT_PRINT_TRIAL_RESULT_ENV_TAG);
+    } else if ((t->hooks.trial_post != theft_hook_trial_post_print_result)
+        && env == t->hooks.env) {
+        if (env != NULL && env->tag != THEFT_PRINT_TRIAL_RESULT_ENV_TAG) {
+            fprintf(stderr,
+                "\n"
+                "WARNING: The *env passed to trial_print_trial_result is probably not\n"
+                "a `theft_print_trial_result_env` struct -- to suppress this warning,\n"
+                "set env->tag to THEFT_PRINT_TRIAL_RESULT_ENV_TAG.\n");
+        }
+    }
+
     const uint8_t maxcol = (env->max_column == 0
         ? THEFT_DEF_MAX_COLUMNS : env->max_column);
 

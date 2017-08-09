@@ -52,6 +52,11 @@ returned if internal memory allocation fails.
 Added `repeat` flag to the info struct associated with the
 `trial_post` hook. This is set when a test is being repeated.
 
+Added a warning when the `trial_done` callback is overridden
+but `theft_print_trial_result` is called with the overall
+hook environment pointer (cast to a `theft_print_trial_result_env`),
+since this is probably API misuse.
+
 
 ### Other Improvements
 

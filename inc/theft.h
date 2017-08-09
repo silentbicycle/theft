@@ -95,7 +95,9 @@ theft_hash theft_hash_done(struct theft_hasher *h);
  *
  * Unless a custom output max_column width is wanted, all of these
  * fields can just be initialized to 0. */
+#define THEFT_PRINT_TRIAL_RESULT_ENV_TAG 0xe7a6
 struct theft_print_trial_result_env {
+    uint16_t tag;               /* used for internal validation */
     const uint8_t max_column;   /* 0 -> default of 72 */
     uint8_t column;
     size_t scale_pass;

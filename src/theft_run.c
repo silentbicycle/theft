@@ -119,6 +119,7 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
         if (t->print_trial_result_env == NULL) {
             return THEFT_RUN_ERROR;
         }
+        t->print_trial_result_env->tag = THEFT_PRINT_TRIAL_RESULT_ENV_TAG;
     }
 
     *output = t;
