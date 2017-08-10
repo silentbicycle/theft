@@ -6,8 +6,8 @@
 
 Changed the property function typedef (`theft_propfun`). Property
 functions are now called with a `struct theft *t` handle as a first
-argument -- this can be used to get the hooks' environment, with
-`theft_hook_get_env`.
+argument -- this can be used to get the hooks' environment with
+`theft_hook_get_env` while running the property.
 
 The property function pointer in the `theft_run_config` struct
 is now typesafe -- instead of a single function pointer type
@@ -20,7 +20,7 @@ is:
     two_instance_property(struct theft *t, void *arg1, void *arg2);
 
 The property function field has been rename from `fun` to
-`prop(argument count)`.
+`prop{ARG_COUNT}`.
 
 Reduced `THEFT_MAX_ARITY` to 7.
 
@@ -33,15 +33,15 @@ infinite loops or wide runtime variation. `.fork.signal` customizes
 the signal sent on timeout. See `doc/forking.md` for details.
 
 Added `theft_generate`, to generate and print an instance based
-on a given seed (without running tests).
+on a given seed (without running any properties).
 
 Manual Bloom filter configuration is deprecated, because the Bloom
 filter now resizes automatically -- The bloom_bits setting in
 `struct theft_run_config` and related constants are ignored,
 and will be removed in a future release.
 
-Added `theft_random_choice`, which can be used to get an approximately
-evenly distributed random `uint64_t` values less than an upper bound.
+Added `theft_random_choice`, which returns approximately evenly
+distributed random `uint64_t` values less than an upper bound.
 
 Added `theft_run_res_str`, which returns a string (e.g. "PASS") for an
 `enum theft_run_res` value.
@@ -55,11 +55,6 @@ returned if internal memory allocation fails.
 Added `repeat` flag to the info struct associated with the
 `trial_post` hook. This is set when a test is being repeated.
 
-Added a warning when the `trial_done` callback is overridden
-but `theft_print_trial_result` is called with the overall
-hook environment pointer (cast to a `theft_print_trial_result_env`),
-since this is probably API misuse.
-
 
 ### Other Improvements
 
@@ -70,6 +65,11 @@ large Bloom filter, it now uses a set of small filters, which can
 individually grow as necessary.
 
 Lots of internal refactoring.
+
+Added a warning when the `trial_done` callback is overridden
+but `theft_print_trial_result` is called with the overall
+hook environment pointer (cast to a `theft_print_trial_result_env`),
+since this is probably API misuse.
 
 
 ## v0.3.0 - 2017-06-15
