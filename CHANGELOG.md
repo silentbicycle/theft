@@ -32,6 +32,9 @@ milliseconds) for each property trial, to shrink input that causes
 infinite loops or wide runtime variation. `.fork.signal` customizes
 the signal sent on timeout. See `doc/forking.md` for details.
 
+Added `theft_generate`, to generate and print an instance based
+on a given seed (without running tests).
+
 Manual Bloom filter configuration is deprecated, because the Bloom
 filter now resizes automatically -- The bloom_bits setting in
 `struct theft_run_config` and related constants are ignored,

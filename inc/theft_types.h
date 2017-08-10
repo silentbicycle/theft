@@ -30,6 +30,25 @@ enum theft_trial_res {
     THEFT_TRIAL_ERROR,          /* unrecoverable error, halt */
 };
 
+/* Result from a trial run (group of trials). */
+enum theft_run_res {
+    THEFT_RUN_PASS = 0,             /* no failures */
+    THEFT_RUN_FAIL = 1,             /* 1 or more failures */
+    THEFT_RUN_SKIP = 2,             /* no failures, but no passes either */
+    THEFT_RUN_ERROR = 3,            /* an error occurred */
+    THEFT_RUN_ERROR_MEMORY = -1,    /* memory allocation failure */
+    THEFT_RUN_ERROR_BAD_ARGS = -2,  /* API misuse */
+};
+
+/* Result from generating and printing an instance based on a seed. */
+enum theft_generate_res {
+    THEFT_GENERATE_OK = 0,
+    THEFT_GENERATE_SKIP = 1,
+    THEFT_GENERATE_ERROR_ALLOC = -1, /* error in alloc cb */
+    THEFT_GENERATE_ERROR_MEMORY = -2,
+    THEFT_GENERATE_ERROR_BAD_ARGS = -3,
+};
+
 /* A test property function.
  * The argument count should match the number of callback structs
  * provided in `theft_config.type_info`.
@@ -410,15 +429,10 @@ theft_hook_shrink_trial_post_cb(const struct theft_hook_shrink_trial_post_info *
  * Configuration *
  *****************/
 
-/* Result from a trial run. */
-enum theft_run_res {
-    THEFT_RUN_PASS = 0,             /* no failures */
-    THEFT_RUN_FAIL = 1,             /* 1 or more failures */
-    THEFT_RUN_SKIP = 2,             /* no failures, but no passes either */
-    THEFT_RUN_ERROR = 3,            /* an error occurred */
-    THEFT_RUN_ERROR_MEMORY = -1,    /* memory allocation failure */
-    THEFT_RUN_ERROR_BAD_ARGS = -2,  /* API misuse */
-};
+/* Should the floating-point generators be built? */
+#ifndef THEFT_USE_FLOATING_POINT
+#define THEFT_USE_FLOATING_POINT 1
+#endif
 
 /* Default number of trials to run. */
 #define THEFT_DEF_TRIALS 100

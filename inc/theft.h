@@ -20,10 +20,12 @@
 enum theft_run_res
 theft_run(const struct theft_run_config *cfg);
 
-/* Should the floating-point generators be built? */
-#ifndef THEFT_USE_FLOATING_POINT
-#define THEFT_USE_FLOATING_POINT 1
-#endif
+/* Generate the instance based on a given seed, print it to F,
+ * and then free it. (If print or free callbacks are NULL,
+ * they will be skipped.) */
+enum theft_generate_res
+theft_generate(FILE *f, theft_seed seed,
+    const struct theft_type_info *info, void *hook_env);
 
 
 /***********************

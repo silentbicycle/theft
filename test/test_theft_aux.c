@@ -248,6 +248,58 @@ TEST get_hook_env(void) {
     PASS();
 }
 
+struct gap_env {
+    uint8_t tag;
+    uint64_t limit;
+    bool used;
+};
+
+static enum theft_alloc_res
+gap_alloc(struct theft *t, void *info_env, void **output) {
+    (void)info_env;
+    struct gap_env *env = (struct gap_env *)theft_hook_get_env(t);
+    if (env->tag != 'G') { return THEFT_ALLOC_ERROR; }
+    uint64_t *res = malloc(sizeof(res));
+    if (res == NULL) { return THEFT_ALLOC_ERROR; }
+    *res = theft_random_bits(t, 64) % env->limit;
+    env->used = true;
+
+    *output = res;
+    return THEFT_ALLOC_OK;
+}
+
+static void gap_print(FILE *f, const void *instance, void *env) {
+    (void)env;
+    uint64_t *v = (uint64_t *)instance;
+    //fprintf(f, "[%" PRIu64 "]", *v);
+    fprintf(f, "%llu", *v);
+}
+
+struct theft_type_info gap_info = {
+    .alloc = gap_alloc,
+    .free = theft_generic_free_cb,
+    .print = gap_print,
+};
+
+/* Generate a uint64_t, but limit it to < 1000, to
+ * verify that the hook_env is passed along correctly. */
+TEST gen_and_print(void) {
+    uint64_t seed = theft_seed_of_time();
+
+    struct gap_env env = {
+        .tag = 'G',
+        .limit = 1000,
+    };
+
+    enum theft_generate_res res =
+      theft_generate(stdout, seed, &gap_info, &env);
+
+    ASSERT_EQ_FMT(THEFT_GENERATE_OK, res, "%d");
+    ASSERT(env.used);
+
+    PASS();
+}
+
 SUITE(aux) {
     // builtins
     RUN_TEST(a_squared_lte_fixed);
@@ -256,4 +308,5 @@ SUITE(aux) {
     /* Tests for other misc. aux stuff */
     RUN_TEST(pass_autoscaling);
     RUN_TEST(get_hook_env);
+    RUN_TEST(gen_and_print);
 }
