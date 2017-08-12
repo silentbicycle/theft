@@ -58,6 +58,7 @@ struct hook_info {
     theft_hook_run_post_cb *run_post;
     theft_hook_gen_args_pre_cb *gen_args_pre;
     theft_hook_trial_pre_cb *trial_pre;
+    theft_hook_fork_post_cb *fork_post;
     theft_hook_trial_post_cb *trial_post;
     theft_hook_counterexample_cb *counterexample;
     theft_hook_shrink_pre_cb *shrink_pre;

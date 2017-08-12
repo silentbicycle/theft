@@ -244,6 +244,7 @@ control theft's behavior:
         theft_hook_run_post_cb *run_post;
         theft_hook_gen_args_pre_cb *gen_args_pre;
         theft_hook_trial_pre_cb *trial_pre;
+        theft_hook_fork_post_cb *fork_post;
         theft_hook_trial_post_cb *trial_post;
         theft_hook_counterexample_cb *counterexample;
         theft_hook_shrink_pre_cb *shrink_pre;
@@ -310,6 +311,9 @@ These hooks can be overridden to add test-specific behavior. For example:
   changes (`trial_post`)
 
 - Halting shrinking after a certain amount of time (`shrink_pre`)
+
+- Dropping priveleges with `setrlimit`, `pledge`, etc. on the
+  forked child process before running the property (`fork_post`).
 
 
 ### Example Output

@@ -77,6 +77,7 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
             : theft_hook_run_post_print_info),
         .gen_args_pre = cfg->hooks.gen_args_pre,
         .trial_pre = cfg->hooks.trial_pre,
+        .fork_post = cfg->hooks.fork_post,
         .trial_post = (cfg->hooks.trial_post != NULL
             ? cfg->hooks.trial_post
             : theft_hook_trial_post_print_result),

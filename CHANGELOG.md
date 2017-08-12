@@ -32,6 +32,10 @@ milliseconds) for each property trial, to shrink input that causes
 infinite loops or wide runtime variation. `.fork.signal` customizes
 the signal sent on timeout. See `doc/forking.md` for details.
 
+Added a `fork_post` hook, which is called on the child process
+after forking. This can be used to drop privileges before
+running the property test.
+
 Added `theft_generate`, to generate and print an instance based
 on a given seed (without running any properties).
 

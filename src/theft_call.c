@@ -58,6 +58,12 @@ theft_call(struct theft *t, void **args) {
             return THEFT_TRIAL_ERROR;
         } else if (pid == 0) {  /* child */
             close(fds[0]);
+            if (run_fork_post_hook(t, args) == THEFT_HOOK_FORK_POST_ERROR) {
+                uint8_t byte = (uint8_t)THEFT_TRIAL_ERROR;
+                ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
+                (void)wr;
+                exit(EXIT_FAILURE);
+            }
             res = theft_call_inner(t, args);
             uint8_t byte = (uint8_t)res;
             ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
@@ -225,4 +231,21 @@ void theft_call_mark_called(struct theft *t, void **args) {
     get_arg_hash_buffer(buffer, t, args);
     theft_bloom_mark(t->bloom, (uint8_t *)buffer,
         t->prop.arity * sizeof(theft_hash));
+}
+
+static enum theft_hook_fork_post_res
+run_fork_post_hook(struct theft *t, void **args) {
+    if (t->hooks.fork_post == NULL) {
+        return THEFT_HOOK_FORK_POST_CONTINUE;
+    }
+
+    struct theft_hook_fork_post_info info = {
+        .prop_name = t->prop.name,
+        .total_trials = t->prop.trial_count,
+        .failures = t->counters.fail,
+        .run_seed = t->seeds.run_seed,
+        .arity = t->prop.arity,
+        .args = args,           /* real_args */
+    };
+    return t->hooks.fork_post(&info, t->hooks.env);
 }

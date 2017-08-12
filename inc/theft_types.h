@@ -285,8 +285,26 @@ typedef enum theft_hook_trial_pre_res
 theft_hook_trial_pre_cb(const struct theft_hook_trial_pre_info *info,
     void *env);
 
+/* Post-fork hook: called on the child process after forking. */
+enum theft_hook_fork_post_res {
+    THEFT_HOOK_FORK_POST_ERROR,
+    THEFT_HOOK_FORK_POST_CONTINUE,
+};
+struct theft_hook_fork_post_info {
+    struct theft *t;
+    const char *prop_name;
+    size_t total_trials;
+    size_t failures;
+    theft_seed run_seed;
+    uint8_t arity;
+    void **args;
+};
+typedef enum theft_hook_fork_post_res
+theft_hook_fork_post_cb(const struct theft_hook_fork_post_info *info,
+    void *env);
+
 /* Post-trial hook: called after the trial is run, with the arguments
- * and result.*/
+ * and result. */
 enum theft_hook_trial_post_res {
     THEFT_HOOK_TRIAL_POST_ERROR,
     THEFT_HOOK_TRIAL_POST_CONTINUE,
@@ -511,6 +529,7 @@ struct theft_run_config {
         theft_hook_run_post_cb *run_post;
         theft_hook_gen_args_pre_cb *gen_args_pre;
         theft_hook_trial_pre_cb *trial_pre;
+        theft_hook_fork_post_cb *fork_post;
         theft_hook_trial_post_cb *trial_post;
         theft_hook_counterexample_cb *counterexample;
         theft_hook_shrink_pre_cb *shrink_pre;
