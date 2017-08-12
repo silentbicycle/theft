@@ -271,8 +271,7 @@ gap_alloc(struct theft *t, void *info_env, void **output) {
 static void gap_print(FILE *f, const void *instance, void *env) {
     (void)env;
     uint64_t *v = (uint64_t *)instance;
-    //fprintf(f, "[%" PRIu64 "]", *v);
-    fprintf(f, "%llu", *v);
+    fprintf(f, "%" PRIu64, *v);
 }
 
 struct theft_type_info gap_info = {
