@@ -1327,6 +1327,65 @@ TEST repeat_with_verbose_set_after_shrinking(void) {
     PASS();
 }
 
+struct fork_post_env {
+    bool hook_flag;
+    uint16_t value;
+};
+
+static enum theft_hook_fork_post_res
+fork_post_set_flag(const struct theft_hook_fork_post_info *info, void *env) {
+    (void)info;
+    struct fork_post_env *hook_env = (struct fork_post_env *)env;
+    hook_env->value = *(uint16_t *)info->args[0];
+    return THEFT_HOOK_FORK_POST_CONTINUE;
+}
+
+static enum theft_trial_res
+prop_ignore_input_return_fork_hook(struct theft *t, void *arg1) {
+    uint16_t value = *(uint16_t *)arg1;
+
+    struct fork_post_env *hook_env = theft_hook_get_env(t);
+    if (hook_env == NULL) { return THEFT_TRIAL_ERROR; }
+
+    /* Check that the value is the same in the fork_post hook
+     * and when the property runs -- this is mainly a guard
+     * against incorrect autoshrinker boxing/unboxing. */
+    if (hook_env->value == value) {
+        hook_env->hook_flag = true;
+    }
+
+    return hook_env->hook_flag
+      ? THEFT_TRIAL_PASS
+      : THEFT_TRIAL_FAIL;
+}
+
+TEST forking_hook(void) {
+    enum theft_run_res res;
+
+    struct fork_post_env env = {
+        .value = 0,
+    };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_ignore_input_return_fork_hook,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1,
+        .hooks = {
+            .fork_post = fork_post_set_flag,
+            .env = &env,
+        },
+        .fork = {
+            .enable = true,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQ_FMTm("hook_flag is set on child process, unmodified due to COW",
+        false, env.hook_flag, "%d");
+    ASSERT_ENUM_EQ(THEFT_RUN_PASS, res, theft_run_res_str);
+    PASS();
+}
 SUITE(integration) {
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -1348,6 +1407,7 @@ SUITE(integration) {
     RUN_TEST(shrink_infinite_loop);
     RUN_TEST(shrink_abort_immediately_to_stress_forking);
     RUN_TEST(shrink_and_SIGUSR1_on_timeout);
+    RUN_TEST(forking_hook);
 
     RUN_TEST(repeat_with_verbose_set_after_shrinking);
 
