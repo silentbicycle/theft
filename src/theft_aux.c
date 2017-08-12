@@ -114,6 +114,15 @@ void theft_print_trial_result(
     env->column += used;
 }
 
+enum theft_hook_trial_pre_res
+theft_hook_trial_pre_first_fail_halt(
+        const struct theft_hook_trial_pre_info *info, void *env) {
+    (void)env;
+    return info->failures > 0
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
 enum theft_hook_trial_post_res
 theft_hook_trial_post_print_result(const struct theft_hook_trial_post_info *info,
         void *env) {
