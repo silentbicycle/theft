@@ -7,6 +7,8 @@
 #include <inttypes.h>
 #include <signal.h>
 
+#include <sys/resource.h>
+
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
 
 static enum theft_alloc_res
@@ -1386,6 +1388,81 @@ TEST forking_hook(void) {
     ASSERT_ENUM_EQ(THEFT_RUN_PASS, res, theft_run_res_str);
     PASS();
 }
+
+static size_t Fibonacci(uint8_t x) {
+    if (x < 2) {
+        return 1;
+    } else {
+        return Fibonacci(x - 1) + Fibonacci(x - 2);
+    }
+}
+
+static enum theft_trial_res
+prop_too_much_cpu(struct theft *t, void *arg1) {
+    (void)t;
+    uint16_t value = *(uint16_t *)arg1;
+
+    value = value % 1000;
+    fprintf(stderr, "Checking for excess CPU usage with depth %u...\n", value);
+
+    size_t res = Fibonacci(value);  /* Burn CPU by recursing  */
+
+    /* This check is mainly so the call to Fibonacci won't get compiled
+     * away. As far as I know, none of the first 1000 Fibonacci series
+     * numbers equal 0 when truncated to a size_t, but I'll be pretty
+     * impressed if any compilers figure that out. */
+    if (res == 0) { return THEFT_TRIAL_ERROR; }
+
+    return THEFT_TRIAL_PASS;
+}
+
+static enum theft_hook_fork_post_res
+fork_post_rlimit_cpu(const struct theft_hook_fork_post_info *info, void *env) {
+    (void)info;
+    (void)env;
+
+    struct rlimit rl;
+    if (-1 == getrlimit(RLIMIT_CPU, &rl)) {
+        perror("getrlimit");
+        return THEFT_HOOK_FORK_POST_ERROR;
+    }
+
+    /* Restrict property test to 1 second of CPU time. */
+    rl.rlim_cur = rl.rlim_max = 1;
+
+    if (-1 == setrlimit(RLIMIT_CPU, &rl)) {
+        perror("setrlimit");
+        return THEFT_HOOK_FORK_POST_ERROR;
+    }
+
+    return THEFT_HOOK_FORK_POST_CONTINUE;
+}
+
+/* Fork a child process, set a resource limit on CPU usage time,
+ * and use shrinking to determine the smallest double-recursive
+ * Fibonacci number calculation that takes over a second of CPU. */
+TEST forking_privilege_drop_cpu_limit(void) {
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_too_much_cpu,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1000,
+        .seed = theft_seed_of_time(),
+        .hooks = {
+            .trial_pre = theft_hook_trial_pre_first_fail_halt,
+            .fork_post = fork_post_rlimit_cpu,
+        },
+        .fork = {
+            .enable = true,
+        },
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should fail due to CPU limit",
+        THEFT_RUN_FAIL, res, theft_run_res_str);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -1408,6 +1485,7 @@ SUITE(integration) {
     RUN_TEST(shrink_abort_immediately_to_stress_forking);
     RUN_TEST(shrink_and_SIGUSR1_on_timeout);
     RUN_TEST(forking_hook);
+    RUN_TEST(forking_privilege_drop_cpu_limit);
 
     RUN_TEST(repeat_with_verbose_set_after_shrinking);
 
