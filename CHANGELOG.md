@@ -1,5 +1,84 @@
 # theft Changes By Release
 
+## v0.4.0 - 2017-08-13
+
+### API Changes
+
+Changed the property function typedef (`theft_propfun`). Property
+functions are now called with a `struct theft *t` handle as a first
+argument -- this can be used to get the hooks' environment with
+`theft_hook_get_env` while running the property.
+
+The property function pointer in the `theft_run_config` struct
+is now typesafe -- instead of a single function pointer type
+with unconstrained arguments, the config struct has fields
+`prop1`, `prop2`, ... `prop7`, where the number is the number
+of instance arguments the property takes: For example, `prop2`
+is:
+
+    enum theft_trial_res
+    two_instance_property(struct theft *t, void *arg1, void *arg2);
+
+The property function field has been rename from `fun` to
+`prop{ARG_COUNT}`.
+
+Reduced `THEFT_MAX_ARITY` to 7.
+
+Added the `.fork` structure to `struct theft_run_config` -- if
+`.fork.enable` is set, then theft will fork before running the property
+function. This can be used to shrink input that causes the code under
+test to crash. If forking is enabled, `.fork.timeout` adds a timeout (in
+milliseconds) for each property trial, to shrink input that causes
+infinite loops or wide runtime variation. `.fork.signal` customizes
+the signal sent on timeout. See `doc/forking.md` for details.
+
+Added a `fork_post` hook, which is called on the child process
+after forking. This can be used to drop privileges before
+running the property test.
+
+Added `theft_generate`, to generate and print an instance based
+on a given seed (without running any properties).
+
+Manual Bloom filter configuration is deprecated, because the Bloom
+filter now resizes automatically -- The bloom_bits setting in
+`struct theft_run_config` and related constants are ignored,
+and will be removed in a future release.
+
+Added `theft_random_choice`, which returns approximately evenly
+distributed random `uint64_t` values less than an upper bound.
+
+Added `theft_run_res_str`, which returns a string (e.g. "PASS") for an
+`enum theft_run_res` value.
+
+Removed `THEFT_RUN_ERROR_MISSING_CALLBACK` from `enum theft_run_res`;
+it's now combined with `THEFT_RUN_ERROR_BAD_ARGS`.
+
+Added `THEFT_RUN_ERROR_MEMORY` to `enum theft_run_res`. This is
+returned if internal memory allocation fails.
+
+Added `repeat` flag to the info struct associated with the
+`trial_post` hook. This is set when a test is being repeated.
+
+Added `theft_hook_first_fail_halt`, a `trial_pre` hook that halts after
+the first failure.
+
+
+### Other Improvements
+
+Switch to a dynamic blocked Bloom filter instead of a fixed-size Bloom
+filter. This makes manual filter size configuration unnecessary, and
+significantly reduces theft's memory overhead -- instead of a single
+large Bloom filter, it now uses a set of small filters, which can
+individually grow as necessary.
+
+Lots of internal refactoring.
+
+Added a warning when the `trial_done` callback is overridden
+but `theft_print_trial_result` is called with the overall
+hook environment pointer (cast to a `theft_print_trial_result_env`),
+since this is probably API misuse.
+
+
 ## v0.3.0 - 2017-06-15
 
 ### API Changes
@@ -71,7 +150,7 @@ Renamed `struct theft_cfg` to `struct theft_run_config`.
 
 The `struct theft` type is now opaque.
 
-`THEFT_BLOOM_DISABLE` has been removed -- the bloom filter
+`THEFT_BLOOM_DISABLE` has been removed -- the Bloom filter
 is always allocated now.
 
 In `struct theft_run_config`, `always_seed_count` and `trials` are now
@@ -133,7 +212,7 @@ Added Makefile targets for coverage checking and profiling.
 
 ### API Changes
 
-Add `THEFT_BLOOM_DISABLE` to explicitly disable bloom filter.
+Add `THEFT_BLOOM_DISABLE` to explicitly disable Bloom filter.
 
 Switch to 64-bit Mersenne Twister.
 

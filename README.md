@@ -61,3 +61,10 @@ For some examples of properties to test, see
 
 For more info about shrinking and auto-shrinking, see
 [doc/shrinking.md](doc/shrinking.md).
+
+
+## Forking
+
+theft can fork before running properties, to shrink failures that make
+the code under test crash or exceed an optional timeout. For more info,
+see [doc/forking.md](doc/forking.md).

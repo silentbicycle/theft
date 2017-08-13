@@ -15,7 +15,9 @@ struct err_env {
     bool shrinking;
 };
 
-static enum theft_trial_res prop_bits_gt_0(uint8_t *x) {
+static enum theft_trial_res prop_bits_gt_0(struct theft *t, void *arg1) {
+    uint8_t *x = (uint8_t *)arg1;
+    (void)t;
     return (*x > 0 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL);
 }
 
@@ -64,7 +66,7 @@ TEST alloc_returns_skip(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10,
         .hooks = {
@@ -94,7 +96,7 @@ TEST alloc_returns_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10,
         .hooks = {
@@ -134,7 +136,7 @@ TEST alloc_returns_skip_during_autoshrink(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 1000,
         .hooks = {
@@ -165,7 +167,7 @@ TEST alloc_returns_error_during_autoshrink(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 1000,
         .hooks = {
@@ -221,7 +223,7 @@ TEST error_from_both_autoshrink_and_shrink_cb(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .hooks = {
             .env = (void *)&env,
@@ -229,7 +231,8 @@ TEST error_from_both_autoshrink_and_shrink_cb(void) {
     };
 
     enum theft_run_res res = theft_run(&cfg);
-    ASSERT_EQ_FMT(THEFT_RUN_ERROR, res, "%d");
+    ASSERT_ENUM_EQm("defining shrink and autoshrink should error",
+        THEFT_RUN_ERROR_BAD_ARGS, res, theft_run_res_str);
     PASS();
 }
 
@@ -247,7 +250,7 @@ TEST shrinking_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -286,7 +289,7 @@ TEST run_pre_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -325,7 +328,7 @@ TEST run_post_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -364,7 +367,7 @@ TEST trial_pre_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -403,7 +406,7 @@ TEST trial_post_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -442,7 +445,7 @@ TEST shrink_pre_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -482,7 +485,7 @@ TEST shrink_post_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -521,7 +524,7 @@ TEST shrink_trial_post_hook_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -535,7 +538,9 @@ TEST shrink_trial_post_hook_error(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_always_skip(uint8_t *x) {
+static enum theft_trial_res prop_always_skip(struct theft *t, void *arg1) {
+    uint8_t *x = (uint8_t *)arg1;
+    (void)t;
     (void)x;
     return THEFT_TRIAL_SKIP;
 }
@@ -556,7 +561,7 @@ TEST trial_skip(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_always_skip,
+        .prop1 = prop_always_skip,
         .type_info = { &type_info },
         .trials = 10,
         .hooks = {
@@ -570,7 +575,9 @@ TEST trial_skip(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_always_error(uint8_t *x) {
+static enum theft_trial_res prop_always_error(struct theft *t, void *arg1) {
+    uint8_t *x = (uint8_t *)arg1;
+    (void)t;
     (void)x;
     return THEFT_TRIAL_ERROR;
 }
@@ -591,7 +598,7 @@ TEST trial_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_always_error,
+        .prop1 = prop_always_error,
         .type_info = { &type_info },
         .trials = 10,
         .hooks = {
@@ -607,11 +614,13 @@ TEST trial_error(void) {
 
 static bool trial_error_during_autoshrink_flag = false;
 
-static enum theft_trial_res prop_error_if_autoshrinking(uint8_t *x) {
+static enum theft_trial_res prop_error_if_autoshrinking(struct theft *t, void *arg1) {
+    uint8_t *x = (uint8_t *)arg1;
+    (void)t;
     if (trial_error_during_autoshrink_flag) {
         return THEFT_TRIAL_ERROR;
     }
-    return prop_bits_gt_0(x);
+    return prop_bits_gt_0(t, x);
 }
 
 static enum theft_hook_shrink_pre_res
@@ -640,7 +649,7 @@ TEST trial_error_during_autoshrink(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_error_if_autoshrinking,
+        .prop1 = prop_error_if_autoshrinking,
         .type_info = { &type_info },
         .trials = 1000,
         .hooks = {
@@ -680,7 +689,7 @@ TEST counterexample_error(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_bits_gt_0,
+        .prop1 = prop_bits_gt_0,
         .type_info = { &type_info },
         .trials = 10000,
         .hooks = {
@@ -694,7 +703,9 @@ TEST counterexample_error(void) {
     PASS();
 }
 
-static enum theft_trial_res prop_ignore_input_fail_then_pass(uint8_t *x) {
+static enum theft_trial_res prop_ignore_input_fail_then_pass(struct theft *t, void *arg1) {
+    uint8_t *x = (uint8_t *)arg1;
+    (void)t;
     (void)x;
     static size_t runs = 0;
     runs++;
@@ -724,7 +735,7 @@ TEST fail_but_pass_when_rerun(void) {
     type_info.env = &env;
 
     struct theft_run_config cfg = {
-        .fun = prop_ignore_input_fail_then_pass,
+        .prop1 = prop_ignore_input_fail_then_pass,
         .type_info = { &type_info },
         .trials = 1,
         .hooks = {

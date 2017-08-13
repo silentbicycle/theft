@@ -12,17 +12,18 @@
 static autoshrink_prng_fun *get_prng(struct theft *t, struct theft_autoshrink_env *env);
 static uint64_t get_mask(uint8_t bits);
 
-bool theft_autoshrink_wrap(struct theft *t,
+enum theft_autoshrink_wrap
+theft_autoshrink_wrap(struct theft *t,
         struct theft_type_info *type_info, struct theft_type_info *wrapper) {
     (void)t;
     if (type_info->alloc == NULL || type_info->shrink != NULL) {
         free(wrapper);
-        return false;           /* API misuse */
+        return THEFT_AUTOSHRINK_WRAP_ERROR_MISUSE;
     }
 
     struct theft_autoshrink_env *env = calloc(1, sizeof(*env));
     if (env == NULL) {
-        return false;
+        return THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY;
     }
 
     *env = (struct theft_autoshrink_env) {
@@ -45,7 +46,7 @@ bool theft_autoshrink_wrap(struct theft *t,
         .env = env,
     };
 
-    return true;
+    return THEFT_AUTOSHRINK_WRAP_OK;
 }
 
 void
@@ -109,7 +110,7 @@ static void lazily_fill_bit_pool(struct theft *t,
         uint64_t *bits64 = (uint64_t *)pool->bits;
         size_t offset = pool->bits_filled / 64;
         assert(offset * 64 < pool->bits_ceil);
-        bits64[offset] = theft_mt_random(t->mt);
+        bits64[offset] = theft_mt_random(t->prng.mt);
         LOG(3, "filling bit64[%zd]: 0x%016" PRIx64 "\n",
             offset, bits64[offset]);
         pool->bits_filled += 64;
@@ -155,11 +156,13 @@ static void fill_buf(struct theft_autoshrink_bit_pool *pool,
             src_offset++;
         }
 
+        i += to_copy;
         if (dst_bit + to_copy == 64) {
             dst_offset++;
-            dst[dst_offset] = 0;
+            if (i < bit_count) {
+                dst[dst_offset] = 0;
+            }
         }
-        i += to_copy;
     }
 
     pool->consumed += bit_count;
@@ -220,7 +223,7 @@ fail:
 void theft_autoshrink_free_bit_pool(struct theft *t,
         struct theft_autoshrink_bit_pool *pool) {
     if (t) {
-        assert(t->bit_pool == NULL);  // don't free while still in use
+        assert(t->prng.bit_pool == NULL);  // don't free while still in use
     }
     assert(pool->instance == NULL);
     free(pool->bits);
@@ -229,10 +232,10 @@ void theft_autoshrink_free_bit_pool(struct theft *t,
 }
 
 void
-theft_autoshrink_get_real_args(struct theft_run_info *run_info,
+theft_autoshrink_get_real_args(struct theft *t,
         void **dst, void **src) {
-    for (size_t i = 0; i < run_info->arity; i++) {
-        const struct theft_type_info *ti = run_info->type_info[i];
+    for (size_t i = 0; i < t->prop.arity; i++) {
+        const struct theft_type_info *ti = t->prop.type_info[i];
         if (ti->autoshrink_config.enable) {
             struct theft_autoshrink_bit_pool *bit_pool =
               (struct theft_autoshrink_bit_pool *)src[i];
@@ -585,7 +588,7 @@ static void mutate_bit_pool(struct theft *t,
 
     /* Ensure that we aren't getting random bits from a pool while trying
      * to shrink the pool. */
-    assert(t->bit_pool == NULL);
+    assert(t->prng.bit_pool == NULL);
 
     /* Get some random bits, and for each 1 bit, we will make one change in
      * the pool copy. */
@@ -617,7 +620,7 @@ static void mutate_bit_pool(struct theft *t,
 
     /* Attempt to make up to CHANGE_COUNT changes, with limited retries
      * for when the random modifications have no effect. */
-    for (size_t i = 0; i < 10*change_count; i++) {
+    for (size_t i = 0; i < 10U * change_count; i++) {
         if (choose_and_mutate_request(t, env, orig, pool)) {
             changed++;
 
@@ -746,7 +749,7 @@ choose_and_mutate_request(struct theft *t,
         if (size > 64) {
             /* maybe swap two blocks non-overlapping within the request */
             uint8_t to_swap = prng(6, env->udata);
-            while (2*to_swap >= size) {
+            while (2U * to_swap >= size) {
                 to_swap /= 2;
             }
             if (to_swap == 0) {
@@ -1153,17 +1156,14 @@ static void adjust(struct autoshrink_model *model,
 
 void
 theft_autoshrink_update_model(struct theft *t,
-        struct theft_run_info *run_info,
         uint8_t arg_id, enum theft_trial_res res,
         uint8_t adjustment) {
-    (void)t;
-
     /* If this type isn't using autoshrink, there's nothing to do. */
-    if (run_info->type_info[arg_id]->autoshrink_config.enable == false) {
+    if (t->prop.type_info[arg_id]->autoshrink_config.enable == false) {
         return;
     }
 
-    CHECK_ENV_CAST(env, run_info->type_info[arg_id]->env);
+    CHECK_ENV_CAST(env, t->prop.type_info[arg_id]->env);
     const uint8_t cur_set = env->model.cur_set;
     if (cur_set == 0x00) {
         return;

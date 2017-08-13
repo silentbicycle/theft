@@ -16,70 +16,83 @@
         }                                                             \
     } while(0)
 
-struct theft {
-    FILE *out;
-    theft_seed seed;
-    uint8_t requested_bloom_bits;
-    struct theft_bloom *bloom;  /* bloom filter */
+struct theft_bloom;             /* bloom filter */
+struct theft_mt;                /* mersenne twister PRNG */
 
-    struct theft_mt *mt;        /* random number generator */
-    uint64_t prng_buf;          /* buffer for PRNG bits */
-    uint8_t bits_available;
-    /* Bit pool, only used during autoshrinking. */
-    struct theft_autoshrink_bit_pool *bit_pool;
-};
-
-enum all_gen_res_t {
-    ALL_GEN_OK,                 /* all arguments generated okay */
-    ALL_GEN_SKIP,               /* skip due to user constraints */
-    ALL_GEN_DUP,                /* skip probably duplicated trial */
-    ALL_GEN_ERROR,              /* memory error or other failure */
-} all_gen_res_t;
-
-enum shrink_res {
-    SHRINK_OK,                  /* simplified argument further */
-    SHRINK_DEAD_END,            /* at local minima */
-    SHRINK_ERROR,               /* hard error during shrinking */
-    SHRINK_HALT,                /* don't shrink any further */
-};
-
-/* Testing context for a specific property function. */
-struct theft_run_info {
-    const char *name;           /* property name, can be NULL */
-    theft_propfun * const fun;  /* property function under test */
-    const size_t trial_count;
+struct seed_info {
     const theft_seed run_seed;
-
-    /* Type info for ARITY arguments. */
-    const uint8_t arity;        /* number of arguments */
-    struct theft_type_info *type_info[THEFT_MAX_ARITY];
 
     /* Optional array of seeds to always run.
      * Can be used for regression tests. */
     const size_t always_seed_count;   /* number of seeds */
     const theft_seed *always_seeds;   /* seeds to always run */
+};
 
-    /* Progress callbacks. */
-    struct {
-        theft_hook_run_pre_cb *run_pre;
-        theft_hook_run_post_cb *run_post;
-        theft_hook_gen_args_pre_cb *gen_args_pre;
-        theft_hook_trial_pre_cb *trial_pre;
-        theft_hook_trial_post_cb *trial_post;
-        theft_hook_counterexample_cb *counterexample;
-        theft_hook_shrink_pre_cb *shrink_pre;
-        theft_hook_shrink_post_cb *shrink_post;
-        theft_hook_shrink_trial_post_cb *shrink_trial_post;
-        void *env;
-    } hooks;
+struct fork_info {
+    const bool enable;
+    const size_t timeout;
+    const int signal;
+};
 
-    struct theft_print_trial_result_env *print_trial_result_env;
+struct prop_info {
+    const char *name;           /* property name, can be NULL */
+    /* property function under test */
+    union {
+        theft_propfun1 *fun1;
+        theft_propfun2 *fun2;
+        theft_propfun3 *fun3;
+        theft_propfun4 *fun4;
+        theft_propfun5 *fun5;
+        theft_propfun6 *fun6;
+        theft_propfun7 *fun7;
+    } u;
+    const size_t trial_count;
 
-    /* Counters passed to hook callback */
+    /* Type info for ARITY arguments. */
+    const uint8_t arity;        /* number of arguments */
+    struct theft_type_info *type_info[THEFT_MAX_ARITY];
+};
+
+struct hook_info {
+    theft_hook_run_pre_cb *run_pre;
+    theft_hook_run_post_cb *run_post;
+    theft_hook_gen_args_pre_cb *gen_args_pre;
+    theft_hook_trial_pre_cb *trial_pre;
+    theft_hook_fork_post_cb *fork_post;
+    theft_hook_trial_post_cb *trial_post;
+    theft_hook_counterexample_cb *counterexample;
+    theft_hook_shrink_pre_cb *shrink_pre;
+    theft_hook_shrink_post_cb *shrink_post;
+    theft_hook_shrink_trial_post_cb *shrink_trial_post;
+    void *env;
+};
+
+struct counter_info {
     size_t pass;
     size_t fail;
     size_t skip;
     size_t dup;
+};
+
+struct prng_info {
+    struct theft_mt *mt;        /* random number generator */
+    uint64_t buf;               /* buffer for PRNG bits */
+    uint8_t bits_available;
+    /* Bit pool, only used during autoshrinking. */
+    struct theft_autoshrink_bit_pool *bit_pool;
+};
+
+/* Handle to state for the entire run. */
+struct theft {
+    FILE *out;
+    struct theft_bloom *bloom;  /* bloom filter */
+    struct prng_info prng;
+    struct prop_info prop;
+    struct seed_info seeds;
+    struct fork_info fork;
+    struct theft_print_trial_result_env *print_trial_result_env;
+    struct hook_info hooks;
+    struct counter_info counters;
 };
 
 /* Result from an individual trial. */

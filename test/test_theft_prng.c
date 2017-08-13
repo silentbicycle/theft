@@ -1,11 +1,41 @@
 #include "test_theft.h"
 #include "theft_random.h"
 
+/* These are included to allocate a valid theft handle, but
+ * this file is only testing its random number generation
+ * and buffering. */
+#include "theft_run.h"
+#include "test_theft_autoshrink_ll.h"
+
+static enum theft_trial_res unused(struct theft *t, void *arg1) {
+    struct ll *v = (struct ll *)arg1;
+    (void)t;
+    (void)v;
+    return THEFT_TRIAL_ERROR;
+}
+
+static struct theft *init(void) {
+    struct theft *t = NULL;
+    struct theft_run_config cfg = {
+        /* These aren't actually used, just defined so that
+         * theft_run_init doesn't return an error. */
+        .prop1 = unused,
+        .type_info = { &ll_info },
+    };
+
+    enum theft_run_init_res res = theft_run_init(&cfg, &t);
+    if (res == THEFT_RUN_INIT_OK) {
+        return t;
+    } else {
+        return NULL;
+    }
+}
+
 TEST prng_should_return_same_series_from_same_seeds() {
     theft_seed seeds[8];
     theft_seed values[8][8];
 
-    struct theft *t = theft_init(0);
+    struct theft *t = init(); ASSERT(t);
 
     /* Set for deterministic start */
     theft_random_set_seed(t, 0xabad5eed);
@@ -28,14 +58,14 @@ TEST prng_should_return_same_series_from_same_seeds() {
             ASSERT_EQ(values[s][i], theft_random(t));
         }
     }
-    theft_free(t);
+    theft_run_free(t);
     PASS();
 }
 
 TEST basic(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -44,17 +74,17 @@ TEST basic(uint64_t limit) {
         theft_random_set_seed(t, seed);
         uint64_t num2 = theft_random(t);
 
-        ASSERT_EQ_FMT(num, num2, "%llx");
+        ASSERT_EQ_FMT(num, num2, "%" PRIx64);
     }
 
-    theft_free(t);
+    theft_run_free(t);
     PASS();
 }
 
 TEST bit_sampling_two_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -72,14 +102,14 @@ TEST bit_sampling_two_bytes(uint64_t limit) {
         ASSERT_EQ_FMT(a, b, "0x%04x");
     }
 
-    theft_free(t);
+    theft_run_free(t);
     PASS();
 }
 
 TEST bit_sampling_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -100,18 +130,18 @@ TEST bit_sampling_bytes(uint64_t limit) {
             b1 |= (byte << (8L*i));
         }
 
-        ASSERT_EQ_FMT(a0, b0, "%llu");
-        ASSERT_EQ_FMT(a1, b1, "%llu");
+        ASSERT_EQ_FMT(a0, b0, "%" PRIu64);
+        ASSERT_EQ_FMT(a1, b1, "%" PRIu64);
     }
 
-    theft_free(t);
+    theft_run_free(t);
     PASS();
 }
 
 TEST bit_sampling_odd_sizes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = theft_init(0);
+    struct theft *t = init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -136,11 +166,11 @@ TEST bit_sampling_odd_sizes(uint64_t limit) {
         uint64_t mask_a1 = a1 & ((1L << 11L) - 1);
 
         // check that first 64 bits and lower 11 of second uint64_t match
-        ASSERT_EQ_FMT(a0, b0, "0x%08x");
-        ASSERT_EQ_FMT(mask_a1, b1, "0x%08x");
+        ASSERT_EQ_FMT(a0, b0, "0x%08" PRIx64);
+        ASSERT_EQ_FMT(mask_a1, b1, "0x%08" PRIx64);
     }
 
-    theft_free(t);
+    theft_run_free(t);
     PASS();
 }
 
@@ -148,7 +178,7 @@ TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
     uint64_t seed = 0x15a600d64b175eedLL;
     uint64_t values[3];
 
-    struct theft *t = theft_init(0);
+    struct theft *t = init(); ASSERT(t);
 
     theft_random_set_seed(t, seed);
     values[0] = theft_random_bits(t, 64);
@@ -162,14 +192,56 @@ TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
     ASSERT(values[0] != values[1]);
     ASSERT(values[0] != values[2]);
 
-    theft_free(t);
+    theft_run_free(t);
     PASS();
 }
+
+#if THEFT_USE_FLOATING_POINT
+TEST check_random_choice_0(void) {
+    struct theft *t = init(); ASSERT(t);
+
+    const size_t trials = 10000;
+    for (size_t i = 0; i < trials; i++) {
+        uint64_t v = theft_random_choice(t, 0);
+        ASSERT_EQ_FMTm("limit of 0 should always return 0",
+            (uint64_t)0, v, "%" PRIu64);
+    }
+
+    theft_run_free(t);
+    PASS();
+}
+
+TEST check_random_choice_distribution(uint64_t limit, float tolerance) {
+    struct theft *t = init(); ASSERT(t);
+
+    size_t *counts = calloc(limit, sizeof(size_t));
+
+    const size_t trials = limit < 10000 ? 10000000 : 1000 * limit;
+    for (size_t i = 0; i < trials; i++) {
+        uint64_t v = theft_random_choice(t, limit);
+        ASSERT(v < limit);
+        counts[v]++;
+    }
+
+    /* Count, if the trials were perfectly evenly distributed */
+    size_t even = trials / (double)limit;
+
+    for (size_t i = 0; i < limit; i++) {
+        size_t count = counts[i];
+        ASSERT_IN_RANGEm("distribution is too uneven",
+            even, count, tolerance * even);
+    }
+
+    theft_run_free(t);
+    free(counts);
+    PASS();
+}
+#endif
 
 SUITE(prng) {
     RUN_TEST(prng_should_return_same_series_from_same_seeds);
 
-    for (size_t limit = 100; limit < 100000; limit *= 10) {
+    for (volatile size_t limit = 100; limit < 100000; limit *= 10) {
         RUN_TESTp(basic, limit);
         RUN_TESTp(bit_sampling_two_bytes, limit);
         RUN_TESTp(bit_sampling_bytes, limit);
@@ -177,4 +249,16 @@ SUITE(prng) {
     }
 
     RUN_TEST(seed_with_upper_32_bits_masked_should_produce_different_value);
+
+#if THEFT_USE_FLOATING_POINT
+    RUN_TEST(check_random_choice_0);
+
+    for (volatile uint64_t limit = 1; limit < 300; limit++) {
+        RUN_TESTp(check_random_choice_distribution, limit, 0.05);
+    }
+
+    /* Relax the tolerance for these a bit, because we aren't running
+     * enough trials to smooth out the distribution. */
+    RUN_TESTp(check_random_choice_distribution, 10000, 0.20);
+#endif
 }

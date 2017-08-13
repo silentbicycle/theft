@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Version 0.3.0 */
+/* Version 0.4.0 */
 #define THEFT_VERSION_MAJOR 0
-#define THEFT_VERSION_MINOR 3
+#define THEFT_VERSION_MINOR 4
 #define THEFT_VERSION_PATCH 0
 
 #include "theft_types.h"
@@ -20,10 +20,12 @@
 enum theft_run_res
 theft_run(const struct theft_run_config *cfg);
 
-/* Should the floating-point generators be built? */
-#ifndef THEFT_USE_FLOATING_POINT
-#define THEFT_USE_FLOATING_POINT 1
-#endif
+/* Generate the instance based on a given seed, print it to F,
+ * and then free it. (If print or free callbacks are NULL,
+ * they will be skipped.) */
+enum theft_generate_res
+theft_generate(FILE *f, theft_seed seed,
+    const struct theft_type_info *info, void *hook_env);
 
 
 /***********************
@@ -53,7 +55,13 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bits, uint64_t *buf);
 #if THEFT_USE_FLOATING_POINT
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t);
+
+/* Get a random uint64_t less than CEIL.
+ * For example, `theft_random_choice(t, 5)` will return
+ * approximately evenly distributed values from [0, 1, 2, 3, 4]. */
+uint64_t theft_random_choice(struct theft *t, uint64_t ceil);
 #endif
+
 
 /***********
  * Hashing *
@@ -89,7 +97,9 @@ theft_hash theft_hash_done(struct theft_hasher *h);
  *
  * Unless a custom output max_column width is wanted, all of these
  * fields can just be initialized to 0. */
+#define THEFT_PRINT_TRIAL_RESULT_ENV_TAG 0xe7a6
 struct theft_print_trial_result_env {
+    uint16_t tag;               /* used for internal validation */
     const uint8_t max_column;   /* 0 -> default of 72 */
     uint8_t column;
     size_t scale_pass;
@@ -122,6 +132,10 @@ void theft_print_run_post_info(FILE *f,
 enum theft_hook_run_pre_res
 theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info, void *env);
 
+/* Halt trials after the first failure. */
+enum theft_hook_trial_pre_res
+theft_hook_first_fail_halt(const struct theft_hook_trial_pre_info *info, void *env);
+
 /* The default trial-post hook, which just calls theft_print_trial_result,
  * with an internally allocated `struct theft_print_trial_result_env`. */
 enum theft_hook_trial_post_res
@@ -132,6 +146,10 @@ theft_hook_trial_post_print_result(const struct theft_hook_trial_post_info *info
  * THEFT_HOOK_RUN_POST_CONTINUE. */
 enum theft_hook_run_post_res
 theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info, void *env);
+
+/* Get the hook environment pointer.
+ * This is the contents of theft_run_config.hooks.env. */
+void *theft_hook_get_env(struct theft *t);
 
 
 /***************************
@@ -150,6 +168,8 @@ void theft_generic_free_cb(void *instance, void *env);
 /* Return a string name of a trial result. */
 const char *theft_trial_res_str(enum theft_trial_res res);
 
+/* Return a string name of a run result. */
+const char *theft_run_res_str(enum theft_run_res res);
 
 /***********************
  * Built-in generators *

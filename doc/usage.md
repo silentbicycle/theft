@@ -7,21 +7,21 @@ Then, define a property function:
 
 ```c
     static enum theft_trial_res
-    prop_encoded_and_decoded_data_should_match(struct buffer *input) {
+    prop_encoded_and_decoded_data_should_match(struct theft *t, void *arg1) {
+        struct buffer *input = (struct buffer *)arg1;
         // [compress & uncompress input, compare output & original input]
         // return THEFT_TRIAL_PASS, FAIL, SKIP, or ERROR
     }
 ```
 
-This should take one or more arguments and return `THEFT_TRIAL_PASS`,
-`THEFT_TRIAL_FAIL` if a counter-example to the property was found,
-`THEFT_TRIAL_SKIP` if the combination of argument(s) should be
-skipped, or `THEFT_TRIAL_ERROR` if the whole theft run should
+This should take one or more generated arguments and return
+`THEFT_TRIAL_PASS`, `THEFT_TRIAL_FAIL` if a counter-example to the
+property was found, `THEFT_TRIAL_SKIP` if the combination of argument(s)
+should be skipped, or `THEFT_TRIAL_ERROR` if the whole theft run should
 halt and return an error.
 
-Then, define how to generate the input argument type(s) by providing a
-struct for each with callbacks. (This definition can be shared between
-all properties that have the same input type.)
+Then, define how to generate the input argument(s) by providing a struct
+with callbacks. (This definition can be shared between properties.)
 
 For example:
 
@@ -43,7 +43,7 @@ For example:
 All of these callbacks except 'alloc' are optional. For more details,
 see the **Type Info Callbacks** subsection below.
 
-If *autoshrinking* is used, type-specific shrinking and hashing
+If *autoshrinking* is used, type-generic shrinking and hashing
 can be handled internally:
 
 ```c
@@ -57,8 +57,8 @@ can be handled internally:
     };
 ```
 
-Note that this has implications for how the alloc callback is written --
-for details, see "Auto-shrinking" in [shrinking.md](shrinking.md).
+Note that this has implications for how the `alloc` callback is written.
+For details, see "Auto-shrinking" in [shrinking.md](shrinking.md).
 
 Finally, call `theft_run` with a configuration struct:
 
@@ -71,11 +71,11 @@ Finally, call `theft_run` with a configuration struct:
 
         /* Property test configuration.
          * Note that the number of type_info struct pointers in
-         * the .type_info field MUST match the number of arguments
-         * the property function takes. */
+         * the .type_info field MUST match the field number
+         * for the property function (here, prop1). */
         struct theft_run_config config = {
             .name = __func__,
-            .fun = prop_encoded_and_decoded_data_should_match,
+            .prop1 = prop_encoded_and_decoded_data_should_match,
             .type_info = { &random_buffer_info },
             .seed = seed,
         };
@@ -98,6 +98,8 @@ customized ones are:
 - hooks: There are several hooks that can be used to control the test
   runner behavior -- see the **Hooks** subsection below.
 
+- fork: For details about forking, see [forking.md](forking.md).
+
 
 ## Type Info Callbacks
 
@@ -107,6 +109,7 @@ but can be cast to an arbitrary struct to pass other test-specifc state
 to the callbacks. If its contents vary from trial to trial and it
 influences the property test, it should be considered another input and
 hashed accordingly.
+
 
 ### alloc - allocate an instance from a random bit stream
 
@@ -128,6 +131,11 @@ To request random bits, use `theft_random_bits(t, bit_count)` or
 produced from a known seed, so it can be constructed again if
 necessary. These streams of random bits are not expected to be
 consistent between versions of the library.
+
+To choose a random unsigned int, use `theft_random_choice(t, LIMIT)`,
+which will return approximately evenly distributed `uint64_t`
+values less than LIMIT. For example, `theft_random_choice(t, 5)` will
+return values from `[0, 1, 2, 3, 4]`.
 
 - On success, write the instance into `(*instance*)` and return
   `THEFT_ALLOC_OK`.
@@ -236,6 +244,7 @@ control theft's behavior:
         theft_hook_run_post_cb *run_post;
         theft_hook_gen_args_pre_cb *gen_args_pre;
         theft_hook_trial_pre_cb *trial_pre;
+        theft_hook_fork_post_cb *fork_post;
         theft_hook_trial_post_cb *trial_post;
         theft_hook_counterexample_cb *counterexample;
         theft_hook_shrink_pre_cb *shrink_pre;
@@ -249,9 +258,19 @@ control theft's behavior:
 
 Each one of these is called with a callback-specific `info` struct (with
 progress info such as the currently generated argument instances, the
-result of the trial that just ran, etc.) and the `hooks.env` field,
+result of the trial that just ran, etc.) and the `.hooks.env` field,
 and returns an enum that indicates whether theft should continue,
 halt everything with an error, or other callback-specific actions.
+
+To get the `.hooks.env` pointer in the property function or `type_info`
+callbacks, use `theft_hook_get_env(t)`: This environment can be used to
+pass in a logging level for the trial, save extra details to print in a
+hook later, pass in a size limit for the generated instance, etc.
+
+Note that the environment shouldn't be changed within a run in a way
+that affects trial passes/fails -- for example, changing the iteration
+count as a property is re-run for shrinking will distort how changing
+the input affects the property, making shrinking less effective.
 
 For all of the details, see their type definitions in:
 [inc/theft_types.h][1].
@@ -289,9 +308,12 @@ These hooks can be overridden to add test-specific behavior. For example:
 (`gen_args_pre` or `trial_pre`)
 
 - Running a failing trial again with a debugger attached or logging
-  changes (`trial_post` or `shrink_trial_post`)
+  changes (`trial_post`)
 
 - Halting shrinking after a certain amount of time (`shrink_pre`)
+
+- Dropping priveleges with `setrlimit`, `pledge`, etc. on the
+  forked child process before running the property (`fork_post`).
 
 
 ### Example Output

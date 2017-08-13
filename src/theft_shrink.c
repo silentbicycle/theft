@@ -8,9 +8,8 @@
 
 /* Attempt to simplify all arguments, breadth first. Continue as long as
  * progress is made, i.e., until a local minima is reached. */
-enum shrink_res
+bool
 theft_shrink(struct theft *t,
-        struct theft_run_info *run_info,
         struct theft_trial_info *trial_info) {
     bool progress = false;
     assert(trial_info->arity > 0);
@@ -19,12 +18,12 @@ theft_shrink(struct theft *t,
         progress = false;
         /* Greedily attempt to simplify each argument as much as
          * possible before switching to the next. */
-        for (uint8_t arg_i = 0; arg_i < run_info->arity; arg_i++) {
-            struct theft_type_info *ti = run_info->type_info[arg_i];
+        for (uint8_t arg_i = 0; arg_i < t->prop.arity; arg_i++) {
+            struct theft_type_info *ti = t->prop.type_info[arg_i];
         greedy_continue:
             if (ti->shrink) {
                 /* attempt to simplify this argument by one step */
-                enum shrink_res rres = attempt_to_shrink_arg(t, run_info,
+                enum shrink_res rres = attempt_to_shrink_arg(t,
                     trial_info, arg_i);
                 switch (rres) {
                 case SHRINK_OK:
@@ -33,19 +32,19 @@ theft_shrink(struct theft *t,
                     goto greedy_continue; /* keep trying to shrink same argument */
                 case SHRINK_HALT:
                     LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
-                    return SHRINK_OK;
+                    return true;
                 case SHRINK_DEAD_END:
                     LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
                     continue;   /* try next argument, if any */
                 default:
                 case SHRINK_ERROR:
                     LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
-                    return SHRINK_ERROR;
+                    return false;
                 }
             }
         }
     } while (progress);
-    return SHRINK_OK;
+    return true;
 }
 
 /* Simplify an argument by trying all of its simplification tactics, in
@@ -57,9 +56,8 @@ theft_shrink(struct theft *t,
  * space that have probably already been tried. */
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t,
-        struct theft_run_info *run_info,
         struct theft_trial_info *trial_info, uint8_t arg_i) {
-    struct theft_type_info *ti = run_info->type_info[arg_i];
+    struct theft_type_info *ti = t->prop.type_info[arg_i];
 
     void **args = trial_info->args;
 
@@ -70,7 +68,7 @@ attempt_to_shrink_arg(struct theft *t,
         void *candidate = NULL;
 
         enum theft_hook_shrink_pre_res shrink_pre_res;
-        shrink_pre_res = shrink_pre_hook(run_info, trial_info,
+        shrink_pre_res = shrink_pre_hook(t, trial_info,
             arg_i, cur, tactic);
         if (shrink_pre_res == THEFT_HOOK_SHRINK_PRE_HALT) {
             return SHRINK_HALT;
@@ -84,7 +82,7 @@ attempt_to_shrink_arg(struct theft *t,
         trial_info->shrink_count++;
 
         enum theft_hook_shrink_post_res shrink_post_res;
-        shrink_post_res = shrink_post_hook(run_info, trial_info, arg_i,
+        shrink_post_res = shrink_post_hook(t, trial_info, arg_i,
             sres == THEFT_SHRINK_OK ? candidate : cur,
             tactic, sres);
         if (shrink_post_res != THEFT_HOOK_SHRINK_POST_CONTINUE) {
@@ -106,14 +104,14 @@ attempt_to_shrink_arg(struct theft *t,
 
         args[arg_i] = candidate;
         if (t->bloom) {
-            if (theft_call_check_called(t, run_info, args)) {
+            if (theft_call_check_called(t, args)) {
                 LOG(3 - LOG_SHRINK,
                     "%s: already called, skipping\n", __func__);
                 if (ti->free) { ti->free(candidate, ti->env); }
                 args[arg_i] = cur;
                 continue;
             } else {
-                theft_call_mark_called(t, run_info, args);
+                theft_call_mark_called(t, args);
             }
         }
 
@@ -121,22 +119,22 @@ attempt_to_shrink_arg(struct theft *t,
         bool repeated = false;
         for (;;) {
             void *real_args[THEFT_MAX_ARITY];
-            theft_autoshrink_get_real_args(run_info, real_args, trial_info->args);
+            theft_autoshrink_get_real_args(t, real_args, trial_info->args);
 
-            res = theft_call(run_info, real_args);
+            res = theft_call(t, real_args);
             LOG(3 - LOG_SHRINK, "%s: call -> res %d\n", __func__, res);
 
             if (!repeated) {
                 if (res == THEFT_TRIAL_FAIL) {
                     trial_info->successful_shrinks++;
-                    theft_autoshrink_update_model(t, run_info, arg_i, res, 3);
+                    theft_autoshrink_update_model(t, arg_i, res, 3);
                 } else {
                     trial_info->failed_shrinks++;
                 }
             }
 
             enum theft_hook_shrink_trial_post_res stpres;
-            stpres = shrink_trial_post_hook(run_info, trial_info,
+            stpres = shrink_trial_post_hook(t, trial_info,
                 arg_i, real_args, tactic, res);
             if (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT
                 || (stpres == THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT_ONCE && !repeated)) {
@@ -152,13 +150,13 @@ attempt_to_shrink_arg(struct theft *t,
             }
         }
 
-        theft_autoshrink_update_model(t, run_info, arg_i, res, 8);
+        theft_autoshrink_update_model(t, arg_i, res, 8);
 
         switch (res) {
         case THEFT_TRIAL_PASS:
         case THEFT_TRIAL_SKIP:
             /* revert */
-            LOG(2 - LOG_SHRINK, "PASS: REVERTING %u: was %p, now %p\n",
+            LOG(2 - LOG_SHRINK, "PASS or SKIP: REVERTING %u: was %p, now %p\n",
                 arg_i, (void *)args[arg_i], (void *)cur);
             args[arg_i] = cur;
             if (ti->free) { ti->free(candidate, ti->env); }
@@ -179,18 +177,18 @@ attempt_to_shrink_arg(struct theft *t,
 }
 
 static enum theft_hook_shrink_pre_res
-shrink_pre_hook(struct theft_run_info *run_info,
+shrink_pre_hook(struct theft *t,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic) {
-    if (run_info->hooks.shrink_pre != NULL) {
+    if (t->hooks.shrink_pre != NULL) {
         struct theft_hook_shrink_pre_info hook_info = {
-            .prop_name = run_info->name,
-            .total_trials = run_info->trial_count,
-            .failures = run_info->fail,
-            .run_seed = run_info->run_seed,
+            .prop_name = t->prop.name,
+            .total_trials = t->prop.trial_count,
+            .failures = t->counters.fail,
+            .run_seed = t->seeds.run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
+            .arity = t->prop.arity,
             .shrink_count = trial_info->shrink_count,
             .successful_shrinks = trial_info->successful_shrinks,
             .failed_shrinks = trial_info->failed_shrinks,
@@ -198,18 +196,18 @@ shrink_pre_hook(struct theft_run_info *run_info,
             .arg = arg,
             .tactic = tactic,
         };
-        return run_info->hooks.shrink_pre(&hook_info, run_info->hooks.env);
+        return t->hooks.shrink_pre(&hook_info, t->hooks.env);
     } else {
         return THEFT_HOOK_SHRINK_PRE_CONTINUE;
     }
 }
 
 static enum theft_hook_shrink_post_res
-shrink_post_hook(struct theft_run_info *run_info,
+shrink_post_hook(struct theft *t,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void *arg, uint32_t tactic,
         enum theft_shrink_res sres) {
-    if (run_info->hooks.shrink_post != NULL) {
+    if (t->hooks.shrink_post != NULL) {
         enum theft_shrink_post_state state;
         switch (sres) {
         case THEFT_SHRINK_OK:
@@ -220,15 +218,16 @@ shrink_post_hook(struct theft_run_info *run_info,
             state = THEFT_SHRINK_POST_SHRINK_FAILED; break;
         default:
             assert(false);
+            return THEFT_HOOK_SHRINK_POST_ERROR;
         }
 
         struct theft_hook_shrink_post_info hook_info = {
-            .prop_name = run_info->name,
-            .total_trials = run_info->trial_count,
-            .run_seed = run_info->run_seed,
+            .prop_name = t->prop.name,
+            .total_trials = t->prop.trial_count,
+            .run_seed = t->seeds.run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
+            .arity = t->prop.arity,
             .shrink_count = trial_info->shrink_count,
             .successful_shrinks = trial_info->successful_shrinks,
             .failed_shrinks = trial_info->failed_shrinks,
@@ -237,26 +236,26 @@ shrink_post_hook(struct theft_run_info *run_info,
             .tactic = tactic,
             .state = state,
         };
-        return run_info->hooks.shrink_post(&hook_info, run_info->hooks.env);
+        return t->hooks.shrink_post(&hook_info, t->hooks.env);
     } else {
         return THEFT_HOOK_SHRINK_POST_CONTINUE;
     }
 }
 
 static enum theft_hook_shrink_trial_post_res
-shrink_trial_post_hook(struct theft_run_info *run_info,
+shrink_trial_post_hook(struct theft *t,
         struct theft_trial_info *trial_info,
         uint8_t arg_index, void **args, uint32_t last_tactic,
         enum theft_trial_res result) {
-    if (run_info->hooks.shrink_trial_post != NULL) {
+    if (t->hooks.shrink_trial_post != NULL) {
         struct theft_hook_shrink_trial_post_info hook_info = {
-            .prop_name = run_info->name,
-            .total_trials = run_info->trial_count,
-            .failures = run_info->fail,
-            .run_seed = run_info->run_seed,
+            .prop_name = t->prop.name,
+            .total_trials = t->prop.trial_count,
+            .failures = t->counters.fail,
+            .run_seed = t->seeds.run_seed,
             .trial_id = trial_info->trial,
             .trial_seed = trial_info->seed,
-            .arity = run_info->arity,
+            .arity = t->prop.arity,
             .shrink_count = trial_info->shrink_count,
             .successful_shrinks = trial_info->successful_shrinks,
             .failed_shrinks = trial_info->failed_shrinks,
@@ -265,8 +264,8 @@ shrink_trial_post_hook(struct theft_run_info *run_info,
             .tactic = last_tactic,
             .result = result,
         };
-        return run_info->hooks.shrink_trial_post(&hook_info,
-            run_info->hooks.env);
+        return t->hooks.shrink_trial_post(&hook_info,
+            t->hooks.env);
     } else {
         return THEFT_HOOK_SHRINK_TRIAL_POST_CONTINUE;
     }

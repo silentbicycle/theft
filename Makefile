@@ -12,7 +12,7 @@ OPTIMIZE = 	-O3
 #OPTIMIZE = 	-O0 ${PROFILE}
 
 WARN = 		-Wall -Wextra -pedantic
-CDEFS +=
+CDEFS +=	-D_POSIX_C_SOURCE=199309L -D_C99_SOURCE
 CINCS += 	-I${INC} -I${VENDOR} -I${BUILD}
 CFLAGS += 	-std=c99 -g ${WARN} ${CDEFS} ${OPTIMIZE} ${CINCS}
 
@@ -44,6 +44,7 @@ TEST_OBJS=	${BUILD}/test_theft.o \
 		${BUILD}/test_theft_autoshrink_bulk.o \
 		${BUILD}/test_theft_autoshrink_int_array.o \
 		${BUILD}/test_theft_aux.o \
+		${BUILD}/test_theft_bloom.o \
 		${BUILD}/test_theft_error.o \
 		${BUILD}/test_theft_prng.o \
 		${BUILD}/test_theft_integration.o \
@@ -52,7 +53,7 @@ TEST_OBJS=	${BUILD}/test_theft.o \
 # Basic targets
 
 test: ${BUILD}/test_${PROJECT}
-	${BUILD}/test_${PROJECT}
+	${BUILD}/test_${PROJECT} ${ARG}
 
 clean:
 	rm -rf ${BUILD} gmon.out
@@ -74,10 +75,7 @@ ${BUILD}/%.o: ${TEST}/%.c ${SRC}/*.h ${INC}/* | ${BUILD}
 ${BUILD}/TAGS: ${SRC}/*.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
 
-${SRC}/*.c: Makefile
-${INT}/*.c: Makefile
-${TEST}/*.c: Makefile
-
+${BUILD}/*.o: Makefile
 
 ${BUILD}:
 	mkdir ${BUILD}

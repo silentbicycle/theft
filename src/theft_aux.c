@@ -1,5 +1,6 @@
 #include "theft.h"
 #include "theft_types_internal.h"
+#include "theft_run.h"
 
 #include <assert.h>
 #include <sys/time.h>
@@ -22,7 +23,8 @@ void theft_generic_free_cb(void *instance, void *env) {
 }
 
 /* Print a tally marker for a trial result, but if there have been
- * 10 consecutive ones, increase the scale by an order of magnitude. */
+ * SCALE_FACTOR consecutive ones, increase the scale by an
+ * order of magnitude. */
 static size_t
 autoscale_tally(char *buf, size_t buf_size, size_t scale_factor,
         char *name, size_t *cur_scale, char tally, size_t *count) {
@@ -51,6 +53,20 @@ void theft_print_trial_result(
         const struct theft_hook_trial_post_info *info) {
     assert(env);
     assert(info);
+
+    struct theft *t = info->t;
+    if (t->print_trial_result_env == env) {
+        assert(t->print_trial_result_env->tag == THEFT_PRINT_TRIAL_RESULT_ENV_TAG);
+    } else if ((t->hooks.trial_post != theft_hook_trial_post_print_result)
+        && env == t->hooks.env) {
+        if (env != NULL && env->tag != THEFT_PRINT_TRIAL_RESULT_ENV_TAG) {
+            fprintf(stderr,
+                "\n"
+                "WARNING: The *env passed to trial_print_trial_result is probably not\n"
+                "a `theft_print_trial_result_env` struct -- to suppress this warning,\n"
+                "set env->tag to THEFT_PRINT_TRIAL_RESULT_ENV_TAG.\n");
+        }
+    }
 
     const uint8_t maxcol = (env->max_column == 0
         ? THEFT_DEF_MAX_COLUMNS : env->max_column);
@@ -96,6 +112,14 @@ void theft_print_trial_result(
     fprintf(f, "%s", buf);
     fflush(f);
     env->column += used;
+}
+
+enum theft_hook_trial_pre_res
+theft_hook_first_fail_halt(const struct theft_hook_trial_pre_info *info, void *env) {
+    (void)env;
+    return info->failures > 0
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
 }
 
 enum theft_hook_trial_post_res
@@ -160,6 +184,8 @@ theft_hook_run_post_print_info(const struct theft_hook_run_post_info *info,
     return THEFT_HOOK_RUN_POST_CONTINUE;
 }
 
+void *theft_hook_get_env(struct theft *t) { return t->hooks.env; }
+
 struct theft_aux_print_trial_result_env {
     FILE *f;                  // 0 -> default of stdout
     const uint8_t max_column; // 0 -> default of DEF_MAX_COLUMNS
@@ -168,6 +194,19 @@ struct theft_aux_print_trial_result_env {
     size_t consec_pass;
     size_t consec_fail;
 };
+
+const char *theft_run_res_str(enum theft_run_res res) {
+    switch (res) {
+    case THEFT_RUN_PASS: return "PASS";
+    case THEFT_RUN_FAIL: return "FAIL";
+    case THEFT_RUN_SKIP: return "SKIP";
+    case THEFT_RUN_ERROR: return "ERROR";
+    case THEFT_RUN_ERROR_MEMORY: return "ERROR_MEMORY";
+    case THEFT_RUN_ERROR_BAD_ARGS: return "ERROR_BAD_ARGS";
+    default:
+        return "(matchfail)";
+    }
+}
 
 const char *theft_trial_res_str(enum theft_trial_res res) {
     switch (res) {
@@ -179,4 +218,63 @@ const char *theft_trial_res_str(enum theft_trial_res res) {
     default:
         return "(matchfail)";
     }
+}
+
+static enum theft_trial_res should_not_run(struct theft *t, void *arg1) {
+    (void)t;
+    (void)arg1;
+    return THEFT_TRIAL_ERROR;   /* should never be run */
+}
+
+enum theft_generate_res
+theft_generate(FILE *f, theft_seed seed,
+        const struct theft_type_info *info, void *hook_env) {
+    enum theft_generate_res res = THEFT_GENERATE_OK;
+    struct theft *t = NULL;
+
+    struct theft_run_config cfg = {
+        .name = "generate",
+        .prop1 = should_not_run,
+        .type_info = { info },
+        .seed = seed,
+        .hooks = {
+            .env = hook_env,
+        },
+    };
+
+    enum theft_run_init_res init_res = theft_run_init(&cfg, &t);
+    switch (init_res) {
+    case THEFT_RUN_INIT_ERROR_MEMORY:
+        return THEFT_GENERATE_ERROR_MEMORY;
+    default:
+        assert(false);
+    case THEFT_RUN_INIT_ERROR_BAD_ARGS:
+        return THEFT_GENERATE_ERROR_BAD_ARGS;
+    case THEFT_RUN_INIT_OK:
+        break;                  /* continue below */
+    }
+
+    void *instance = NULL;
+    enum theft_alloc_res ares = info->alloc(t, info->env, &instance);
+    switch (ares) {
+    case THEFT_ALLOC_OK:
+        break;                  /* continue below */
+    case THEFT_ALLOC_SKIP:
+        res = THEFT_GENERATE_SKIP;
+        goto cleanup;
+    case THEFT_ALLOC_ERROR:
+        res = THEFT_GENERATE_ERROR_ALLOC;
+        goto cleanup;
+    }
+
+    if (info->print) {
+        fprintf(f, "-- Seed 0x%016" PRIx64 "\n", seed);
+        info->print(f, instance, info->env);
+        fprintf(f, "\n");
+    }
+    if (info->free) { info->free(instance, info->env); }
+
+cleanup:
+    theft_run_free(t);
+    return res;
 }

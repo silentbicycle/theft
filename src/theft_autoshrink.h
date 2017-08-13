@@ -131,7 +131,13 @@ struct change_info {
     } u;
 };
 
-bool theft_autoshrink_wrap(struct theft *t,
+enum theft_autoshrink_wrap {
+    THEFT_AUTOSHRINK_WRAP_OK,
+    THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY = -1,
+    THEFT_AUTOSHRINK_WRAP_ERROR_MISUSE = -2,
+};
+enum theft_autoshrink_wrap
+theft_autoshrink_wrap(struct theft *t,
     struct theft_type_info *type_info, struct theft_type_info *wrapper);
 
 void theft_autoshrink_free_bit_pool(struct theft *t,
@@ -144,12 +150,11 @@ theft_autoshrink_bit_pool_random(struct theft *t,
     uint64_t *buf);
 
 void
-theft_autoshrink_get_real_args(struct theft_run_info *run_info,
+theft_autoshrink_get_real_args(struct theft *t,
     void **dst, void **src);
 
 void
 theft_autoshrink_update_model(struct theft *t,
-    struct theft_run_info *run_info,
     uint8_t arg_id, enum theft_trial_res res,
     uint8_t adjustment);
 

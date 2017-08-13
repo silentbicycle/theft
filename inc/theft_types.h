@@ -10,10 +10,6 @@ typedef uint64_t theft_seed;
 /* A hash of an instance. */
 typedef uint64_t theft_hash;
 
-/* These are opaque, as far as the API is concerned. */
-struct theft_bloom;             /* bloom filter */
-struct theft_mt;                /* mersenne twister PRNG */
-
 /* Configuration for a theft run. (Forward reference, defined below.) */
 struct theft_run_config;
 
@@ -34,17 +30,50 @@ enum theft_trial_res {
     THEFT_TRIAL_ERROR,          /* unrecoverable error, halt */
 };
 
-/* A test property function. Arguments must match the types specified by
- * theft_config.type_info, or the result will be undefined. For example,
- * a propfun `prop_foo(A x, B y, C z)` must have a type_info array of
- * `{ info_A, info_B, info_C }`.
+/* Result from a trial run (group of trials). */
+enum theft_run_res {
+    THEFT_RUN_PASS = 0,             /* no failures */
+    THEFT_RUN_FAIL = 1,             /* 1 or more failures */
+    THEFT_RUN_SKIP = 2,             /* no failures, but no passes either */
+    THEFT_RUN_ERROR = 3,            /* an error occurred */
+    THEFT_RUN_ERROR_MEMORY = -1,    /* memory allocation failure */
+    THEFT_RUN_ERROR_BAD_ARGS = -2,  /* API misuse */
+};
+
+/* Result from generating and printing an instance based on a seed. */
+enum theft_generate_res {
+    THEFT_GENERATE_OK = 0,
+    THEFT_GENERATE_SKIP = 1,
+    THEFT_GENERATE_ERROR_ALLOC = -1, /* error in alloc cb */
+    THEFT_GENERATE_ERROR_MEMORY = -2,
+    THEFT_GENERATE_ERROR_BAD_ARGS = -3,
+};
+
+/* A test property function.
+ * The argument count should match the number of callback structs
+ * provided in `theft_config.type_info`.
  *
  * Should return:
  *     THEFT_TRIAL_PASS if the property holds,
  *     THEFT_TRIAL_FAIL if a counter-example is found,
  *     THEFT_TRIAL_SKIP if the combination of args isn't applicable,
  *  or THEFT_TRIAL_ERROR if the whole run should be halted. */
-typedef enum theft_trial_res theft_propfun( /* arguments unconstrained */ );
+typedef enum theft_trial_res theft_propfun1(struct theft *t,
+    void *arg1);
+typedef enum theft_trial_res theft_propfun2(struct theft *t,
+    void *arg1, void *arg2);
+typedef enum theft_trial_res theft_propfun3(struct theft *t,
+    void *arg1, void *arg2, void *arg3);
+typedef enum theft_trial_res theft_propfun4(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4);
+typedef enum theft_trial_res theft_propfun5(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4, void *arg5);
+typedef enum theft_trial_res theft_propfun6(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4, void *arg5,
+    void *arg6);
+typedef enum theft_trial_res theft_propfun7(struct theft *t,
+    void *arg1, void *arg2, void *arg3, void *arg4, void *arg5,
+    void *arg6, void *arg7);
 
 /* Internal state for incremental hashing. */
 struct theft_hasher {
@@ -256,8 +285,26 @@ typedef enum theft_hook_trial_pre_res
 theft_hook_trial_pre_cb(const struct theft_hook_trial_pre_info *info,
     void *env);
 
+/* Post-fork hook: called on the child process after forking. */
+enum theft_hook_fork_post_res {
+    THEFT_HOOK_FORK_POST_ERROR,
+    THEFT_HOOK_FORK_POST_CONTINUE,
+};
+struct theft_hook_fork_post_info {
+    struct theft *t;
+    const char *prop_name;
+    size_t total_trials;
+    size_t failures;
+    theft_seed run_seed;
+    uint8_t arity;
+    void **args;
+};
+typedef enum theft_hook_fork_post_res
+theft_hook_fork_post_cb(const struct theft_hook_fork_post_info *info,
+    void *env);
+
 /* Post-trial hook: called after the trial is run, with the arguments
- * and result.*/
+ * and result. */
 enum theft_hook_trial_post_res {
     THEFT_HOOK_TRIAL_POST_ERROR,
     THEFT_HOOK_TRIAL_POST_CONTINUE,
@@ -277,6 +324,7 @@ struct theft_hook_trial_post_info {
     uint8_t arity;
     void **args;
     enum theft_trial_res result;
+    bool repeat;
 };
 typedef enum theft_hook_trial_post_res
 theft_hook_trial_post_cb(const struct theft_hook_trial_post_info *info,
@@ -399,23 +447,20 @@ theft_hook_shrink_trial_post_cb(const struct theft_hook_shrink_trial_post_info *
  * Configuration *
  *****************/
 
-/* Result from a trial run. */
-enum theft_run_res {
-    THEFT_RUN_PASS = 0,             /* no failures */
-    THEFT_RUN_FAIL = 1,             /* 1 or more failures */
-    THEFT_RUN_SKIP = 2,             /* no failures, but no passes either */
-    THEFT_RUN_ERROR = 3,            /* an error occurred */
-    THEFT_RUN_ERROR_BAD_ARGS = -1,  /* API misuse */
-    /* Missing required callback for 1 or more types */
-    THEFT_RUN_ERROR_MISSING_CALLBACK = -2,
-};
+/* Should the floating-point generators be built? */
+#ifndef THEFT_USE_FLOATING_POINT
+#define THEFT_USE_FLOATING_POINT 1
+#endif
 
 /* Default number of trials to run. */
 #define THEFT_DEF_TRIALS 100
 
 /* Min and max bits used to determine bloom filter size.
  * (A larger value uses more memory, but reduces the odds of an
- * untested argument combination being falsely skipped.) */
+ * untested argument combination being falsely skipped.)
+ *
+ * These constants are no longer used, and will be removed
+ * in a future release.*/
 #define THEFT_BLOOM_BITS_MIN 13 /* 1 KB */
 #define THEFT_BLOOM_BITS_MAX 33 /* 1 GB */
 
@@ -424,14 +469,25 @@ enum theft_run_res {
 #define THEFT_DEF_MAX_COLUMNS 72
 
 /* A property can have at most this many arguments. */
-#define THEFT_MAX_ARITY 10
+#define THEFT_MAX_ARITY 7
 
 /* Configuration struct for a theft run. */
 struct theft_run_config {
-    /* Property function under test, and info about its arguments.
-     * The function is called with as many arguments are there
-     * are values in TYPE_INFO, so it can crash if that is wrong. */
-    theft_propfun *fun;
+    /* Property function under test.
+     * The number refers to the number of generated arguments, and
+     * should match the number of `theft_type_info` structs defined in
+     * `.type_info` below. (The fields with different argument counts
+     * are ignored.) */
+    theft_propfun1 *prop1;
+    theft_propfun2 *prop2;
+    theft_propfun3 *prop3;
+    theft_propfun4 *prop4;
+    theft_propfun5 *prop5;
+    theft_propfun6 *prop6;
+    theft_propfun7 *prop7;
+
+    /* Callbacks for allocating, freeing, printing, hashing,
+     * and shrinking each property function argument. */
     const struct theft_type_info *type_info[THEFT_MAX_ARITY];
 
     /* -- All fields after this point are optional. -- */
@@ -450,12 +506,18 @@ struct theft_run_config {
     /* Seed for the random number generator. */
     theft_seed seed;
 
-    /* The number of bits to use for the bloom filter, which
-     * detects combinations of arguments that have already
-     * been tested. If 0, a default size will be chosen
-     * based on the trial count. (This will only be used if
-     * all property types have hash callbacks defined.) */
+    /* Bits to use for the bloom filter -- this field is no
+     * longer used, and will be removed in a future release. */
     uint8_t bloom_bits;
+
+    /* Fork before running the property test, in case generated
+     * arguments can cause the code under test to crash. */
+    struct {
+        bool enable;
+        size_t timeout;         /* in milliseconds (or 0, for none) */
+        /* signal to send after timeout, defaults to SIGTERM */
+        int signal;
+    } fork;
 
     /* These functions are called in several contexts to report on
      * progress, halt shrinking early, repeat trials with different
@@ -467,6 +529,7 @@ struct theft_run_config {
         theft_hook_run_post_cb *run_post;
         theft_hook_gen_args_pre_cb *gen_args_pre;
         theft_hook_trial_pre_cb *trial_pre;
+        theft_hook_fork_post_cb *fork_post;
         theft_hook_trial_post_cb *trial_post;
         theft_hook_counterexample_cb *counterexample;
         theft_hook_shrink_pre_cb *shrink_pre;

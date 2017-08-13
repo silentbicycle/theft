@@ -5,15 +5,11 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <signal.h>
+
+#include <sys/resource.h>
 
 #define COUNT(X) (sizeof(X)/sizeof(X[0]))
-
-TEST alloc_and_free() {
-    struct theft *t = theft_init(0);
-
-    theft_free(t);
-    PASS();
-}
 
 static enum theft_alloc_res
 uint_alloc(struct theft *t, void *env, void **output) {
@@ -41,7 +37,12 @@ static struct theft_type_info uint_type_info = {
     .print = uint_print,
 };
 
-static enum theft_trial_res is_pos(uint32_t *n) {
+static enum theft_trial_res
+is_pos(struct theft *t, void *arg1) {
+    uint32_t *n = (uint32_t *)arg1;
+    /* Ignoring the argument and returning true, because *n is positive
+     * by definition -- checking gets a tautological comparison warning. */
+    (void)t;
     (void)n;
     return THEFT_TRIAL_PASS;
 }
@@ -53,7 +54,7 @@ TEST generated_unsigned_ints_are_positive() {
      * though you have to cast it. */
     res = theft_run(&(struct theft_run_config){
             .name = "generated_unsigned_ints_are_positive",
-            .fun = is_pos,
+            .prop1 = is_pos,
             .type_info = { &uint_type_info },
         });
     ASSERT_EQm("generated_unsigned_ints_are_positive",
@@ -282,7 +283,9 @@ static struct theft_type_info list_info = {
     .print = list_print,
 };
 
-static enum theft_trial_res prop_gen_cons(list *l) {
+static enum theft_trial_res prop_gen_cons(struct theft *t, void *arg1) {
+    list *l = (list *)arg1;
+    (void)t;
     list *nl = malloc(sizeof(list));
     if (nl == NULL) { return THEFT_TRIAL_ERROR; }
     nl->v = 0;
@@ -302,7 +305,7 @@ TEST generated_int_list_with_cons_is_longer() {
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_gen_cons,
+        .prop1 = prop_gen_cons,
         .type_info = { &list_info },
     };
     res = theft_run(&cfg);
@@ -312,7 +315,9 @@ TEST generated_int_list_with_cons_is_longer() {
 }
 
 static enum theft_trial_res
-prop_gen_list_unique(list *l) {
+prop_gen_list_unique(struct theft *t, void *arg1) {
+    list *l = (list *)arg1;
+    (void)t;
     /* For each link in the list, check that there are none later that
      * have the same value. (This should fail, as we're not constraining
      * against it in list generation.) */
@@ -350,7 +355,7 @@ TEST generated_int_list_does_not_repeat_values() {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_gen_list_unique,
+        .prop1 = prop_gen_list_unique,
         .type_info = { &list_info },
         .hooks = {
             .trial_post = gildnrv_trial_post_hook,
@@ -368,9 +373,13 @@ TEST generated_int_list_does_not_repeat_values() {
 }
 
 static enum theft_trial_res
-prop_gen_list_unique_pair(list *a, list *b) {
+prop_gen_list_unique_pair(struct theft *t, void *arg1, void *arg2) {
+    list *a = (list *)arg1;
+    list *b = (list *)arg2;
+
+    (void)t;
     if (list_length(a) == list_length(b)) {
-        list *la = a;
+        list *la;
         list *lb = b;
 
         for (la = a; la && lb; la = la->next, lb = lb->next) {
@@ -417,7 +426,7 @@ TEST two_generated_lists_do_not_match() {
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_gen_list_unique_pair,
+        .prop2 = prop_gen_list_unique_pair,
         .type_info = { &list_info, &list_info },
         .trials = 10000,
         .hooks = {
@@ -476,7 +485,7 @@ TEST always_seeds_must_be_run() {
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_gen_list_unique,
+        .prop1 = prop_gen_list_unique,
         .type_info = { &list_info },
         .trials = 1000,
         .seed = 0x600dd06,
@@ -520,7 +529,9 @@ static struct theft_type_info seed_info = {
 static uint64_t expected_value = 0;
 
 static enum theft_trial_res
-prop_expected_seed_is_used(theft_seed *s) {
+prop_expected_seed_is_used(struct theft *t, void *arg0) {
+    theft_seed *s = (theft_seed *)arg0;
+    (void)t;
     if (*s == expected_value) {
         return THEFT_TRIAL_PASS;
     } else {
@@ -535,7 +546,7 @@ TEST expected_seed_should_be_used_first(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_expected_seed_is_used,
+        .prop1 = prop_expected_seed_is_used,
         .type_info = { &seed_info },
         .trials = 1,
         .seed = EXPECTED_SEED,
@@ -547,7 +558,9 @@ TEST expected_seed_should_be_used_first(void) {
 }
 
 static enum theft_trial_res
-prop_bool_tautology(bool *bp) {
+prop_bool_tautology(struct theft *t, void *arg1) {
+    bool *bp = (bool *)arg1;
+    (void)t;
     bool b = *bp;
     if (b || !b) {    // tautology to force shrinking
         return THEFT_TRIAL_FAIL;
@@ -599,7 +612,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
     };
 
     struct theft_run_config cfg = {
-        .fun = prop_bool_tautology,
+        .prop1 = prop_bool_tautology,
         .type_info = { &bool_info },
         .trials = 100,
         .hooks = {
@@ -635,34 +648,40 @@ error_in_gen_args_pre(const struct theft_hook_gen_args_pre_info *info, void *env
     return THEFT_HOOK_GEN_ARGS_PRE_ERROR;
 }
 
-static enum theft_trial_res should_never_run(void *x) {
+static enum theft_trial_res
+should_never_run(struct theft *t, void *arg1) {
+    void *x = (void *)arg1;
+    (void)t;
     (void)x;
     assert(false);
-    return THEFT_TRIAL_PASS;
+    return THEFT_TRIAL_ERROR;
 }
 
 TEST save_seed_and_error_before_generating_args(void) {
     theft_seed seed = 0;
 
     struct theft_run_config cfg = {
-        .fun = should_never_run,
+        .prop1 = should_never_run,
         .type_info = { &never_run_info },
         .hooks = {
             .gen_args_pre = error_in_gen_args_pre,
             .env = (void *)&seed,
         },
-        .seed = 0xf005ba11,
+        .seed = 0xf005ba1L,
     };
 
     enum theft_run_res res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_ERROR, res);
-    ASSERT_EQ_FMT(0xf005ba11, seed, "%lx");
+    ASSERT_EQ_FMT((uint64_t)0xf005ba1L, seed, "%" PRIx64);
 
     PASS();
 }
 
-static enum theft_trial_res always_pass(void *x) {
+static enum theft_trial_res
+always_pass(struct theft *t, void *arg1) {
+    void *x = (void *)arg1;
+    (void)t;
     (void)x;
     return THEFT_TRIAL_PASS;
 }
@@ -688,7 +707,7 @@ TEST gen_pre_halt(void) {
     struct theft_run_report report = { .pass = 0 };
 
     struct theft_run_config cfg = {
-        .fun = always_pass,
+        .prop1 = always_pass,
         .type_info = { &uint_type_info },
         .hooks = {
             .trial_pre = halt_before_third_trial_pre,
@@ -700,17 +719,19 @@ TEST gen_pre_halt(void) {
     enum theft_run_res res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_PASS, res);
-    ASSERT_EQ_FMT(2, report.pass, "%zd");
-    ASSERT_EQ_FMT(0, report.fail, "%zd");
-    ASSERT_EQ_FMT(0, report.skip, "%zd");
-    ASSERT_EQ_FMT(0, report.dup, "%zd");
+    ASSERT_EQ_FMT(2LU, report.pass, "%zd");
+    ASSERT_EQ_FMT(0LU, report.fail, "%zd");
+    ASSERT_EQ_FMT(0LU, report.skip, "%zd");
+    ASSERT_EQ_FMT(0LU, report.dup, "%zd");
 
     PASS();
 }
 
 
 static enum theft_trial_res
-prop_uint_is_lte_12345(uint32_t *arg) {
+prop_uint_is_lte_12345(struct theft *t, void *arg1) {
+    uint32_t *arg = (uint32_t *)arg1;
+    (void)t;
     return *arg <= 12345 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL;
 }
 
@@ -810,7 +831,7 @@ TEST only_shrink_three_times(void) {
     struct shrink_test_env env = { .shrinks = 0 };
 
     struct theft_run_config cfg = {
-        .fun = prop_uint_is_lte_12345,
+        .prop1 = prop_uint_is_lte_12345,
         .type_info = { &shrink_test_uint_type_info },
         .trials = 1,
         .hooks = {
@@ -824,7 +845,7 @@ TEST only_shrink_three_times(void) {
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
-    ASSERT_EQ_FMT(3, env.shrinks, "%zd");
+    ASSERT_EQ_FMT(3LU, env.shrinks, "%zd");
     PASS();
 }
 
@@ -872,7 +893,7 @@ TEST save_local_minimum_and_re_run(void) {
     struct shrink_test_env env = { .shrinks = 0 };
 
     struct theft_run_config cfg = {
-        .fun = prop_uint_is_lte_12345,
+        .prop1 = prop_uint_is_lte_12345,
         .type_info = { &shrink_test_uint_type_info },
         .hooks = {
             .trial_post = shrink_all_the_way_trial_post,
@@ -888,8 +909,8 @@ TEST save_local_minimum_and_re_run(void) {
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
     ASSERT_EQ_FMTm("three trial-post and three shrink-post hook runs",
-        33, env.reruns, "%zd");
-    ASSERT_EQ_FMT(12346, env.local_minimum, "%zd");
+        33LU, env.reruns, "%zd");
+    ASSERT_EQ_FMT(12346U, env.local_minimum, "%" PRIu32);
     PASS();
 }
 
@@ -934,7 +955,7 @@ TEST repeat_local_minimum_once(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_gen_list_unique,
+        .prop1 = prop_gen_list_unique,
         .type_info = { &list_info },
         .hooks = {
             .trial_pre = repeat_once_trial_pre,
@@ -1011,7 +1032,7 @@ TEST repeat_first_successful_shrink_once_then_halt(void) {
 
     struct theft_run_config cfg = {
         .name = __func__,
-        .fun = prop_gen_list_unique,
+        .prop1 = prop_gen_list_unique,
         .type_info = { &list_info },
         .hooks = {
             .trial_pre = repeat_first_successful_shrink_then_halt_trial_pre,
@@ -1030,8 +1051,419 @@ TEST repeat_first_successful_shrink_once_then_halt(void) {
     PASS();
 }
 
+struct crash_env {
+    bool minimum;
+};
+
+static enum theft_hook_trial_post_res
+found_10(const struct theft_hook_trial_post_info *info,
+        void *venv) {
+    struct crash_env *env = (struct crash_env *)venv;
+
+    if (info->result == THEFT_TRIAL_FAIL) {
+        const uint16_t v = *(const uint16_t *)info->args[0];
+        if (v == 10) {
+            env->minimum = true;
+        }
+    }
+
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+static enum theft_hook_trial_pre_res
+halt_if_found_10(const struct theft_hook_trial_pre_info *info,
+        void *venv) {
+    (void)info;
+    struct crash_env *env = (struct crash_env *)venv;
+    return env->minimum
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
+#include <poll.h>
+static enum theft_trial_res
+prop_crash_with_int_gte_10(struct theft *t, void *arg1) {
+    uint16_t *v = (uint16_t *)arg1;
+    (void)t;
+    if (*v >= 10) {
+        abort();
+    }
+    return THEFT_TRIAL_PASS;
+}
+
+TEST shrink_crash(void) {
+    enum theft_run_res res;
+
+    struct crash_env env = { .minimum = false };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_crash_with_int_gte_10,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1000,
+        .fork = {
+            .enable = true,
+            .timeout = 10000,
+        },
+        .hooks = {
+            .trial_pre = halt_if_found_10,
+            .trial_post = found_10,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
+    ASSERT(env.minimum);
+    PASS();
+}
+
+static enum theft_trial_res
+prop_just_abort(struct theft *t, void *arg1) {
+    uint64_t *v = (uint64_t *)arg1;
+    (void)t;
+    (void)v;
+    abort();
+    return THEFT_TRIAL_PASS;
+}
+
+/* This calls a property test that just aborts immediately,
+ * but has a much larger state space due to the uint64_t
+ * argument -- this will lead to lots and lots of forking,
+ * and should eventually run into fork failures with EAGAIN
+ * due to RLIMIT_NPROC. This should exercise theft's
+ * exponential back-off and cleaning up of terminated
+ * child processes. */
+TEST shrink_abort_immediately_to_stress_forking(void) {
+    enum theft_run_res res;
+
+    struct crash_env env = { .minimum = false };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_just_abort,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 1000,
+        .fork = {
+            .enable = true,
+            .timeout = 10000,
+        },
+        .hooks = {
+            .trial_pre = halt_if_found_10,
+            .trial_post = found_10,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should fail, but recover from temporary fork failures",
+        THEFT_RUN_FAIL, res);
+
+    PASS();
+}
+
+static enum theft_trial_res
+prop_infinite_loop_with_int_gte_10(struct theft *t, void *arg1) {
+    uint16_t *v = (uint16_t *)arg1;
+    (void)t;
+    if (*v >= 10) {
+        for (;;) {}
+    }
+    return THEFT_TRIAL_PASS;
+}
+
+TEST shrink_infinite_loop(void) {
+    enum theft_run_res res;
+
+    struct crash_env env = { .minimum = false };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_infinite_loop_with_int_gte_10,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1000,
+        .fork = {
+            .enable = true,
+            .timeout = 100,
+        },
+        .hooks = {
+            .trial_pre = halt_if_found_10,
+            .trial_post = found_10,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should find counter-examples", THEFT_RUN_FAIL, res);
+    ASSERT(env.minimum);
+    PASS();
+}
+
+static volatile bool sigusr1_handled_flag = false;
+
+static void sigusr1_handler(int sig) {
+    if (sig == SIGUSR1) {
+        sigusr1_handled_flag = true;
+    }
+}
+
+static enum theft_trial_res
+prop_wait_for_SIGUSR1(struct theft *t, void *arg1) {
+    bool *v = (bool *)arg1;
+    (void)t;
+    (void)v;
+    struct sigaction action = {
+        .sa_handler = sigusr1_handler,
+    };
+    struct sigaction old_action;
+    if (-1 == sigaction(SIGUSR1, &action, &old_action)) {
+        return THEFT_TRIAL_ERROR;
+    }
+
+    sigusr1_handled_flag = false;
+
+    for (;;) {
+        poll(NULL, 0, 10);
+        if (sigusr1_handled_flag) {
+            return THEFT_TRIAL_PASS;
+        }
+    }
+
+    return THEFT_TRIAL_FAIL;
+}
+
+TEST shrink_and_SIGUSR1_on_timeout(void) {
+    enum theft_run_res res;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_wait_for_SIGUSR1,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_bool) },
+        .trials = 1,
+        .fork = {
+            .enable = true,
+            .timeout = 10,
+            .signal = SIGUSR1,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should pass due to exit(EXIT_SUCCESS)", THEFT_RUN_PASS, res);
+    PASS();
+}
+
+static bool printed_verbose_msg = false;
+
+static enum theft_trial_res
+prop_even_and_not_between_100_and_5000(struct theft *t, void *arg1) {
+    uint64_t *pv = (uint64_t *)arg1;
+    bool *verbose = theft_hook_get_env(t);
+    if (verbose == NULL) { return THEFT_TRIAL_ERROR; }
+
+    uint64_t v = *pv;
+    if (v & 0x01) {
+        if (*verbose) {
+            fprintf(stdout, "Failing: %" PRIu64 " is odd\n", v);
+            printed_verbose_msg = true;
+        }
+        return THEFT_TRIAL_FAIL;
+    }
+
+    if (v >= 100 && v <= 5000) {
+        if (*verbose) {
+            fprintf(stdout, "Failing: %" PRIu64 " is between 100 and 5000\n", v);
+            printed_verbose_msg = true;
+        }
+        return THEFT_TRIAL_FAIL;
+    }
+
+    return THEFT_TRIAL_PASS;
+}
+
+struct verbose_test_env {
+    char tag;
+    bool verbose;
+    struct theft_print_trial_result_env print_env;
+};
+
+/* Re-run each failure once, with the verbose flag set. */
+enum theft_hook_trial_post_res
+trial_post_repeat_with_verbose_set(const struct theft_hook_trial_post_info *info,
+    void *env) {
+    struct verbose_test_env *test_env = (struct verbose_test_env *)env;
+    assert(test_env->tag == 'V');
+    test_env->verbose = false;
+
+    if (info->result == THEFT_TRIAL_FAIL) {
+        test_env->verbose = !info->repeat; /* verbose next time */
+        return THEFT_HOOK_TRIAL_POST_REPEAT_ONCE;
+    }
+
+    return theft_hook_trial_post_print_result(info, &test_env->print_env);
+}
+
+TEST repeat_with_verbose_set_after_shrinking(void) {
+    enum theft_run_res res;
+
+    struct verbose_test_env env = {
+        .tag = 'V',
+    };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_even_and_not_between_100_and_5000,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 100,
+        .hooks = {
+            .trial_pre = theft_hook_first_fail_halt,
+            .trial_post = trial_post_repeat_with_verbose_set,
+            .env = &env,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should find counterexamples",
+        THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERTm("should repeat once with verbose set on failure",
+        printed_verbose_msg);
+    PASS();
+}
+
+struct fork_post_env {
+    bool hook_flag;
+    uint16_t value;
+};
+
+static enum theft_hook_fork_post_res
+fork_post_set_flag(const struct theft_hook_fork_post_info *info, void *env) {
+    (void)info;
+    struct fork_post_env *hook_env = (struct fork_post_env *)env;
+    hook_env->value = *(uint16_t *)info->args[0];
+    return THEFT_HOOK_FORK_POST_CONTINUE;
+}
+
+static enum theft_trial_res
+prop_ignore_input_return_fork_hook(struct theft *t, void *arg1) {
+    uint16_t value = *(uint16_t *)arg1;
+
+    struct fork_post_env *hook_env = theft_hook_get_env(t);
+    if (hook_env == NULL) { return THEFT_TRIAL_ERROR; }
+
+    /* Check that the value is the same in the fork_post hook
+     * and when the property runs -- this is mainly a guard
+     * against incorrect autoshrinker boxing/unboxing. */
+    if (hook_env->value == value) {
+        hook_env->hook_flag = true;
+    }
+
+    return hook_env->hook_flag
+      ? THEFT_TRIAL_PASS
+      : THEFT_TRIAL_FAIL;
+}
+
+TEST forking_hook(void) {
+    enum theft_run_res res;
+
+    struct fork_post_env env = {
+        .value = 0,
+    };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_ignore_input_return_fork_hook,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1,
+        .hooks = {
+            .fork_post = fork_post_set_flag,
+            .env = &env,
+        },
+        .fork = {
+            .enable = true,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQ_FMTm("hook_flag is set on child process, unmodified due to COW",
+        false, env.hook_flag, "%d");
+    ASSERT_ENUM_EQ(THEFT_RUN_PASS, res, theft_run_res_str);
+    PASS();
+}
+
+static size_t Fibonacci(uint8_t x) {
+    if (x < 2) {
+        return 1;
+    } else {
+        return Fibonacci(x - 1) + Fibonacci(x - 2);
+    }
+}
+
+static enum theft_trial_res
+prop_too_much_cpu(struct theft *t, void *arg1) {
+    (void)t;
+    uint16_t value = *(uint16_t *)arg1;
+
+    value = value % 1000;
+    fprintf(stderr, "Checking for excess CPU usage with depth %u...\n", value);
+
+    size_t res = Fibonacci(value);  /* Burn CPU by recursing  */
+
+    /* This check is mainly so the call to Fibonacci won't get compiled
+     * away. As far as I know, none of the first 1000 Fibonacci series
+     * numbers equal 0 when truncated to a size_t, but I'll be pretty
+     * impressed if any compilers figure that out. */
+    if (res == 0) { return THEFT_TRIAL_ERROR; }
+
+    return THEFT_TRIAL_PASS;
+}
+
+static enum theft_hook_fork_post_res
+fork_post_rlimit_cpu(const struct theft_hook_fork_post_info *info, void *env) {
+    (void)info;
+    (void)env;
+
+    struct rlimit rl;
+    if (-1 == getrlimit(RLIMIT_CPU, &rl)) {
+        perror("getrlimit");
+        return THEFT_HOOK_FORK_POST_ERROR;
+    }
+
+    /* Restrict property test to 1 second of CPU time. */
+    rl.rlim_cur = rl.rlim_max = 1;
+
+    if (-1 == setrlimit(RLIMIT_CPU, &rl)) {
+        perror("setrlimit");
+        return THEFT_HOOK_FORK_POST_ERROR;
+    }
+
+    return THEFT_HOOK_FORK_POST_CONTINUE;
+}
+
+/* Fork a child process, set a resource limit on CPU usage time,
+ * and use shrinking to determine the smallest double-recursive
+ * Fibonacci number calculation that takes over a second of CPU. */
+TEST forking_privilege_drop_cpu_limit(void) {
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_too_much_cpu,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 1000,
+        .seed = theft_seed_of_time(),
+        .hooks = {
+            .trial_pre = theft_hook_first_fail_halt,
+            .fork_post = fork_post_rlimit_cpu,
+        },
+        .fork = {
+            .enable = true,
+        },
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should fail due to CPU limit",
+        THEFT_RUN_FAIL, res, theft_run_res_str);
+    PASS();
+}
+
 SUITE(integration) {
-    RUN_TEST(alloc_and_free);
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
     RUN_TEST(generated_int_list_does_not_repeat_values);
@@ -1046,6 +1478,16 @@ SUITE(integration) {
     RUN_TEST(save_local_minimum_and_re_run);
     RUN_TEST(repeat_local_minimum_once);
     RUN_TEST(repeat_first_successful_shrink_once_then_halt);
+
+    /* Tests for forking/timeouts */
+    RUN_TEST(shrink_crash);
+    RUN_TEST(shrink_infinite_loop);
+    RUN_TEST(shrink_abort_immediately_to_stress_forking);
+    RUN_TEST(shrink_and_SIGUSR1_on_timeout);
+    RUN_TEST(forking_hook);
+    RUN_TEST(forking_privilege_drop_cpu_limit);
+
+    RUN_TEST(repeat_with_verbose_set_after_shrinking);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);
