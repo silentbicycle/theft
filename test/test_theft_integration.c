@@ -1315,7 +1315,7 @@ TEST repeat_with_verbose_set_after_shrinking(void) {
         .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
         .trials = 100,
         .hooks = {
-            .trial_pre = theft_hook_trial_pre_first_fail_halt,
+            .trial_pre = theft_hook_first_fail_halt,
             .trial_post = trial_post_repeat_with_verbose_set,
             .env = &env,
         },
@@ -1449,7 +1449,7 @@ TEST forking_privilege_drop_cpu_limit(void) {
         .trials = 1000,
         .seed = theft_seed_of_time(),
         .hooks = {
-            .trial_pre = theft_hook_trial_pre_first_fail_halt,
+            .trial_pre = theft_hook_first_fail_halt,
             .fork_post = fork_post_rlimit_cpu,
         },
         .fork = {

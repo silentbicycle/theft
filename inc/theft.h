@@ -134,8 +134,7 @@ theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info, void *
 
 /* Halt trials after the first failure. */
 enum theft_hook_trial_pre_res
-theft_hook_trial_pre_first_fail_halt(
-    const struct theft_hook_trial_pre_info *info, void *env);
+theft_hook_first_fail_halt(const struct theft_hook_trial_pre_info *info, void *env);
 
 /* The default trial-post hook, which just calls theft_print_trial_result,
  * with an internally allocated `struct theft_print_trial_result_env`. */

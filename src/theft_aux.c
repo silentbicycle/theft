@@ -115,8 +115,7 @@ void theft_print_trial_result(
 }
 
 enum theft_hook_trial_pre_res
-theft_hook_trial_pre_first_fail_halt(
-        const struct theft_hook_trial_pre_info *info, void *env) {
+theft_hook_first_fail_halt(const struct theft_hook_trial_pre_info *info, void *env) {
     (void)env;
     return info->failures > 0
       ? THEFT_HOOK_TRIAL_PRE_HALT

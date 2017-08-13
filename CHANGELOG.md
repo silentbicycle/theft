@@ -59,8 +59,8 @@ returned if internal memory allocation fails.
 Added `repeat` flag to the info struct associated with the
 `trial_post` hook. This is set when a test is being repeated.
 
-Added `theft_hook_trial_pre_first_fail_halt`, a `trial_pre`
-hook that halts after the first failure.
+Added `theft_hook_first_fail_halt`, a `trial_pre` hook that halts after
+the first failure.
 
 
 ### Other Improvements
