@@ -259,7 +259,7 @@ gap_alloc(struct theft *t, void *info_env, void **output) {
     (void)info_env;
     struct gap_env *env = (struct gap_env *)theft_hook_get_env(t);
     if (env->tag != 'G') { return THEFT_ALLOC_ERROR; }
-    uint64_t *res = malloc(sizeof(res));
+    uint64_t *res = malloc(sizeof(*res));
     if (res == NULL) { return THEFT_ALLOC_ERROR; }
     *res = theft_random_bits(t, 64) % env->limit;
     env->used = true;

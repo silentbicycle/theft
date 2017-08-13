@@ -379,7 +379,7 @@ prop_gen_list_unique_pair(struct theft *t, void *arg1, void *arg2) {
 
     (void)t;
     if (list_length(a) == list_length(b)) {
-        list *la = a;
+        list *la;
         list *lb = b;
 
         for (la = a; la && lb; la = la->next, lb = lb->next) {
