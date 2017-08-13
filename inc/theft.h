@@ -127,6 +127,10 @@ void theft_print_run_pre_info(FILE *f,
 void theft_print_run_post_info(FILE *f,
     const struct theft_hook_run_post_info *info);
 
+/* The default memory hook, which uses malloc, realloc, and free. */
+void *
+theft_hook_memory(void *p, size_t new_size, void *udata);
+
 /* A run-pre hook that just calls theft_print_run_pre_info and returns
  * THEFT_HOOK_RUN_PRE_CONTINUE. */
 enum theft_hook_run_pre_res

@@ -1,8 +1,11 @@
 #include "test_theft.h"
 #include "theft_bloom.h"
 
+#include "theft_run.h"
+
 TEST all_marked_should_remain_marked(size_t limit) {
-    struct theft_bloom *b = theft_bloom_init(NULL);
+    struct theft *t = test_theft_init();
+    struct theft_bloom *b = theft_bloom_init(t, NULL);
 
     char buf[32];
     for (size_t i = 0; i < limit; i++) {
@@ -20,6 +23,7 @@ TEST all_marked_should_remain_marked(size_t limit) {
     }
 
     theft_bloom_free(b);
+    theft_run_free(t);
     PASS();
 }
 

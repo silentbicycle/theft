@@ -79,16 +79,17 @@ struct theft_mt {
 static uint64_t genrand64_int64(struct theft_mt *r);
 
 /* Heap-allocate a mersenne twister struct. */
-struct theft_mt *theft_mt_init(uint64_t seed) {
-    struct theft_mt *mt = malloc(sizeof(struct theft_mt));
+struct theft_mt *theft_mt_init(theft_hook_memory_cb *memory,
+    uint64_t seed, void *udata) {
+    struct theft_mt *mt = memory(NULL, sizeof(struct theft_mt), udata);
     if (mt == NULL) { return NULL; }
     theft_mt_reset(mt, seed);
     return mt;
 }
 
 /* Free a heap-allocated mersenne twister struct. */
-void theft_mt_free(struct theft_mt *mt) {
-    free(mt);
+void theft_mt_free(struct theft *t, struct theft_mt *mt) {
+    t->hooks.memory(mt, 0, t->hooks.env);
 }
 
 /* initializes mt[NN] with a seed */

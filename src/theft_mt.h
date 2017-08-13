@@ -2,6 +2,7 @@
 #define THEFT_MT_H
 
 #include <stdint.h>
+#include "theft_types_internal.h"
 
 /* Wrapper for Mersenne Twister.
  * See copyright and license in theft_mt.c, more details at:
@@ -13,10 +14,11 @@
 struct theft_mt;
 
 /* Heap-allocate a mersenne twister struct. */
-struct theft_mt *theft_mt_init(uint64_t seed);
+struct theft_mt *theft_mt_init(theft_hook_memory_cb *memory,
+    uint64_t seed, void *udata);
 
 /* Free a heap-allocated mersenne twister struct. */
-void theft_mt_free(struct theft_mt *mt);
+void theft_mt_free(struct theft *t, struct theft_mt *mt);
 
 /* Reset a mersenne twister struct, possibly stack-allocated. */
 void theft_mt_reset(struct theft_mt *mt, uint64_t seed);

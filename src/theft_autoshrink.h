@@ -91,6 +91,7 @@ struct autoshrink_model {
 
 struct theft_autoshrink_env {
     uint8_t tag;
+    struct theft *t;
     struct theft_type_info user_type_info;
 
     // config

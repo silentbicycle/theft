@@ -211,6 +211,15 @@ struct theft_type_info {
  * hooks. In all cases, returning `*_ERROR` will cause theft to
  * halt everything, clean up, and return `THEFT_RUN_ERROR`. */
 
+/* Dynamic memory management hook. It should behave the same as:
+ *     p == NULL -> return malloc(new_size);
+ *     p && new_size == 0 -> free(p); return NULL;
+ *     p && new_size > 0 -> return realloc(p, new_size);
+ * If NULL, that implementation will be used.
+ * */
+typedef void *
+theft_hook_memory_cb(void *p, size_t new_size, void *udata);
+
 
 /* Pre-run hook: called before the start of a run (group of trials). */
 enum theft_hook_run_pre_res {
@@ -525,6 +534,7 @@ struct theft_run_config {
      *
      * See their function pointer typedefs above for details. */
     struct {
+        theft_hook_memory_cb *memory;
         theft_hook_run_pre_cb *run_pre;
         theft_hook_run_post_cb *run_post;
         theft_hook_gen_args_pre_cb *gen_args_pre;

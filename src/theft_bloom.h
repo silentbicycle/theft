@@ -14,7 +14,8 @@ struct theft_bloom_config {
 };
 
 /* Initialize a bloom filter. */
-struct theft_bloom *theft_bloom_init(const struct theft_bloom_config *config);
+struct theft_bloom *theft_bloom_init(struct theft *t,
+    const struct theft_bloom_config *config);
 
 /* Hash data and mark it in the bloom filter. */
 bool theft_bloom_mark(struct theft_bloom *b, uint8_t *data, size_t data_size);

@@ -159,6 +159,23 @@ void theft_print_run_pre_info(FILE *f,
         info->run_seed);
 }
 
+void *
+theft_hook_memory(void *p, size_t new_size, void *udata) {
+    (void)udata;
+    if (p == NULL) {
+        return malloc(new_size);
+    } else if (new_size == 0) {
+        assert(p);
+        free(p);
+        return NULL;
+    } else if (new_size > 0) {
+        return realloc(p, new_size);
+    } else {
+        assert(false);
+        return NULL;
+    }
+}
+
 enum theft_hook_run_pre_res
 theft_hook_run_pre_print_info(const struct theft_hook_run_pre_info *info,
         void *env) {

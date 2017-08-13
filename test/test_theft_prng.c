@@ -1,41 +1,12 @@
 #include "test_theft.h"
 #include "theft_random.h"
-
-/* These are included to allocate a valid theft handle, but
- * this file is only testing its random number generation
- * and buffering. */
 #include "theft_run.h"
-#include "test_theft_autoshrink_ll.h"
-
-static enum theft_trial_res unused(struct theft *t, void *arg1) {
-    struct ll *v = (struct ll *)arg1;
-    (void)t;
-    (void)v;
-    return THEFT_TRIAL_ERROR;
-}
-
-static struct theft *init(void) {
-    struct theft *t = NULL;
-    struct theft_run_config cfg = {
-        /* These aren't actually used, just defined so that
-         * theft_run_init doesn't return an error. */
-        .prop1 = unused,
-        .type_info = { &ll_info },
-    };
-
-    enum theft_run_init_res res = theft_run_init(&cfg, &t);
-    if (res == THEFT_RUN_INIT_OK) {
-        return t;
-    } else {
-        return NULL;
-    }
-}
 
 TEST prng_should_return_same_series_from_same_seeds() {
     theft_seed seeds[8];
     theft_seed values[8][8];
 
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     /* Set for deterministic start */
     theft_random_set_seed(t, 0xabad5eed);
@@ -65,7 +36,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
 TEST basic(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -84,7 +55,7 @@ TEST basic(uint64_t limit) {
 TEST bit_sampling_two_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -109,7 +80,7 @@ TEST bit_sampling_two_bytes(uint64_t limit) {
 TEST bit_sampling_bytes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -141,7 +112,7 @@ TEST bit_sampling_bytes(uint64_t limit) {
 TEST bit_sampling_odd_sizes(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     for (uint64_t seed = 0; seed < limit; seed++) {
         theft_random_set_seed(t, seed);
@@ -178,7 +149,7 @@ TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
     uint64_t seed = 0x15a600d64b175eedLL;
     uint64_t values[3];
 
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     theft_random_set_seed(t, seed);
     values[0] = theft_random_bits(t, 64);
@@ -198,7 +169,7 @@ TEST seed_with_upper_32_bits_masked_should_produce_different_value(void) {
 
 #if THEFT_USE_FLOATING_POINT
 TEST check_random_choice_0(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     const size_t trials = 10000;
     for (size_t i = 0; i < trials; i++) {
@@ -212,7 +183,7 @@ TEST check_random_choice_0(void) {
 }
 
 TEST check_random_choice_distribution(uint64_t limit, float tolerance) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     size_t *counts = calloc(limit, sizeof(size_t));
 

@@ -1,4 +1,4 @@
-#include "theft.h"
+#include "theft_types_internal.h"
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>
@@ -13,7 +13,7 @@ struct type_info_row {
 static enum theft_alloc_res
 bool_alloc(struct theft *t, void *env, void **instance) {
     (void)env;
-    bool *res = malloc(sizeof(*res));
+    bool *res = t->hooks.memory(NULL, sizeof(*res), t->hooks.env);
     if (res == NULL) { return THEFT_ALLOC_ERROR; }
     *res = (bool)theft_random_bits(t, 1);
     *instance = res;
@@ -25,7 +25,8 @@ bool_alloc(struct theft *t, void *env, void **instance) {
 #define ALLOC_USCALAR(NAME, TYPE, BITS, ...)                           \
 static enum theft_alloc_res                                            \
 NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
-    TYPE *res = malloc(sizeof(*res));                                  \
+    TYPE *res = t->hooks.memory(NULL, sizeof(*res),                    \
+        t->hooks.env);                                                 \
     if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
     if (((1LU << BITS_USE_SPECIAL) - 1 ) ==                            \
         theft_random_bits(t, BITS_USE_SPECIAL)) {                      \
@@ -48,7 +49,8 @@ NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
 #define ALLOC_SSCALAR(NAME, TYPE, BITS, ...)                           \
 static enum theft_alloc_res                                            \
 NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
-    TYPE *res = malloc(sizeof(*res));                                  \
+    TYPE *res = t->hooks.memory(NULL, sizeof(*res),                    \
+            t->hooks.env);                                             \
     if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
     if (((1LU << BITS_USE_SPECIAL) - 1 ) ==                            \
         theft_random_bits(t, BITS_USE_SPECIAL)) {                      \
@@ -75,7 +77,8 @@ NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
 #define ALLOC_FSCALAR(NAME, TYPE, MOD, BITS, ...)                      \
 static enum theft_alloc_res                                            \
 NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
-    TYPE *res = malloc(sizeof(*res));                                  \
+    TYPE *res = t->hooks.memory(NULL, sizeof(*res),                    \
+        t->hooks.env);                                                 \
     if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
     if (((1LU << BITS_USE_SPECIAL) - 1 ) ==                            \
         theft_random_bits(t, BITS_USE_SPECIAL)) {                      \
@@ -233,7 +236,8 @@ char_ARRAY_alloc(struct theft *t, void *env, void **instance) {
         assert(*max_length > 0);
     }
 
-    char *res = malloc(ceil * sizeof(char));
+    char *res = t->hooks.memory(NULL, ceil * sizeof(char),
+            t->hooks.env);
     if (res == NULL) { return THEFT_ALLOC_ERROR; }
     while (true) {
         if (max_length != NULL && size + 1 == *max_length) {
@@ -241,9 +245,10 @@ char_ARRAY_alloc(struct theft *t, void *env, void **instance) {
             break;
         } else if (size == ceil) {
             const size_t nceil = 2 * ceil;
-            char *nres = realloc(res, nceil * sizeof(char));
+            char *nres = t->hooks.memory(res,
+                nceil * sizeof(char), t->hooks.env);
             if (nres == NULL) {
-                free(res);
+                t->hooks.memory(res, 0, t->hooks.env);
                 return THEFT_ALLOC_ERROR;
             }
             res = nres;

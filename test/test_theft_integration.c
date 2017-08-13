@@ -1,6 +1,7 @@
 #include "test_theft.h"
 
 #include "theft_mt.h"
+#include "theft_run.h"
 
 #include <sys/time.h>
 #include <assert.h>
@@ -540,9 +541,11 @@ prop_expected_seed_is_used(struct theft *t, void *arg0) {
 }
 
 TEST expected_seed_should_be_used_first(void) {
-    struct theft_mt *mt = theft_mt_init(EXPECTED_SEED);
+    struct theft *t = test_theft_init();
+    struct theft_mt *mt = theft_mt_init(t->hooks.memory,
+        EXPECTED_SEED, t->hooks.env);
     expected_value = theft_mt_random(mt);
-    theft_mt_free(mt);
+    theft_run_free(t);
 
     struct theft_run_config cfg = {
         .name = __func__,

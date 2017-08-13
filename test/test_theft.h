@@ -7,6 +7,9 @@
 #include <assert.h>
 #include <inttypes.h>
 
+/* Allocate a theft handle with placeholder/no-op arguments. */
+struct theft *test_theft_init(void);
+
 SUITE_EXTERN(prng);
 SUITE_EXTERN(autoshrink);
 SUITE_EXTERN(aux);

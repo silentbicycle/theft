@@ -49,6 +49,7 @@ struct bloom_filter {
 };
 
 struct theft_bloom {
+    struct theft *t;
     const uint8_t top_block2;
     const uint8_t min_filter2;
     /* These start as NULL and are lazily allocated.
@@ -60,7 +61,8 @@ struct theft_bloom {
 static struct theft_bloom_config def_config = { .top_block_bits = 0 };
 
 /* Initialize a dynamic blocked bloom filter. */
-struct theft_bloom *theft_bloom_init(const struct theft_bloom_config *config) {
+struct theft_bloom *theft_bloom_init(struct theft *t,
+        const struct theft_bloom_config *config) {
 #define DEF(X, DEFAULT) (X ? X : DEFAULT)
     config = DEF(config, &def_config);
     const uint8_t top_block2 = DEF(config->top_block_bits, DEF_TOP_BLOCK_BITS);
@@ -71,13 +73,16 @@ struct theft_bloom *theft_bloom_init(const struct theft_bloom_config *config) {
     const size_t alloc_size = sizeof(struct theft_bloom) +
       top_block_count * sizeof(struct bloom_filter *);
 
-    struct theft_bloom *res = malloc(alloc_size);
+    struct theft_bloom *res = t->hooks.memory(NULL, alloc_size,
+        t->hooks.env);
     if (res == NULL) {
         return NULL;
     }
     memset(&res->blocks, 0x00, top_block_count * sizeof(struct bloom_filter *));
+    res->t = t;
 
     struct theft_bloom b = {
+        .t = t,
         .top_block2 = top_block2,
         .min_filter2 = min_filter2,
     };
@@ -86,13 +91,14 @@ struct theft_bloom *theft_bloom_init(const struct theft_bloom_config *config) {
 }
 
 static struct bloom_filter *
-alloc_filter(uint8_t bits) {
+alloc_filter(struct theft_bloom *b, uint8_t bits) {
     const size_t alloc_size = sizeof(struct bloom_filter)
       + ((1LLU << bits) / 8);
-    struct bloom_filter *bf = malloc(alloc_size);
+    struct bloom_filter *bf = b->t->hooks.memory(NULL, alloc_size,
+        b->t->hooks.env);
     if (bf != NULL) {
         memset(bf, 0x00, alloc_size);
-        bf->size2 = bits;
+        bf->size2 = b->min_filter2;
         LOG(4 - LOG_BLOOM, "%s: %p [size2 %u (%zd bytes)]\n",
             __func__, (void *)bf, bf->size2, (size_t)((1LLU << bf->size2) / 8));
     }
@@ -112,7 +118,7 @@ bool theft_bloom_mark(struct theft_bloom *b, uint8_t *data, size_t data_size) {
 
     struct bloom_filter *bf = b->blocks[block_id];
     if (bf == NULL) {           /* lazily allocate */
-        bf = alloc_filter(b->min_filter2);
+        bf = alloc_filter(b, b->min_filter2);
         if (bf == NULL) {
             return false;       /* alloc fail */
         }
@@ -155,7 +161,7 @@ bool theft_bloom_mark(struct theft_bloom *b, uint8_t *data, size_t data_size) {
             LOG(0, "%s: Warning: bloom filter block %zd cannot grow further!\n",
                 __func__, block_id);
         } else {
-            struct bloom_filter *nbf = alloc_filter(bf->size2 + 1);
+            struct bloom_filter *nbf = alloc_filter(b, bf->size2 + 1);
             LOG(3 - LOG_BLOOM, "%s: growing bloom filter -- bits %u, nbf %p\n",
                 __func__, bf->size2 + 1, (void *)nbf);
             if (nbf == NULL) {
@@ -224,7 +230,7 @@ void theft_bloom_free(struct theft_bloom *b) {
         struct bloom_filter *bf = b->blocks[i];
         while (bf != NULL) {
             struct bloom_filter *next = bf->next;
-            free(bf);
+            b->t->hooks.memory(bf, 0, b->t->hooks.env);
             bf = next;
             length++;
         }
@@ -234,5 +240,5 @@ void theft_bloom_free(struct theft_bloom *b) {
     }
     LOG(3 - LOG_BLOOM,
         "%s: %zd blocks, max length %u\n", __func__, top_block_count, max_length);
-    free(b);
+    b->t->hooks.memory(b, 0, b->t->hooks.env);
 }

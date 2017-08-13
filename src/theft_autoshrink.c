@@ -17,17 +17,20 @@ theft_autoshrink_wrap(struct theft *t,
         struct theft_type_info *type_info, struct theft_type_info *wrapper) {
     (void)t;
     if (type_info->alloc == NULL || type_info->shrink != NULL) {
-        free(wrapper);
+        (void)t->hooks.memory(wrapper, 0, t->hooks.env);
         return THEFT_AUTOSHRINK_WRAP_ERROR_MISUSE;
     }
 
-    struct theft_autoshrink_env *env = calloc(1, sizeof(*env));
+    struct theft_autoshrink_env *env = t->hooks.memory(NULL,
+        sizeof(*env), t->hooks.env);
     if (env == NULL) {
         return THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY;
     }
+    memset(env, 0x00, sizeof(*env));
 
     *env = (struct theft_autoshrink_env) {
         .tag = AUTOSHRINK_ENV_TAG,
+        .t = t,
         .pool_size = type_info->autoshrink_config.pool_size,
         .print_mode = type_info->autoshrink_config.print_mode,
         .max_failed_shrinks = type_info->autoshrink_config.max_failed_shrinks,
@@ -77,7 +80,7 @@ theft_autoshrink_bit_pool_random(struct theft *t,
     }
 
     if (save_request) {
-        if (!append_request(pool, bit_count)) {
+        if (!append_request(t, pool, bit_count)) {
             assert(false); // memory fail
         }
     }
@@ -95,7 +98,8 @@ static void lazily_fill_bit_pool(struct theft *t,
         size_t nceil = 2*pool->bits_ceil;
         LOG(1, "growing pool: from bits %p, ceil %zd, ",
             (void *)pool->bits, pool->bits_ceil);
-        uint64_t *nbits = realloc(pool->bits, nceil/(64/sizeof(uint64_t)));
+        uint64_t *nbits = t->hooks.memory(pool->bits,
+            nceil/(64/sizeof(uint64_t)), t->hooks.env);
         LOG(1, "nbits %p, nceil %zd\n",
             (void *)nbits, nceil);
         if (nbits == NULL) {
@@ -180,7 +184,8 @@ static size_t get_aligned_size(size_t size, uint8_t alignment) {
 }
 
 static struct theft_autoshrink_bit_pool *
-alloc_bit_pool(size_t size, size_t limit, size_t request_ceil) {
+alloc_bit_pool(struct theft *t, size_t size,
+        size_t limit, size_t request_ceil) {
     uint8_t *bits = NULL;
     uint32_t *requests = NULL;
     struct theft_autoshrink_bit_pool *res = NULL;
@@ -192,15 +197,20 @@ alloc_bit_pool(size_t size, size_t limit, size_t request_ceil) {
      * work in 64-bit steps later on. */
     LOG(3, "Allocating alloc_size %zd => %zd bytes\n",
         alloc_size, (alloc_size/64) * sizeof(uint64_t));
-    uint64_t *aligned_bits = calloc(alloc_size/64, sizeof(uint64_t));
+    uint64_t *aligned_bits = t->hooks.memory(NULL,
+        (alloc_size/64) * sizeof(uint64_t), t->hooks.env);
     bits = (uint8_t *)aligned_bits;
     if (bits == NULL) { goto fail; }
+    memset(aligned_bits, 0x00, (alloc_size/64) * sizeof(uint64_t));
 
-    res = calloc(1, sizeof(*res));
+    res = t->hooks.memory(NULL, sizeof(*res), t->hooks.env);
     if (res == NULL) { goto fail; }
+    memset(res, 0x00, sizeof(*res));
 
-    requests = calloc(request_ceil, sizeof(*requests));
+    requests = t->hooks.memory(NULL, request_ceil * sizeof(*requests),
+        t->hooks.env);
     if (requests == NULL) { goto fail; }
+    memset(requests, 0x00, request_ceil * sizeof(*requests));
 
     *res = (struct theft_autoshrink_bit_pool) {
         .tag = AUTOSHRINK_BIT_POOL_TAG,
@@ -214,9 +224,9 @@ alloc_bit_pool(size_t size, size_t limit, size_t request_ceil) {
     return res;
 
 fail:
-    if (bits) { free(bits); }
-    if (res) { free(res); }
-    if (requests) { free(requests); }
+    if (bits) { t->hooks.memory(bits, 0, t->hooks.env); }
+    if (res) { t->hooks.memory(res, 0, t->hooks.env); }
+    if (requests) { t->hooks.memory(requests, 0, t->hooks.env); }
     return NULL;
 }
 
@@ -226,9 +236,11 @@ void theft_autoshrink_free_bit_pool(struct theft *t,
         assert(t->prng.bit_pool == NULL);  // don't free while still in use
     }
     assert(pool->instance == NULL);
-    free(pool->bits);
-    free(pool->requests);
-    free(pool);
+
+    assert(t);
+    t->hooks.memory(pool->bits, 0, t->hooks.env);
+    t->hooks.memory(pool->requests, 0, t->hooks.env);
+    t->hooks.memory(pool, 0, t->hooks.env);
 }
 
 void
@@ -278,7 +290,7 @@ autoshrink_alloc(struct theft *t, void *venv, void **instance) {
     const size_t pool_limit = GET_DEF(env->pool_limit, DEF_POOL_LIMIT);
 
     struct theft_autoshrink_bit_pool *pool =
-      alloc_bit_pool(pool_size, pool_limit, DEF_REQUESTS_CEIL);
+      alloc_bit_pool(t, pool_size, pool_limit, DEF_REQUESTS_CEIL);
     if (pool == NULL) {
         return THEFT_ALLOC_ERROR;
     }
@@ -309,7 +321,7 @@ autoshrink_free(void *instance, void *venv) {
     }
 
     pool->instance = NULL;
-    theft_autoshrink_free_bit_pool(NULL, pool);
+    theft_autoshrink_free_bit_pool(env->t, pool);
 }
 
 static theft_hash
@@ -367,7 +379,7 @@ theft_autoshrink_shrink(struct theft *t,
     }
 
     /* Make a copy of the bit pool to shrink */
-    struct theft_autoshrink_bit_pool *copy = alloc_bit_pool(
+    struct theft_autoshrink_bit_pool *copy = alloc_bit_pool(t,
         orig->bits_filled, orig->limit, orig->request_ceil);
     if (copy == NULL) {
         return THEFT_SHRINK_ERROR;
@@ -1008,12 +1020,14 @@ autoshrink_print(FILE *f, const void *instance, void *venv) {
         GET_DEF(env->print_mode, THEFT_AUTOSHRINK_PRINT_REQUESTS));
 }
 
-static bool append_request(struct theft_autoshrink_bit_pool *pool,
-    uint32_t bit_count) {
+static bool append_request(struct theft *t,
+        struct theft_autoshrink_bit_pool *pool, uint32_t bit_count) {
     assert(pool);
     if (pool->request_count == pool->request_ceil) {  // grow
         size_t nceil = pool->request_ceil * 2;
-        uint32_t *nrequests = realloc(pool->requests, nceil * sizeof(*nrequests));
+        uint32_t *nrequests = t->hooks.memory(pool->requests,
+            nceil * sizeof(*nrequests), t->hooks.env);
+
         if (nrequests == NULL) {
             return false;
         }

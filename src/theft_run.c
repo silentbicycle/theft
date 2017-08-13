@@ -15,14 +15,17 @@
 enum theft_run_init_res
 theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     enum theft_run_init_res res = THEFT_RUN_INIT_OK;
-    struct theft *t = malloc(sizeof(*t));
+    theft_hook_memory_cb *memory = (cfg->hooks.memory != NULL
+        ? cfg->hooks.memory
+        : theft_hook_memory);
+    struct theft *t = memory(NULL, sizeof(*t), cfg->hooks.env);
     if (t == NULL) {
         return THEFT_RUN_INIT_ERROR_MEMORY;
     }
     memset(t, 0, sizeof(*t));
 
     t->out = stdout;
-    t->prng.mt = theft_mt_init(DEFAULT_THEFT_SEED);
+    t->prng.mt = theft_mt_init(memory, DEFAULT_THEFT_SEED, cfg->hooks.env);
     if (t->prng.mt == NULL) {
         free(t);
         return THEFT_RUN_INIT_ERROR_MEMORY;
@@ -69,6 +72,7 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     memcpy(&t->prop, &prop, sizeof(prop));
 
     struct hook_info hooks = {
+        .memory = memory,
         .run_pre = (cfg->hooks.run_pre != NULL
             ? cfg->hooks.run_pre
             : theft_hook_run_pre_print_info),
@@ -111,15 +115,17 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     /* If all arguments are hashable, then attempt to use
      * a bloom filter to avoid redundant checking. */
     if (all_hashable) {
-        t->bloom = theft_bloom_init(NULL);
+        t->bloom = theft_bloom_init(t, NULL);
     }
 
     if (t->hooks.trial_post == theft_hook_trial_post_print_result) {
-        t->print_trial_result_env = calloc(1,
-            sizeof(*t->print_trial_result_env));
+        t->print_trial_result_env = t->hooks.memory(NULL,
+            sizeof(*t->print_trial_result_env), t->hooks.env);
         if (t->print_trial_result_env == NULL) {
             return THEFT_RUN_INIT_ERROR_MEMORY;
         }
+        memset(t->print_trial_result_env, 0x00,
+            sizeof(*t->print_trial_result_env));
         t->print_trial_result_env->tag = THEFT_PRINT_TRIAL_RESULT_ENV_TAG;
     }
 
@@ -127,8 +133,8 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     return res;
 
 cleanup:
-    theft_mt_free(t->prng.mt);
-    free(t);
+    theft_mt_free(t, t->prng.mt);
+    memory(t, 0, t->hooks.env);
     return res;
 }
 
@@ -137,15 +143,14 @@ void theft_run_free(struct theft *t) {
         theft_bloom_free(t->bloom);
         t->bloom = NULL;
     }
-    theft_mt_free(t->prng.mt);
+    theft_mt_free(t, t->prng.mt);
 
     if (t->print_trial_result_env != NULL) {
-        free(t->print_trial_result_env);
+        t->hooks.memory(t->print_trial_result_env, 0, t->hooks.env);
     }
 
     free_any_autoshrink_wrappers(t);
-
-    free(t);
+    t->hooks.memory(t, 0, t->hooks.env);
 }
 
 /* Actually run the trials, with all arguments made explicit. */
@@ -443,11 +448,13 @@ wrap_any_autoshrinks(struct theft *t) {
     for (uint8_t i = 0; i < t->prop.arity; i++) {
         struct theft_type_info *ti = t->prop.type_info[i];
         if (ti->autoshrink_config.enable) {
-            struct theft_type_info *new_ti = calloc(1, sizeof(*new_ti));
+            struct theft_type_info *new_ti = t->hooks.memory(NULL,
+                sizeof(*new_ti), t->hooks.env);
             if (new_ti == NULL) {
                 res = WRAP_ANY_AUTOSHRINKS_ERROR_MEMORY;
                 goto cleanup;
             }
+            memset(new_ti, 0x00, sizeof(*new_ti));
             enum theft_autoshrink_wrap wrap_res;
             wrap_res = theft_autoshrink_wrap(t, ti, new_ti);
             switch (wrap_res) {
@@ -475,8 +482,8 @@ cleanup:
             struct theft_autoshrink_env *env =
               (struct theft_autoshrink_env *)ti->env;
             assert(env->tag == AUTOSHRINK_ENV_TAG);
-            free(env);
-            free(ti);
+            t->hooks.memory(env, 0, t->hooks.env);
+            t->hooks.memory(ti, 0, t->hooks.env);
         }
     }
     return res;
@@ -489,8 +496,8 @@ static void free_any_autoshrink_wrappers(struct theft *t) {
             struct theft_autoshrink_env *env =
               (struct theft_autoshrink_env *)ti->env;
             assert(env->tag == AUTOSHRINK_ENV_TAG);
-            free(env);
-            free(ti);
+            t->hooks.memory(env, 0, t->hooks.env);
+            t->hooks.memory(ti, 0, t->hooks.env);
         }
     }
 }

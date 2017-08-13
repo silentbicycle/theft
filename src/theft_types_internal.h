@@ -54,6 +54,7 @@ struct prop_info {
 };
 
 struct hook_info {
+    theft_hook_memory_cb *memory;
     theft_hook_run_pre_cb *run_pre;
     theft_hook_run_post_cb *run_post;
     theft_hook_gen_args_pre_cb *gen_args_pre;
