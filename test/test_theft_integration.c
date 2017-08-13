@@ -1280,34 +1280,34 @@ prop_even_and_not_between_100_and_5000(struct theft *t, void *arg1) {
     return THEFT_TRIAL_PASS;
 }
 
-static enum theft_hook_trial_pre_res
-halt_after_one_failure(const struct theft_hook_trial_pre_info *info,
-    void *env) {
-    (void)env;
-    return info->failures >= 1
-      ? THEFT_HOOK_TRIAL_PRE_HALT
-      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
-}
+struct verbose_test_env {
+    char tag;
+    bool verbose;
+    struct theft_print_trial_result_env print_env;
+};
 
 /* Re-run each failure once, with the verbose flag set. */
 enum theft_hook_trial_post_res
 trial_post_repeat_with_verbose_set(const struct theft_hook_trial_post_info *info,
     void *env) {
-    bool *verbose = (bool *)env;
-    *verbose = false;
+    struct verbose_test_env *test_env = (struct verbose_test_env *)env;
+    assert(test_env->tag == 'V');
+    test_env->verbose = false;
 
     if (info->result == THEFT_TRIAL_FAIL) {
-        *verbose = !info->repeat; /* verbose next time */
+        test_env->verbose = !info->repeat; /* verbose next time */
         return THEFT_HOOK_TRIAL_POST_REPEAT_ONCE;
     }
 
-    return theft_hook_trial_post_print_result(info, env);
+    return theft_hook_trial_post_print_result(info, &test_env->print_env);
 }
 
 TEST repeat_with_verbose_set_after_shrinking(void) {
     enum theft_run_res res;
 
-    bool verbose = false;
+    struct verbose_test_env env = {
+        .tag = 'V',
+    };
 
     struct theft_run_config cfg = {
         .name = __func__,
@@ -1315,9 +1315,9 @@ TEST repeat_with_verbose_set_after_shrinking(void) {
         .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
         .trials = 100,
         .hooks = {
-            .trial_pre = halt_after_one_failure,
+            .trial_pre = theft_hook_trial_pre_first_fail_halt,
             .trial_post = trial_post_repeat_with_verbose_set,
-            .env = &verbose,
+            .env = &env,
         },
     };
 
