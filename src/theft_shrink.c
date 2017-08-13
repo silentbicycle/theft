@@ -218,6 +218,7 @@ shrink_post_hook(struct theft *t,
             state = THEFT_SHRINK_POST_SHRINK_FAILED; break;
         default:
             assert(false);
+            return THEFT_HOOK_SHRINK_POST_ERROR;
         }
 
         struct theft_hook_shrink_post_info hook_info = {

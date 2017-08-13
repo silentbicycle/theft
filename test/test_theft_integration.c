@@ -673,7 +673,7 @@ TEST save_seed_and_error_before_generating_args(void) {
     enum theft_run_res res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_ERROR, res);
-    ASSERT_EQ_FMT(0xf005ba1L, seed, "%lx");
+    ASSERT_EQ_FMT((uint64_t)0xf005ba1L, seed, "%" PRIx64);
 
     PASS();
 }
