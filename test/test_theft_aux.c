@@ -222,7 +222,7 @@ prop_check_and_update_magic(struct theft *t, void *arg1) {
         return THEFT_TRIAL_FAIL;
     }
 
-    *magic = 0xfa1afe1;         /* update the magic value */
+    *magic = 0xfa1afel;         /* update the magic value */
     return THEFT_TRIAL_PASS;
 }
 
@@ -243,7 +243,7 @@ TEST get_hook_env(void) {
     ASSERT_EQ_FMTm("should get pointer to the magic value",
         THEFT_RUN_PASS, res, "%d");
     ASSERT_EQ_FMTm("should update the magic value",
-        0xfa1afe1, magic, "%" PRIx64);
+        (uint64_t)0xfa1afel, magic, "%" PRIx64);
 
     PASS();
 }

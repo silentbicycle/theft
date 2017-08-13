@@ -74,7 +74,7 @@ TEST basic(uint64_t limit) {
         theft_random_set_seed(t, seed);
         uint64_t num2 = theft_random(t);
 
-        ASSERT_EQ_FMT(num, num2, "%llx");
+        ASSERT_EQ_FMT(num, num2, "%" PRIx64);
     }
 
     theft_run_free(t);
@@ -130,8 +130,8 @@ TEST bit_sampling_bytes(uint64_t limit) {
             b1 |= (byte << (8L*i));
         }
 
-        ASSERT_EQ_FMT(a0, b0, "%llu");
-        ASSERT_EQ_FMT(a1, b1, "%llu");
+        ASSERT_EQ_FMT(a0, b0, "%" PRIu64);
+        ASSERT_EQ_FMT(a1, b1, "%" PRIu64);
     }
 
     theft_run_free(t);
@@ -166,8 +166,8 @@ TEST bit_sampling_odd_sizes(uint64_t limit) {
         uint64_t mask_a1 = a1 & ((1L << 11L) - 1);
 
         // check that first 64 bits and lower 11 of second uint64_t match
-        ASSERT_EQ_FMT(a0, b0, "0x%08x");
-        ASSERT_EQ_FMT(mask_a1, b1, "0x%08x");
+        ASSERT_EQ_FMT(a0, b0, "0x%08" PRIx64);
+        ASSERT_EQ_FMT(mask_a1, b1, "0x%08" PRIx64);
     }
 
     theft_run_free(t);
@@ -204,7 +204,7 @@ TEST check_random_choice_0(void) {
     for (size_t i = 0; i < trials; i++) {
         uint64_t v = theft_random_choice(t, 0);
         ASSERT_EQ_FMTm("limit of 0 should always return 0",
-            0, v, "%" PRIu64);
+            (uint64_t)0, v, "%" PRIu64);
     }
 
     theft_run_free(t);
@@ -241,7 +241,7 @@ TEST check_random_choice_distribution(uint64_t limit, float tolerance) {
 SUITE(prng) {
     RUN_TEST(prng_should_return_same_series_from_same_seeds);
 
-    for (size_t limit = 100; limit < 100000; limit *= 10) {
+    for (volatile size_t limit = 100; limit < 100000; limit *= 10) {
         RUN_TESTp(basic, limit);
         RUN_TESTp(bit_sampling_two_bytes, limit);
         RUN_TESTp(bit_sampling_bytes, limit);
@@ -253,7 +253,7 @@ SUITE(prng) {
 #if THEFT_USE_FLOATING_POINT
     RUN_TEST(check_random_choice_0);
 
-    for (uint64_t limit = 1; limit < 300; limit++) {
+    for (volatile uint64_t limit = 1; limit < 300; limit++) {
         RUN_TESTp(check_random_choice_distribution, limit, 0.05);
     }
 

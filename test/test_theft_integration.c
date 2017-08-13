@@ -667,13 +667,13 @@ TEST save_seed_and_error_before_generating_args(void) {
             .gen_args_pre = error_in_gen_args_pre,
             .env = (void *)&seed,
         },
-        .seed = 0xf005ba11,
+        .seed = 0xf005ba1L,
     };
 
     enum theft_run_res res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_ERROR, res);
-    ASSERT_EQ_FMT(0xf005ba11, seed, "%lx");
+    ASSERT_EQ_FMT(0xf005ba1L, seed, "%lx");
 
     PASS();
 }
@@ -719,10 +719,10 @@ TEST gen_pre_halt(void) {
     enum theft_run_res res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_PASS, res);
-    ASSERT_EQ_FMT(2, report.pass, "%zd");
-    ASSERT_EQ_FMT(0, report.fail, "%zd");
-    ASSERT_EQ_FMT(0, report.skip, "%zd");
-    ASSERT_EQ_FMT(0, report.dup, "%zd");
+    ASSERT_EQ_FMT(2LU, report.pass, "%zd");
+    ASSERT_EQ_FMT(0LU, report.fail, "%zd");
+    ASSERT_EQ_FMT(0LU, report.skip, "%zd");
+    ASSERT_EQ_FMT(0LU, report.dup, "%zd");
 
     PASS();
 }
@@ -845,7 +845,7 @@ TEST only_shrink_three_times(void) {
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
-    ASSERT_EQ_FMT(3, env.shrinks, "%zd");
+    ASSERT_EQ_FMT(3LU, env.shrinks, "%zd");
     PASS();
 }
 
@@ -909,8 +909,8 @@ TEST save_local_minimum_and_re_run(void) {
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
     ASSERT_EQ_FMTm("three trial-post and three shrink-post hook runs",
-        33, env.reruns, "%zd");
-    ASSERT_EQ_FMT(12346, env.local_minimum, "%zd");
+        33LU, env.reruns, "%zd");
+    ASSERT_EQ_FMT(12346U, env.local_minimum, "%" PRIu32);
     PASS();
 }
 
