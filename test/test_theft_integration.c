@@ -1517,6 +1517,108 @@ TEST trial_post_hook_gets_correct_args(void) {
     PASS();
 }
 
+enum example_failure_tag {
+    EX_FAIL_TAG_ODD,
+    EX_FAIL_TAG_GTE_1000,
+};
+
+static enum theft_trial_res
+prop_lt_1000_and_even(struct theft *t, void *arg1) {
+    uint64_t v = *(uint64_t *)arg1;
+    //fprintf(stderr, "PROP %u\n", v);
+
+    if (v >= 1000) {
+        theft_tag_failure(t, EX_FAIL_TAG_GTE_1000);
+        return THEFT_TRIAL_FAIL;
+    } else if (v & 1) {
+        theft_tag_failure(t, EX_FAIL_TAG_ODD);
+        return THEFT_TRIAL_FAIL;
+    }
+
+    return THEFT_TRIAL_PASS;
+}
+
+static enum theft_hook_trial_post_res
+trial_post_check_failure_tag(const struct theft_hook_trial_post_info *info,
+    void *env)
+{
+    bool *has_1000_failure = (bool *)env;
+    if (info->result == THEFT_TRIAL_FAIL &&
+        info->failure_tag == EX_FAIL_TAG_GTE_1000) {
+        uint64_t v = *(uint64_t *)info->args[0];
+        //fprintf(stderr, "TRIAL_POST %u\n", v);
+        if (v == 1000) {
+            *has_1000_failure = true;
+        }
+    }
+
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+static enum theft_hook_trial_pre_res
+halt_once_flag_is_set(const struct theft_hook_trial_pre_info *info,
+        void *env) {
+    (void)info;
+    bool *has_1000_failure = (bool *)env;
+    return *has_1000_failure
+      ? THEFT_HOOK_TRIAL_PRE_HALT
+      : THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
+/* For a trivially falsifiable property (for any uint64_t X,
+ * X is even and less than 1000), check that failure tagging
+ * can be used to keep shrinking following the X >= 1000
+ * path. Without failure tagging, shrinking below 1000
+ * and landing on an odd number would shadow the >= 1000
+ * failure with the failure due to an odd number. */
+TEST failure_tagging_prevents_failure_shadowing(void) {
+    bool has_1000_failure = false;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_lt_1000_and_even,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 1000,
+        .seed = theft_seed_of_time(),
+        .hooks = {
+            .trial_pre = halt_once_flag_is_set,
+            .trial_post = trial_post_check_failure_tag,
+            .env = (void *)&has_1000_failure,
+        },
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should fail", THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERT(has_1000_failure);
+    PASS();
+}
+
+TEST failure_tagging_prevents_failure_shadowing_with_fork(void) {
+    SKIPm("FIXME: need message passing to update failure tag");
+    bool has_1000_failure = false;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_lt_1000_and_even,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint64_t) },
+        .trials = 1000,
+        .seed = theft_seed_of_time(),
+        .hooks = {
+            .trial_pre = halt_once_flag_is_set,
+            .trial_post = trial_post_check_failure_tag,
+            .env = (void *)&has_1000_failure,
+        },
+        .fork = {
+            .enable = true,
+        },
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should fail", THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERT(has_1000_failure);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -1542,6 +1644,8 @@ SUITE(integration) {
     RUN_TEST(forking_privilege_drop_cpu_limit__slow);
 
     RUN_TEST(repeat_with_verbose_set_after_shrinking);
+    RUN_TEST(failure_tagging_prevents_failure_shadowing);
+    RUN_TEST(failure_tagging_prevents_failure_shadowing_with_fork);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);

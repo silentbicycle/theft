@@ -225,6 +225,7 @@ run_step(struct theft *t, size_t trial, theft_seed *seed) {
     struct trial_info trial_info = {
         .trial = trial,
         .seed = *seed,
+        .failure_tag = THEFT_FAILURE_TAG_NONE,
     };
     if (!init_arg_info(t, &trial_info)) { return RUN_STEP_GEN_ERROR; }
 

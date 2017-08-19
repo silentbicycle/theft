@@ -133,6 +133,8 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
             }
         }
 
+        const size_t tagged_ft = t->trial.failure_tag;
+
         enum theft_trial_res res;
         bool repeated = false;
         for (;;) {
@@ -141,6 +143,19 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
 
             res = theft_call(t, args);
             LOG(3 - LOG_SHRINK, "%s: call -> res %d\n", __func__, res);
+            const size_t new_ft = t->trial.failure_tag;
+
+            /* If the trial found a tagged failure, and shrinking led to
+             * a different tag, skip this shrink. An untagged failure
+             * may be a completely new failure, so still switch over. */
+            if (res == THEFT_TRIAL_FAIL && tagged_ft != THEFT_FAILURE_TAG_NONE
+                && new_ft != THEFT_FAILURE_TAG_NONE && tagged_ft != new_ft) {
+                LOG(1 - LOG_SHRINK,
+                    "%s: skipping failure %zd, staying on tagged failure %zd\n",
+                    __func__, new_ft, tagged_ft);
+                t->trial.failure_tag = tagged_ft;
+                res = THEFT_TRIAL_SKIP;
+            }
 
             if (!repeated) {
                 if (res == THEFT_TRIAL_FAIL) {

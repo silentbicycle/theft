@@ -105,6 +105,7 @@ struct trial_info {
     size_t shrink_count;
     size_t successful_shrinks;
     size_t failed_shrinks;
+    size_t failure_tag;
     struct arg_info args[THEFT_MAX_ARITY];
 };
 

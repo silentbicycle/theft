@@ -36,6 +36,7 @@ theft_trial_run(struct theft *t,
         .arity = t->prop.arity,
         .args = args,
         .result = tres,
+        .failure_tag = t->trial.failure_tag,
     };
 
     switch (tres) {
@@ -112,6 +113,7 @@ report_on_failure(struct theft *t,
         theft_hook_trial_post_cb *trial_post,
         void *trial_post_env) {
     theft_hook_counterexample_cb *counterexample = t->hooks.counterexample;
+
     if (counterexample != NULL) {
         struct theft_hook_counterexample_info counterexample_hook_info = {
             .t = t,

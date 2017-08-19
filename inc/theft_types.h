@@ -325,6 +325,7 @@ struct theft_hook_trial_post_info {
     uint8_t arity;
     void **args;
     enum theft_trial_res result;
+    size_t failure_tag;
     bool repeat;
 };
 typedef enum theft_hook_trial_post_res

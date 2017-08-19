@@ -218,3 +218,8 @@ const char *theft_trial_res_str(enum theft_trial_res res) {
         return "(matchfail)";
     }
 }
+
+void theft_tag_failure(struct theft *t, size_t fail_id) {
+    t->trial.failure_tag = fail_id;
+}
+

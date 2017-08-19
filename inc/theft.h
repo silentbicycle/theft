@@ -171,6 +171,13 @@ const char *theft_trial_res_str(enum theft_trial_res res);
 /* Return a string name of a run result. */
 const char *theft_run_res_str(enum theft_run_res res);
 
+/* Tag the current failure type. This can be used to restrict
+ * shrinking to a specific kind of failure. A fail_id of
+ * `THEFT_FAILURE_TAG_NONE` clears the current tag, if any. */
+void theft_tag_failure(struct theft *t, size_t fail_id);
+#define THEFT_FAILURE_TAG_NONE ((size_t)-2)
+
+
 /***********************
  * Built-in generators *
  ***********************/
