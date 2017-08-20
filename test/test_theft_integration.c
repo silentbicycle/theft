@@ -1134,7 +1134,7 @@ prop_just_abort(struct theft *t, void *arg1) {
  * due to RLIMIT_NPROC. This should exercise theft's
  * exponential back-off and cleaning up of terminated
  * child processes. */
-TEST shrink_abort_immediately_to_stress_forking(void) {
+TEST shrink_abort_immediately_to_stress_forking__slow(void) {
     enum theft_run_res res;
 
     struct crash_env env = { .minimum = false };
@@ -1441,7 +1441,7 @@ fork_post_rlimit_cpu(const struct theft_hook_fork_post_info *info, void *env) {
 /* Fork a child process, set a resource limit on CPU usage time,
  * and use shrinking to determine the smallest double-recursive
  * Fibonacci number calculation that takes over a second of CPU. */
-TEST forking_privilege_drop_cpu_limit(void) {
+TEST forking_privilege_drop_cpu_limit__slow(void) {
     struct theft_run_config cfg = {
         .name = __func__,
         .prop1 = prop_too_much_cpu,
@@ -1536,10 +1536,10 @@ SUITE(integration) {
     /* Tests for forking/timeouts */
     RUN_TEST(shrink_crash);
     RUN_TEST(shrink_infinite_loop);
-    RUN_TEST(shrink_abort_immediately_to_stress_forking);
+    RUN_TEST(shrink_abort_immediately_to_stress_forking__slow);
     RUN_TEST(shrink_and_SIGUSR1_on_timeout);
     RUN_TEST(forking_hook);
-    RUN_TEST(forking_privilege_drop_cpu_limit);
+    RUN_TEST(forking_privilege_drop_cpu_limit__slow);
 
     RUN_TEST(repeat_with_verbose_set_after_shrinking);
 
