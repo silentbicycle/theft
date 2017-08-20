@@ -8,7 +8,7 @@
  * it, rather than the PRNG, because we'll shrink by shrinking the bit
  * pool itself. */
 void theft_random_inject_autoshrink_bit_pool(struct theft *t,
-    struct theft_autoshrink_bit_pool *bitpool);
+    struct autoshrink_bit_pool *bitpool);
 
 /* Stop using an autoshrink bit pool.
  * (Re-seeding the PRNG will also do this.) */

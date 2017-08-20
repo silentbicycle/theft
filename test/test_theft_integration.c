@@ -1463,6 +1463,60 @@ TEST forking_privilege_drop_cpu_limit(void) {
     PASS();
 }
 
+struct arg_check_env {
+    uint8_t tag;
+    uint16_t value;
+    bool match;
+};
+
+static enum theft_trial_res
+prop_even(struct theft *t, void *arg1) {
+    struct arg_check_env *env = theft_hook_get_env(t);
+    assert(env->tag == 'A');
+
+    uint16_t v = *(uint16_t *)arg1;
+    env->value = v;
+
+    return (v & 1 ? THEFT_TRIAL_FAIL : THEFT_TRIAL_PASS);
+}
+
+static enum theft_hook_trial_post_res
+check_arg_is_odd(const struct theft_hook_trial_post_info *info,
+        void *void_env) {
+    struct arg_check_env *env = void_env;
+
+    if (info->result == THEFT_TRIAL_FAIL) {
+        uint16_t v = *(uint16_t *)info->args[0];
+        if (v == env->value) {
+            env->match = true;
+        }
+    }
+
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+TEST trial_post_hook_gets_correct_args(void) {
+    struct arg_check_env env = { .tag = 'A', };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_even,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 100,
+        .seed = theft_seed_of_time(),
+        .hooks = {
+            .trial_post = check_arg_is_odd,
+            .env = &env,
+        },
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should fail", THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERTm("value seen by trial_post hook did not match",
+        env.match);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -1491,4 +1545,5 @@ SUITE(integration) {
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);
+    RUN_TEST(trial_post_hook_gets_correct_args);
 }

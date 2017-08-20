@@ -1,5 +1,34 @@
 # theft Changes By Release
 
+## v0.4.1 - 2017-xx-xx
+
+### API Changes
+
+None.
+
+
+### Bug Fixes
+
+Fixed a possible double-free when a non-first argument's alloc callback
+returns SKIP or ERROR.
+
+Fixed a case where the `trial_post` callback could be called with
+incorrect pointers in `info->args[]`, due to an inconsistency in how
+autoshrink wrapped the arguments and `type_info`. (Issue #18.)
+
+Fixed autoshrink's handling of the `theft_autoshrink_print_mode` default:
+now the default is use the `type_info` print callback when defined,
+and to otherwise print the requests. (This was the intentended behavior,
+but `THEFT_AUTOSHRINK_PRINT_USER` was 0, which meant it was instead
+clobbered with `THEFT_AUTOSHRINK_PRINT_REQUESTS`.)
+
+### Other Improvements
+
+Internal refactoring: Autoshrinking is now better integrated into the
+argument handling. The bugs addressed in this release came from
+inconsistencies in how autoshrink wrapped arguments.
+
+
 ## v0.4.0 - 2017-08-13
 
 ### API Changes

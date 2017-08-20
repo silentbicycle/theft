@@ -6,67 +6,61 @@
 
 #include <assert.h>
 
-static theft_alloc_cb autoshrink_alloc;
-static theft_free_cb autoshrink_free;
-static theft_hash_cb autoshrink_hash;
-static theft_shrink_cb autoshrink_shrink;
-static theft_print_cb autoshrink_print;
-
-static struct theft_autoshrink_bit_pool *
+static struct autoshrink_bit_pool *
 alloc_bit_pool(size_t size, size_t limit,
     size_t request_ceil);
 
 static enum theft_alloc_res
-alloc_from_bit_pool(struct theft *t, struct theft_autoshrink_env *env,
-    struct theft_autoshrink_bit_pool *bit_pool, void **output,
+alloc_from_bit_pool(struct theft *t, struct autoshrink_env *env,
+    struct autoshrink_bit_pool *bit_pool, void **output,
     bool shrinking);
 
-static bool append_request(struct theft_autoshrink_bit_pool *pool,
+static bool append_request(struct autoshrink_bit_pool *pool,
     uint32_t bit_count);
 
 static void drop_from_bit_pool(struct theft *t,
-    struct theft_autoshrink_env *env,
-    const struct theft_autoshrink_bit_pool *orig,
-    struct theft_autoshrink_bit_pool *pool);
+    struct autoshrink_env *env,
+    const struct autoshrink_bit_pool *orig,
+    struct autoshrink_bit_pool *pool);
 
 static void mutate_bit_pool(struct theft *t,
-    struct theft_autoshrink_env *env,
-    const struct theft_autoshrink_bit_pool *orig,
-    struct theft_autoshrink_bit_pool *pool);
+    struct autoshrink_env *env,
+    const struct autoshrink_bit_pool *orig,
+    struct autoshrink_bit_pool *pool);
 
 static bool choose_and_mutate_request(struct theft *t,
-    struct theft_autoshrink_env *env,
-    const struct theft_autoshrink_bit_pool *orig,
-    struct theft_autoshrink_bit_pool *pool);
+    struct autoshrink_env *env,
+    const struct autoshrink_bit_pool *orig,
+    struct autoshrink_bit_pool *pool);
 
-static size_t offset_of_pos(const struct theft_autoshrink_bit_pool *orig,
+static size_t offset_of_pos(const struct autoshrink_bit_pool *orig,
     size_t pos);
 
 static void convert_bit_offset(size_t bit_offset,
     size_t *byte_offset, uint8_t *bit);
 
 static uint64_t
-read_bits_at_offset(const struct theft_autoshrink_bit_pool *pool,
+read_bits_at_offset(const struct autoshrink_bit_pool *pool,
     size_t bit_offset, uint8_t size);
 
 static void
-write_bits_at_offset(struct theft_autoshrink_bit_pool *pool,
+write_bits_at_offset(struct autoshrink_bit_pool *pool,
     size_t bit_offset, uint8_t size, uint64_t bits);
 
-static void truncate_trailing_zero_bytes(struct theft_autoshrink_bit_pool *pool);
+static void truncate_trailing_zero_bytes(struct autoshrink_bit_pool *pool);
 
-static void init_model(struct theft_autoshrink_env *env);
+static void init_model(struct autoshrink_env *env);
 
 static enum mutation
-get_weighted_mutation(struct theft *t, struct theft_autoshrink_env *env);
+get_weighted_mutation(struct theft *t, struct autoshrink_env *env);
 
-static bool should_drop(struct theft *t, struct theft_autoshrink_env *env);
+static bool should_drop(struct theft *t, struct autoshrink_env *env);
 
 static void lazily_fill_bit_pool(struct theft *t,
-    struct theft_autoshrink_bit_pool *pool,
+    struct autoshrink_bit_pool *pool,
     const uint32_t bit_count);
 
-static void fill_buf(struct theft_autoshrink_bit_pool *pool,
+static void fill_buf(struct autoshrink_bit_pool *pool,
     const uint32_t bit_count, uint64_t *buf);
 
 #endif

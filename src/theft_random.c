@@ -20,7 +20,7 @@ void theft_random_set_seed(struct theft *t, uint64_t seed) {
 }
 
 void theft_random_inject_autoshrink_bit_pool(struct theft *t,
-        struct theft_autoshrink_bit_pool *bit_pool) {
+        struct autoshrink_bit_pool *bit_pool) {
     t->prng.bit_pool = bit_pool;
 }
 

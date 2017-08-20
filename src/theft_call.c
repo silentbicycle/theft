@@ -1,4 +1,5 @@
 #include "theft_call_internal.h"
+#include "theft_autoshrink.h"
 
 #include <time.h>
 #include <sys/time.h>
@@ -207,28 +208,32 @@ theft_call_inner(struct theft *t, void **args) {
 
 /* Populate a buffer with hashes of all the arguments. */
 static void
-get_arg_hash_buffer(theft_hash *buffer,
-        struct theft *t, void **args) {
+get_arg_hash_buffer(theft_hash *buffer, struct theft *t) {
     for (uint8_t i = 0; i < t->prop.arity; i++) {
         struct theft_type_info *ti = t->prop.type_info[i];
-        theft_hash h = ti->hash(args[i], ti->env);
+
+        theft_hash h = (ti->autoshrink_config.enable
+            ? theft_autoshrink_hash(t, t->trial.args[i].instance,
+                t->trial.args[i].u.as.env, ti->env)
+            : ti->hash(t->trial.args[i].instance, ti->env));
+
         LOG(4, "%s: arg %d hash; 0x%016" PRIx64 "\n", __func__, i, h);
         buffer[i] = h;
     }
 }
 
 /* Check if this combination of argument instances has been called. */
-bool theft_call_check_called(struct theft *t, void **args) {
+bool theft_call_check_called(struct theft *t) {
     theft_hash buffer[THEFT_MAX_ARITY];
-    get_arg_hash_buffer(buffer, t, args);
+    get_arg_hash_buffer(buffer, t);
     return theft_bloom_check(t->bloom, (uint8_t *)buffer,
         t->prop.arity * sizeof(theft_hash));
 }
 
 /* Mark the tuple of argument instances as called in the bloom filter. */
-void theft_call_mark_called(struct theft *t, void **args) {
+void theft_call_mark_called(struct theft *t) {
     theft_hash buffer[THEFT_MAX_ARITY];
-    get_arg_hash_buffer(buffer, t, args);
+    get_arg_hash_buffer(buffer, t);
     theft_bloom_mark(t->bloom, (uint8_t *)buffer,
         t->prop.arity * sizeof(theft_hash));
 }

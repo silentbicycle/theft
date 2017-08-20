@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
-#define DEFAULT_THEFT_SEED 0xa600d64b175eedLL
+#define DEFAULT_THEFT_SEED 0xa600d64b175eedLLU
 
 #define THEFT_LOG_LEVEL 0
 #define LOG(LEVEL, ...)                                               \
@@ -79,32 +79,48 @@ struct prng_info {
     uint64_t buf;               /* buffer for PRNG bits */
     uint8_t bits_available;
     /* Bit pool, only used during autoshrinking. */
-    struct theft_autoshrink_bit_pool *bit_pool;
+    struct autoshrink_bit_pool *bit_pool;
+};
+
+enum arg_type {
+    ARG_BASIC,
+    ARG_AUTOSHRINK,
+};
+
+struct arg_info {
+    void *instance;
+
+    enum arg_type type;
+    union {
+        struct {
+            struct autoshrink_env *env;
+        } as;
+    } u;
+};
+
+/* Result from an individual trial. */
+struct trial_info {
+    const int trial;               /* N'th trial */
+    theft_seed seed;               /* Seed used */
+    size_t shrink_count;
+    size_t successful_shrinks;
+    size_t failed_shrinks;
+    struct arg_info args[THEFT_MAX_ARITY];
 };
 
 /* Handle to state for the entire run. */
 struct theft {
     FILE *out;
     struct theft_bloom *bloom;  /* bloom filter */
+    struct theft_print_trial_result_env *print_trial_result_env;
+
     struct prng_info prng;
     struct prop_info prop;
     struct seed_info seeds;
     struct fork_info fork;
-    struct theft_print_trial_result_env *print_trial_result_env;
     struct hook_info hooks;
     struct counter_info counters;
-};
-
-/* Result from an individual trial. */
-struct theft_trial_info {
-    const int trial;            /* N'th trial */
-    theft_seed seed;            /* Seed used */
-    enum theft_trial_res status;   /* Run status */
-    const uint8_t arity;        /* Number of arguments */
-    void **args;                /* Arguments used */
-    size_t shrink_count;
-    size_t successful_shrinks;
-    size_t failed_shrinks;
+    struct trial_info trial;
 };
 
 #endif
