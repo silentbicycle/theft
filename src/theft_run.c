@@ -1,7 +1,7 @@
 #include "theft_run_internal.h"
 
 #include "theft_bloom.h"
-#include "theft_mt.h"
+#include "theft_rng.h"
 #include "theft_call.h"
 #include "theft_trial.h"
 #include "theft_random.h"
@@ -22,8 +22,8 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     memset(t, 0, sizeof(*t));
 
     t->out = stdout;
-    t->prng.mt = theft_mt_init(DEFAULT_THEFT_SEED);
-    if (t->prng.mt == NULL) {
+    t->prng.rng = theft_rng_init(DEFAULT_THEFT_SEED);
+    if (t->prng.rng == NULL) {
         free(t);
         return THEFT_RUN_INIT_ERROR_MEMORY;
     }
@@ -118,7 +118,7 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     return res;
 
 cleanup:
-    theft_mt_free(t->prng.mt);
+    theft_rng_free(t->prng.rng);
     free(t);
     return res;
 }
@@ -128,7 +128,7 @@ void theft_run_free(struct theft *t) {
         theft_bloom_free(t->bloom);
         t->bloom = NULL;
     }
-    theft_mt_free(t->prng.mt);
+    theft_rng_free(t->prng.rng);
 
     if (t->print_trial_result_env != NULL) {
         free(t->print_trial_result_env);

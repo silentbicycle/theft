@@ -1,7 +1,7 @@
 #include "theft_random.h"
 
 #include "theft_types_internal.h"
-#include "theft_mt.h"
+#include "theft_rng.h"
 
 #include <inttypes.h>
 #include <assert.h>
@@ -15,7 +15,7 @@ void theft_random_set_seed(struct theft *t, uint64_t seed) {
     t->prng.buf = 0;
     t->prng.bits_available = 0;
 
-    theft_mt_reset(t->prng.mt, seed);
+    theft_rng_reset(t->prng.rng, seed);
     LOG(2, "%s: SET_SEED: %" PRIx64 "\n", __func__, seed);
 }
 
@@ -55,7 +55,7 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bit_count, uint64_t *buf) 
 
     while (rem > 0) {
         if (t->prng.bits_available == 0) {
-            t->prng.buf = theft_mt_random(t->prng.mt);
+            t->prng.buf = theft_rng_random(t->prng.rng);
             t->prng.bits_available = 64;
         }
         LOG(5, "%% buf 0x%016" PRIx64 "\n", t->prng.buf);
@@ -99,7 +99,7 @@ theft_seed theft_random(struct theft *t) {
 #if THEFT_USE_FLOATING_POINT
 /* Get a random double from the test runner's PRNG. */
 double theft_random_double(struct theft *t) {
-    double res = theft_mt_uint64_to_double(theft_random_bits(t, 64));
+    double res = theft_rng_uint64_to_double(theft_random_bits(t, 64));
     LOG(4, "RANDOM_DOUBLE: %g\n", res);
     return res;
 }

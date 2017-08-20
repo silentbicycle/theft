@@ -5,9 +5,6 @@
 #include "theft_types_internal.h"
 #include "theft_run.h"
 
-#include "theft_bloom.h"
-#include "theft_mt.h"
-
 /* Change T's output stream handle to OUT. (Default: stdout.) */
 void theft_set_output_stream(struct theft *t, FILE *out) {
     t->out = out;

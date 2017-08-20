@@ -1,7 +1,7 @@
 #include "theft_autoshrink_internal.h"
 
 #include "theft_random.h"
-#include "theft_mt.h"
+#include "theft_rng.h"
 
 #include <string.h>
 #include <assert.h>
@@ -95,7 +95,7 @@ static void lazily_fill_bit_pool(struct theft *t,
         uint64_t *bits64 = (uint64_t *)pool->bits;
         size_t offset = pool->bits_filled / 64;
         assert(offset * 64 < pool->bits_ceil);
-        bits64[offset] = theft_mt_random(t->prng.mt);
+        bits64[offset] = theft_rng_random(t->prng.rng);
         LOG(3, "filling bit64[%zd]: 0x%016" PRIx64 "\n",
             offset, bits64[offset]);
         pool->bits_filled += 64;

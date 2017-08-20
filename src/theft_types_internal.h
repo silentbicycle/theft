@@ -17,7 +17,7 @@
     } while(0)
 
 struct theft_bloom;             /* bloom filter */
-struct theft_mt;                /* mersenne twister PRNG */
+struct theft_rng;               /* pseudorandom number generator */
 
 struct seed_info {
     const theft_seed run_seed;
@@ -75,7 +75,7 @@ struct counter_info {
 };
 
 struct prng_info {
-    struct theft_mt *mt;        /* random number generator */
+    struct theft_rng *rng;      /* random number generator */
     uint64_t buf;               /* buffer for PRNG bits */
     uint8_t bits_available;
     /* Bit pool, only used during autoshrinking. */

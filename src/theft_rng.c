@@ -58,14 +58,14 @@
  * multiple instances running in the same address space.
  * 
  * Also, the functions in the module's public interface have
- * been prefixed with "theft_mt_". */
+ * been prefixed with "theft_rng_". */
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "theft_mt.h"
+#include "theft_rng.h"
 
 #define THEFT_MT_PARAM_N 312
-struct theft_mt {
+struct theft_rng {
     uint64_t mt[THEFT_MT_PARAM_N]; /* the array for the state vector  */
     int16_t mti;
 };
@@ -76,23 +76,23 @@ struct theft_mt {
 #define UM 0xFFFFFFFF80000000ULL /* Most significant 33 bits */
 #define LM 0x7FFFFFFFULL /* Least significant 31 bits */
 
-static uint64_t genrand64_int64(struct theft_mt *r);
+static uint64_t genrand64_int64(struct theft_rng *r);
 
 /* Heap-allocate a mersenne twister struct. */
-struct theft_mt *theft_mt_init(uint64_t seed) {
-    struct theft_mt *mt = malloc(sizeof(struct theft_mt));
+struct theft_rng *theft_rng_init(uint64_t seed) {
+    struct theft_rng *mt = malloc(sizeof(struct theft_rng));
     if (mt == NULL) { return NULL; }
-    theft_mt_reset(mt, seed);
+    theft_rng_reset(mt, seed);
     return mt;
 }
 
 /* Free a heap-allocated mersenne twister struct. */
-void theft_mt_free(struct theft_mt *mt) {
+void theft_rng_free(struct theft_rng *mt) {
     free(mt);
 }
 
 /* initializes mt[NN] with a seed */
-void theft_mt_reset(struct theft_mt *mt, uint64_t seed)
+void theft_rng_reset(struct theft_rng *mt, uint64_t seed)
 {
     mt->mt[0] = seed;
     uint16_t mti = 0;
@@ -104,17 +104,17 @@ void theft_mt_reset(struct theft_mt *mt, uint64_t seed)
 }
 
 /* Get a 64-bit random number. */
-uint64_t theft_mt_random(struct theft_mt *mt) {
+uint64_t theft_rng_random(struct theft_rng *mt) {
     return genrand64_int64(mt);
 }
 
 /* Generate a random number on [0,1]-real-interval. */
-double theft_mt_uint64_to_double(uint64_t x) {
+double theft_rng_uint64_to_double(uint64_t x) {
     return (x >> 11) * (1.0/9007199254740991.0);
 }
 
 /* generates a random number on [0, 2^64-1]-interval */
-static uint64_t genrand64_int64(struct theft_mt *r)
+static uint64_t genrand64_int64(struct theft_rng *r)
 {
     int i;
     uint64_t x;
@@ -125,7 +125,7 @@ static uint64_t genrand64_int64(struct theft_mt *r)
         /* if init has not been called, */
         /* a default initial seed is used */
         if (r->mti == NN+1)
-            theft_mt_reset(r, 5489ULL);
+            theft_rng_reset(r, 5489ULL);
 
         for (i=0;i<NN-MM;i++) {
             x = (r->mt[i]&UM)|(r->mt[i+1]&LM);
