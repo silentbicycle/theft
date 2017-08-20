@@ -1,6 +1,6 @@
 #include "test_theft.h"
 
-#include "theft_mt.h"
+#include "theft_rng.h"
 
 #include <sys/time.h>
 #include <assert.h>
@@ -540,9 +540,9 @@ prop_expected_seed_is_used(struct theft *t, void *arg0) {
 }
 
 TEST expected_seed_should_be_used_first(void) {
-    struct theft_mt *mt = theft_mt_init(EXPECTED_SEED);
-    expected_value = theft_mt_random(mt);
-    theft_mt_free(mt);
+    struct theft_rng *rng = theft_rng_init(EXPECTED_SEED);
+    expected_value = theft_rng_random(rng);
+    theft_rng_free(rng);
 
     struct theft_run_config cfg = {
         .name = __func__,
@@ -719,10 +719,10 @@ TEST gen_pre_halt(void) {
     enum theft_run_res res = theft_run(&cfg);
 
     ASSERT_EQ(THEFT_RUN_PASS, res);
-    ASSERT_EQ_FMT(2LU, report.pass, "%zd");
-    ASSERT_EQ_FMT(0LU, report.fail, "%zd");
-    ASSERT_EQ_FMT(0LU, report.skip, "%zd");
-    ASSERT_EQ_FMT(0LU, report.dup, "%zd");
+    ASSERT_EQ_FMT((size_t)2, report.pass, "%zd");
+    ASSERT_EQ_FMT((size_t)0, report.fail, "%zd");
+    ASSERT_EQ_FMT((size_t)0, report.skip, "%zd");
+    ASSERT_EQ_FMT((size_t)0, report.dup, "%zd");
 
     PASS();
 }
@@ -845,7 +845,7 @@ TEST only_shrink_three_times(void) {
 
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
-    ASSERT_EQ_FMT(3LU, env.shrinks, "%zd");
+    ASSERT_EQ_FMT((size_t)3, env.shrinks, "%zd");
     PASS();
 }
 
@@ -909,7 +909,7 @@ TEST save_local_minimum_and_re_run(void) {
     ASSERT_EQ(THEFT_RUN_FAIL, res);
     ASSERT(!env.fail);
     ASSERT_EQ_FMTm("three trial-post and three shrink-post hook runs",
-        33LU, env.reruns, "%zd");
+        (size_t)33, env.reruns, "%zd");
     ASSERT_EQ_FMT(12346U, env.local_minimum, "%" PRIu32);
     PASS();
 }
@@ -1134,7 +1134,7 @@ prop_just_abort(struct theft *t, void *arg1) {
  * due to RLIMIT_NPROC. This should exercise theft's
  * exponential back-off and cleaning up of terminated
  * child processes. */
-TEST shrink_abort_immediately_to_stress_forking(void) {
+TEST shrink_abort_immediately_to_stress_forking__slow(void) {
     enum theft_run_res res;
 
     struct crash_env env = { .minimum = false };
@@ -1441,7 +1441,7 @@ fork_post_rlimit_cpu(const struct theft_hook_fork_post_info *info, void *env) {
 /* Fork a child process, set a resource limit on CPU usage time,
  * and use shrinking to determine the smallest double-recursive
  * Fibonacci number calculation that takes over a second of CPU. */
-TEST forking_privilege_drop_cpu_limit(void) {
+TEST forking_privilege_drop_cpu_limit__slow(void) {
     struct theft_run_config cfg = {
         .name = __func__,
         .prop1 = prop_too_much_cpu,
@@ -1460,6 +1460,60 @@ TEST forking_privilege_drop_cpu_limit(void) {
     enum theft_run_res res = theft_run(&cfg);
     ASSERT_ENUM_EQm("should fail due to CPU limit",
         THEFT_RUN_FAIL, res, theft_run_res_str);
+    PASS();
+}
+
+struct arg_check_env {
+    uint8_t tag;
+    uint16_t value;
+    bool match;
+};
+
+static enum theft_trial_res
+prop_even(struct theft *t, void *arg1) {
+    struct arg_check_env *env = theft_hook_get_env(t);
+    assert(env->tag == 'A');
+
+    uint16_t v = *(uint16_t *)arg1;
+    env->value = v;
+
+    return (v & 1 ? THEFT_TRIAL_FAIL : THEFT_TRIAL_PASS);
+}
+
+static enum theft_hook_trial_post_res
+check_arg_is_odd(const struct theft_hook_trial_post_info *info,
+        void *void_env) {
+    struct arg_check_env *env = void_env;
+
+    if (info->result == THEFT_TRIAL_FAIL) {
+        uint16_t v = *(uint16_t *)info->args[0];
+        if (v == env->value) {
+            env->match = true;
+        }
+    }
+
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+TEST trial_post_hook_gets_correct_args(void) {
+    struct arg_check_env env = { .tag = 'A', };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_even,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint16_t) },
+        .trials = 100,
+        .seed = theft_seed_of_time(),
+        .hooks = {
+            .trial_post = check_arg_is_odd,
+            .env = &env,
+        },
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should fail", THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERTm("value seen by trial_post hook did not match",
+        env.match);
     PASS();
 }
 
@@ -1482,13 +1536,14 @@ SUITE(integration) {
     /* Tests for forking/timeouts */
     RUN_TEST(shrink_crash);
     RUN_TEST(shrink_infinite_loop);
-    RUN_TEST(shrink_abort_immediately_to_stress_forking);
+    RUN_TEST(shrink_abort_immediately_to_stress_forking__slow);
     RUN_TEST(shrink_and_SIGUSR1_on_timeout);
     RUN_TEST(forking_hook);
-    RUN_TEST(forking_privilege_drop_cpu_limit);
+    RUN_TEST(forking_privilege_drop_cpu_limit__slow);
 
     RUN_TEST(repeat_with_verbose_set_after_shrinking);
 
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);
+    RUN_TEST(trial_post_hook_gets_correct_args);
 }

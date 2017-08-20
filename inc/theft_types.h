@@ -161,10 +161,11 @@ theft_print_cb(FILE *f, const void *instance, void *env);
  * callback be used (if available), or should it also print the raw
  * bit pool and/or the request sizes and values? */
 enum theft_autoshrink_print_mode {
-    THEFT_AUTOSHRINK_PRINT_USER = 0x00,
-    THEFT_AUTOSHRINK_PRINT_BIT_POOL = 0x01,
-    THEFT_AUTOSHRINK_PRINT_REQUESTS = 0x02,
-    THEFT_AUTOSHRINK_PRINT_ALL = 0x03,
+    THEFT_AUTOSHRINK_PRINT_DEFAULT = 0x00,
+    THEFT_AUTOSHRINK_PRINT_USER = 0x01,
+    THEFT_AUTOSHRINK_PRINT_BIT_POOL = 0x02,
+    THEFT_AUTOSHRINK_PRINT_REQUESTS = 0x04,
+    THEFT_AUTOSHRINK_PRINT_ALL = 0x07,
 };
 
 /* Configuration for autoshrinking.

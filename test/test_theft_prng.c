@@ -62,7 +62,7 @@ TEST prng_should_return_same_series_from_same_seeds() {
     PASS();
 }
 
-TEST basic(uint64_t limit) {
+TEST basic_sampling(uint64_t limit) {
     struct theft_run_config cfg;
     memset(&cfg, 0, sizeof(cfg));
     struct theft *t = init(); ASSERT(t);
@@ -211,7 +211,7 @@ TEST check_random_choice_0(void) {
     PASS();
 }
 
-TEST check_random_choice_distribution(uint64_t limit, float tolerance) {
+TEST check_random_choice_distribution__slow(uint64_t limit, float tolerance) {
     struct theft *t = init(); ASSERT(t);
 
     size_t *counts = calloc(limit, sizeof(size_t));
@@ -242,7 +242,7 @@ SUITE(prng) {
     RUN_TEST(prng_should_return_same_series_from_same_seeds);
 
     for (volatile size_t limit = 100; limit < 100000; limit *= 10) {
-        RUN_TESTp(basic, limit);
+        RUN_TESTp(basic_sampling, limit);
         RUN_TESTp(bit_sampling_two_bytes, limit);
         RUN_TESTp(bit_sampling_bytes, limit);
         RUN_TESTp(bit_sampling_odd_sizes, limit);
@@ -254,11 +254,11 @@ SUITE(prng) {
     RUN_TEST(check_random_choice_0);
 
     for (volatile uint64_t limit = 1; limit < 300; limit++) {
-        RUN_TESTp(check_random_choice_distribution, limit, 0.05);
+        RUN_TESTp(check_random_choice_distribution__slow, limit, 0.05);
     }
 
     /* Relax the tolerance for these a bit, because we aren't running
      * enough trials to smooth out the distribution. */
-    RUN_TESTp(check_random_choice_distribution, 10000, 0.20);
+    RUN_TESTp(check_random_choice_distribution__slow, 10000, 0.20);
 #endif
 }

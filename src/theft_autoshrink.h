@@ -7,9 +7,7 @@
 #define AUTOSHRINK_ENV_TAG 0xa5
 #define AUTOSHRINK_BIT_POOL_TAG 'B'
 
-struct theft_autoshrink_bit_pool {
-    uint8_t tag;
-
+struct autoshrink_bit_pool {
     /* Bits will always be rounded up to a multiple of 64 bits,
      * and be aligned as a uint64_t. */
     uint8_t *bits;
@@ -17,9 +15,6 @@ struct theft_autoshrink_bit_pool {
     size_t bits_filled;         /* how many bits are available */
     size_t bits_ceil;           /* ceiling for bit buffer */
     size_t limit;               /* after limit bytes, return 0 */
-
-    /* The most recently generated instance, if any. */
-    void **instance;
 
     size_t consumed;
     size_t request_count;
@@ -89,11 +84,9 @@ struct autoshrink_model {
     uint8_t weights[5];
 };
 
-struct theft_autoshrink_env {
-    uint8_t tag;
-    struct theft_type_info user_type_info;
-
+struct autoshrink_env {
     // config
+    uint8_t arg_i;
     size_t pool_size;
     size_t pool_limit;
     enum theft_autoshrink_print_mode print_mode;
@@ -102,6 +95,7 @@ struct theft_autoshrink_env {
     uint8_t drop_bits;
 
     struct autoshrink_model model;
+    struct autoshrink_bit_pool *bit_pool;
 
     // allow injecting a fake prng, for testing
     bool leave_trailing_zeroes;
@@ -131,6 +125,12 @@ struct change_info {
     } u;
 };
 
+struct autoshrink_env *
+theft_autoshrink_alloc_env(struct theft *t, uint8_t arg_i,
+    const struct theft_type_info *type_info);
+
+void theft_autoshrink_free_env(struct theft *t, struct autoshrink_env *env);
+
 enum theft_autoshrink_wrap {
     THEFT_AUTOSHRINK_WRAP_OK,
     THEFT_AUTOSHRINK_WRAP_ERROR_MEMORY = -1,
@@ -141,11 +141,11 @@ theft_autoshrink_wrap(struct theft *t,
     struct theft_type_info *type_info, struct theft_type_info *wrapper);
 
 void theft_autoshrink_free_bit_pool(struct theft *t,
-    struct theft_autoshrink_bit_pool *pool);
+    struct autoshrink_bit_pool *pool);
 
 void
 theft_autoshrink_bit_pool_random(struct theft *t,
-    struct theft_autoshrink_bit_pool *pool,
+    struct autoshrink_bit_pool *pool,
     uint32_t bit_count, bool save_request,
     uint64_t *buf);
 
@@ -158,17 +158,32 @@ theft_autoshrink_update_model(struct theft *t,
     uint8_t arg_id, enum theft_trial_res res,
     uint8_t adjustment);
 
-/* These are only exported for testing. */
+/* Alloc callback, with autoshrink_env passed along. */
+enum theft_alloc_res
+theft_autoshrink_alloc(struct theft *t, struct autoshrink_env *env,
+    void **instance);
+
+theft_hash
+theft_autoshrink_hash(struct theft *t, const void *instance,
+    struct autoshrink_env *env, void *type_env);
+
+void
+theft_autoshrink_print(struct theft *t, FILE *f,
+    struct autoshrink_env *env, const void *instance, void *type_env);
+
 enum theft_shrink_res
 theft_autoshrink_shrink(struct theft *t,
-    const struct theft_autoshrink_bit_pool *orig, uint32_t tactic,
-    struct theft_autoshrink_env *env, void **output);
+    struct autoshrink_env *env,
+    uint32_t tactic, void **output,
+    struct autoshrink_bit_pool **output_bit_pool);
+
+/* This is only exported for testing. */
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
-    const struct theft_autoshrink_bit_pool *pool,
+    const struct autoshrink_bit_pool *pool,
     enum theft_autoshrink_print_mode print_mode);
 
 /* Set the next action the model will deliver. (This is a hook for testing.) */
-void theft_autoshrink_model_set_next(struct theft_autoshrink_env *env,
+void theft_autoshrink_model_set_next(struct autoshrink_env *env,
     enum autoshrink_action action);
 
 #endif
