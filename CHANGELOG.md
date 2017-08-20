@@ -22,6 +22,7 @@ and to otherwise print the requests. (This was the intentended behavior,
 but `THEFT_AUTOSHRINK_PRINT_USER` was 0, which meant it was instead
 clobbered with `THEFT_AUTOSHRINK_PRINT_REQUESTS`.)
 
+
 ### Other Improvements
 
 Internal refactoring: Autoshrinking is now better integrated into the

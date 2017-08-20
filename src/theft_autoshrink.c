@@ -931,14 +931,23 @@ theft_autoshrink_print(struct theft *t, FILE *f,
     /* If the user has a print callback defined, use it on
      * the instance, otherwise print the bit pool. */
     const struct theft_type_info *ti = t->prop.type_info[env->arg_i];
+    enum theft_autoshrink_print_mode print_mode = env->print_mode;
+
+    /* Default the print mode to either requests or (when provided)
+     * just calling the user print callback. */
+    if (print_mode == THEFT_AUTOSHRINK_PRINT_DEFAULT) {
+        print_mode = (ti->print == NULL
+            ? THEFT_AUTOSHRINK_PRINT_REQUESTS
+            : THEFT_AUTOSHRINK_PRINT_USER);
+    }
+
     if (ti->print) {
         ti->print(f, instance, type_env);
     }
 
     struct autoshrink_bit_pool *pool = env->bit_pool;
     assert(pool->bits_ceil >= pool->consumed);
-    theft_autoshrink_dump_bit_pool(f, pool->consumed, pool,
-        GET_DEF(env->print_mode, THEFT_AUTOSHRINK_PRINT_REQUESTS));
+    theft_autoshrink_dump_bit_pool(f, pool->consumed, pool, print_mode);
 }
 
 static bool append_request(struct autoshrink_bit_pool *pool,
