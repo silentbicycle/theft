@@ -211,6 +211,7 @@ void theft_autoshrink_free_bit_pool(struct theft *t,
     }
     assert(pool);
     assert(pool->bits);
+    if (pool->index) { free(pool->index); }
     free(pool->bits);
     free(pool->requests);
     free(pool);
@@ -294,11 +295,15 @@ enum theft_shrink_res
 theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
         uint32_t tactic, void **output,
         struct autoshrink_bit_pool **output_bit_pool) {
-    const struct autoshrink_bit_pool *orig = env->bit_pool;
+    struct autoshrink_bit_pool *orig = env->bit_pool;
     assert(orig);
 
     if (tactic >= GET_DEF(env->max_failed_shrinks, DEF_MAX_FAILED_SHRINKS)) {
         return THEFT_SHRINK_NO_MORE_TACTICS;
+    }
+
+    if (!build_index(orig)) {
+        return THEFT_SHRINK_ERROR;
     }
 
     /* Make a copy of the bit pool to shrink */
@@ -590,7 +595,6 @@ choose_and_mutate_request(struct theft *t,
                           struct autoshrink_env *env,
                           const struct autoshrink_bit_pool *orig,
                           struct autoshrink_bit_pool *pool) {
-
     autoshrink_prng_fun *prng = get_prng(t, env);
     enum mutation mtype = get_weighted_mutation(t, env);
 
@@ -767,13 +771,25 @@ choose_and_mutate_request(struct theft *t,
     }
 }
 
+static bool build_index(struct autoshrink_bit_pool *pool) {
+    if (pool->index == NULL) {
+        size_t *index = malloc(pool->request_count * sizeof(size_t *));
+        if (index == NULL) { return false; }
+
+        size_t total = 0;
+        for (size_t i = 0; i < pool->request_count; i++) {
+            index[i] = total;
+            total += pool->requests[i];
+        }
+        pool->index = index;
+    }
+    return true;
+}
+
 static size_t offset_of_pos(const struct autoshrink_bit_pool *orig,
                             size_t pos) {
-    size_t res = 0;
-    for (size_t i = 0; i < pos; i++) {
-        res += orig->requests[i];
-    }
-    return res;
+    assert(orig->index);
+    return orig->index[pos];
 }
 
 static void convert_bit_offset(size_t bit_offset,

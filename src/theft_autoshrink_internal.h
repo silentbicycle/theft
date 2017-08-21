@@ -33,6 +33,8 @@ static bool choose_and_mutate_request(struct theft *t,
     const struct autoshrink_bit_pool *orig,
     struct autoshrink_bit_pool *pool);
 
+static bool build_index(struct autoshrink_bit_pool *pool);
+
 static size_t offset_of_pos(const struct autoshrink_bit_pool *orig,
     size_t pos);
 

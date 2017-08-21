@@ -22,6 +22,7 @@ struct autoshrink_bit_pool {
     uint32_t *requests;
 
     size_t generation;
+    size_t *index;
 };
 
 /* How large should the default autoshrink bit pool be?
