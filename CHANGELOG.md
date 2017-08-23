@@ -1,5 +1,27 @@
 # theft Changes By Release
 
+## v0.4.2 - 2017-08-23
+
+### API Changes
+
+None.
+
+
+### Bug Fixes
+
+Fixed an autoshrinking bug that could cause shrinking to get stuck on
+values close to the actual minimimum.
+
+
+### Other Improvements
+
+When using the builtin floating point generators, a hexdump of the raw
+value is now printed along with the "%g"-formatted output, since it is
+lossy.
+
+Autoshrinking instances with many requests is now more efficient.
+
+
 ## v0.4.1 - 2017-08-20
 
 ### API Changes

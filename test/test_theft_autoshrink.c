@@ -1001,6 +1001,66 @@ TEST bulk_random_bits(void) {
     PASS();
 }
 
+#include <math.h>
+static enum theft_trial_res
+prop_abs_lt1(struct theft *t, void *arg1) {
+    double x = *(double *)arg1;
+    (void)t;
+
+    if (fabs(x) < 1) {
+        return THEFT_TRIAL_PASS;
+    } else {
+        return THEFT_TRIAL_FAIL;
+    }
+}
+
+struct test_env {
+    bool passed;
+};
+
+static enum theft_hook_trial_pre_res
+halt_after_seeing_1(const struct theft_hook_trial_pre_info *info, void *env) {
+    (void)info;
+    struct test_env *e = env;
+
+    if (e->passed) { return THEFT_HOOK_TRIAL_PRE_HALT; }
+    return THEFT_HOOK_TRIAL_PRE_CONTINUE;
+}
+
+static enum theft_hook_trial_post_res
+note_1(const struct theft_hook_trial_post_info *info,
+        void *env) {
+    struct test_env *e = env;
+    double x = *(double *)info->args[0];
+    if (x == 1) { e->passed = true; }
+    return THEFT_HOOK_TRIAL_POST_CONTINUE;
+}
+
+TEST double_abs_lt1(void) {
+    theft_seed seed = theft_seed_of_time();
+
+    enum theft_run_res res;
+    struct test_env e = { .passed = false, };
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_abs_lt1,
+        .seed = seed,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_double) },
+        .hooks = {
+            .trial_pre = halt_after_seeing_1,
+            .trial_post = note_1,
+            .env = (void *)&e,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_ENUM_EQm("should find counterexamples",
+        THEFT_RUN_FAIL, res, theft_run_res_str);
+    ASSERT(e.passed);
+    PASS();
+}
+
 SUITE(autoshrink) {
     // Various tests for single autoshrinking steps, with an injected PRNG
     RUN_TEST(ll_drop_nothing);
@@ -1030,4 +1090,6 @@ SUITE(autoshrink) {
     RUN_TESTp(ia_prop, "not starting with 9", prop_not_start_with_9);
 
     RUN_TEST(bulk_random_bits);
+
+    RUN_TEST(double_abs_lt1);
 }

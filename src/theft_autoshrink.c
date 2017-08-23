@@ -211,6 +211,7 @@ void theft_autoshrink_free_bit_pool(struct theft *t,
     }
     assert(pool);
     assert(pool->bits);
+    if (pool->index) { free(pool->index); }
     free(pool->bits);
     free(pool->requests);
     free(pool);
@@ -294,11 +295,15 @@ enum theft_shrink_res
 theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
         uint32_t tactic, void **output,
         struct autoshrink_bit_pool **output_bit_pool) {
-    const struct autoshrink_bit_pool *orig = env->bit_pool;
+    struct autoshrink_bit_pool *orig = env->bit_pool;
     assert(orig);
 
     if (tactic >= GET_DEF(env->max_failed_shrinks, DEF_MAX_FAILED_SHRINKS)) {
         return THEFT_SHRINK_NO_MORE_TACTICS;
+    }
+
+    if (!build_index(orig)) {
+        return THEFT_SHRINK_ERROR;
     }
 
     /* Make a copy of the bit pool to shrink */
@@ -368,12 +373,14 @@ truncate_trailing_zero_bytes(struct autoshrink_bit_pool *pool) {
     const size_t byte_size = (pool->bits_filled / 8)
       + ((pool->bits_filled % 8) == 0 ? 0 : 1);
     if (byte_size > 0) {
-        for (size_t i = byte_size - 1; i > 0; i--) {
+        size_t i = byte_size;
+        do {
+            i--;
             if (pool->bits[i] != 0x00) {
                 nsize = i + 1;
                 break;
             }
-        }
+        } while (i > 0);
     }
     nsize *= 8;
     LOG(2, "Truncating to nsize: %zd\n", nsize);
@@ -509,8 +516,6 @@ static void drop_from_bit_pool(struct theft *t,
     copy->bits_filled = dst_offset;
 }
 
-#define MAX_CHANGES 5
-
 static void mutate_bit_pool(struct theft *t,
                             struct autoshrink_env *env,
                             const struct autoshrink_bit_pool *orig,
@@ -525,9 +530,14 @@ static void mutate_bit_pool(struct theft *t,
      * to shrink the pool. */
     assert(t->prng.bit_pool == NULL);
 
+    uint8_t max_changes = 5;
+    while ((1LLU << max_changes) < orig->request_count) {
+        max_changes++;
+    }
+
     /* Get some random bits, and for each 1 bit, we will make one change in
      * the pool copy. */
-    uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
+    uint8_t change_count = popcount(prng(max_changes, env->udata)) + 1;
 
     /* If there are only a few requests, and none of them are large,
      * then limit the change count to the request count. This helps
@@ -590,7 +600,6 @@ choose_and_mutate_request(struct theft *t,
                           struct autoshrink_env *env,
                           const struct autoshrink_bit_pool *orig,
                           struct autoshrink_bit_pool *pool) {
-
     autoshrink_prng_fun *prng = get_prng(t, env);
     enum mutation mtype = get_weighted_mutation(t, env);
 
@@ -767,13 +776,25 @@ choose_and_mutate_request(struct theft *t,
     }
 }
 
+static bool build_index(struct autoshrink_bit_pool *pool) {
+    if (pool->index == NULL) {
+        size_t *index = malloc(pool->request_count * sizeof(size_t));
+        if (index == NULL) { return false; }
+
+        size_t total = 0;
+        for (size_t i = 0; i < pool->request_count; i++) {
+            index[i] = total;
+            total += pool->requests[i];
+        }
+        pool->index = index;
+    }
+    return true;
+}
+
 static size_t offset_of_pos(const struct autoshrink_bit_pool *orig,
                             size_t pos) {
-    size_t res = 0;
-    for (size_t i = 0; i < pos; i++) {
-        res += orig->requests[i];
-    }
-    return res;
+    assert(orig->index);
+    return orig->index[pos];
 }
 
 static void convert_bit_offset(size_t bit_offset,
