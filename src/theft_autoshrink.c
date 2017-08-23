@@ -516,8 +516,6 @@ static void drop_from_bit_pool(struct theft *t,
     copy->bits_filled = dst_offset;
 }
 
-#define MAX_CHANGES 5
-
 static void mutate_bit_pool(struct theft *t,
                             struct autoshrink_env *env,
                             const struct autoshrink_bit_pool *orig,
@@ -532,9 +530,14 @@ static void mutate_bit_pool(struct theft *t,
      * to shrink the pool. */
     assert(t->prng.bit_pool == NULL);
 
+    uint8_t max_changes = 5;
+    while ((1LLU << max_changes) < orig->request_count) {
+        max_changes++;
+    }
+
     /* Get some random bits, and for each 1 bit, we will make one change in
      * the pool copy. */
-    uint8_t change_count = popcount(prng(MAX_CHANGES, env->udata)) + 1;
+    uint8_t change_count = popcount(prng(max_changes, env->udata)) + 1;
 
     /* If there are only a few requests, and none of them are large,
      * then limit the change count to the request count. This helps
