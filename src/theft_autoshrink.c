@@ -373,12 +373,14 @@ truncate_trailing_zero_bytes(struct autoshrink_bit_pool *pool) {
     const size_t byte_size = (pool->bits_filled / 8)
       + ((pool->bits_filled % 8) == 0 ? 0 : 1);
     if (byte_size > 0) {
-        for (size_t i = byte_size - 1; i > 0; i--) {
+        size_t i = byte_size;
+        do {
+            i--;
             if (pool->bits[i] != 0x00) {
                 nsize = i + 1;
                 break;
             }
-        }
+        } while (i > 0);
     }
     nsize *= 8;
     LOG(2, "Truncating to nsize: %zd\n", nsize);
