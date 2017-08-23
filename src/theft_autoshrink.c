@@ -778,7 +778,7 @@ choose_and_mutate_request(struct theft *t,
 
 static bool build_index(struct autoshrink_bit_pool *pool) {
     if (pool->index == NULL) {
-        size_t *index = malloc(pool->request_count * sizeof(size_t *));
+        size_t *index = malloc(pool->request_count * sizeof(size_t));
         if (index == NULL) { return false; }
 
         size_t total = 0;
