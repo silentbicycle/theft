@@ -219,6 +219,7 @@ enum theft_hook_run_pre_res {
     THEFT_HOOK_RUN_PRE_CONTINUE,
 };
 struct theft_hook_run_pre_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;        /* total number of trials */
     theft_seed run_seed;
@@ -234,6 +235,7 @@ enum theft_hook_run_post_res {
     THEFT_HOOK_RUN_POST_CONTINUE,
 };
 struct theft_hook_run_post_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     theft_seed run_seed;
@@ -252,6 +254,7 @@ enum theft_hook_gen_args_pre_res {
     THEFT_HOOK_GEN_ARGS_PRE_HALT,
 };
 struct theft_hook_gen_args_pre_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     size_t trial_id;
@@ -273,6 +276,7 @@ enum theft_hook_trial_pre_res {
     THEFT_HOOK_TRIAL_PRE_HALT,
 };
 struct theft_hook_trial_pre_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     size_t trial_id;
@@ -363,6 +367,7 @@ enum theft_hook_shrink_pre_res {
     THEFT_HOOK_SHRINK_PRE_HALT,
 };
 struct theft_hook_shrink_pre_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     size_t trial_id;
@@ -393,6 +398,7 @@ enum theft_shrink_post_state {
     THEFT_SHRINK_POST_DONE_SHRINKING,
 };
 struct theft_hook_shrink_post_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     size_t trial_id;
@@ -424,6 +430,7 @@ enum theft_hook_shrink_trial_post_res {
     THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT_ONCE,
 };
 struct theft_hook_shrink_trial_post_info {
+    struct theft *t;
     const char *prop_name;
     size_t total_trials;
     size_t trial_id;

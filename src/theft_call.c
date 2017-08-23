@@ -331,6 +331,7 @@ run_fork_post_hook(struct theft *t, void **args) {
     }
 
     struct theft_hook_fork_post_info info = {
+        .t = t,
         .prop_name = t->prop.name,
         .total_trials = t->prop.trial_count,
         .failures = t->counters.fail,

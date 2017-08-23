@@ -214,6 +214,7 @@ shrink_pre_hook(struct theft *t,
         uint8_t arg_index, void *arg, uint32_t tactic) {
     if (t->hooks.shrink_pre != NULL) {
         struct theft_hook_shrink_pre_info hook_info = {
+            .t = t,
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .failures = t->counters.fail,
@@ -253,6 +254,7 @@ shrink_post_hook(struct theft *t,
         }
 
         struct theft_hook_shrink_post_info hook_info = {
+            .t = t,
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .run_seed = t->seeds.run_seed,
@@ -279,6 +281,7 @@ shrink_trial_post_hook(struct theft *t,
         enum theft_trial_res result) {
     if (t->hooks.shrink_trial_post != NULL) {
         struct theft_hook_shrink_trial_post_info hook_info = {
+            .t = t,
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .failures = t->counters.fail,

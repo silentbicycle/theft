@@ -143,6 +143,7 @@ enum theft_run_res
 theft_run_trials(struct theft *t) {
     if (t->hooks.run_pre != NULL) {
         struct theft_hook_run_pre_info hook_info = {
+            .t = t,
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .run_seed = t->seeds.run_seed,
@@ -180,6 +181,7 @@ theft_run_trials(struct theft *t) {
     theft_hook_run_post_cb *run_post = t->hooks.run_post;
     if (run_post != NULL) {
         struct theft_hook_run_post_info hook_info = {
+            .t = t,
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .run_seed = t->seeds.run_seed,
@@ -234,6 +236,7 @@ run_step(struct theft *t, size_t trial, theft_seed *seed) {
     theft_hook_gen_args_pre_cb *gen_args_pre = t->hooks.gen_args_pre;
     if (gen_args_pre != NULL) {
         struct theft_hook_gen_args_pre_info hook_info = {
+            .t = t,
             .prop_name = t->prop.name,
             .total_trials = t->prop.trial_count,
             .failures = t->counters.fail,
@@ -314,6 +317,7 @@ run_step(struct theft *t, size_t trial, theft_seed *seed) {
         LOG(4 - LOG_RUN, "gen -- ok\n");
         if (t->hooks.trial_pre != NULL) {
             struct theft_hook_trial_pre_info info = {
+                .t = t,
                 .prop_name = t->prop.name,
                 .total_trials = t->prop.trial_count,
                 .failures = t->counters.fail,
