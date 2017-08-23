@@ -201,8 +201,21 @@ ALLOC_FSCALAR(float, float, fmodf, 8*sizeof(float),
 ALLOC_FSCALAR(double, double, fmod, 8*sizeof(double),
     0, 1, -1, NAN,
     NAN, INFINITY, -INFINITY, DBL_MIN, DBL_MAX)
-PRINT_SCALAR(float, float, "%g")
-PRINT_SCALAR(double, double, "%g")
+
+static void float_print(FILE *f, const void *instance, void *env) {
+    (void)env;
+    float fl = *(float *)instance;
+    uint32_t u32 = (uint32_t)fl;
+    fprintf(f, "%g (0x%08" PRIx32 ")", fl, u32);
+}
+
+static void double_print(FILE *f, const void *instance, void *env) {
+    (void)env;
+    double d = *(double *)instance;
+    uint64_t u64 = (uint64_t)d;
+    fprintf(f, "%g (0x%016" PRIx64 ")", d, u64);
+}
+
 HASH_SCALAR(float, float)
 HASH_SCALAR(double, double)
 #endif
