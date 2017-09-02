@@ -1,5 +1,33 @@
 # theft Changes By Release
 
+## v0.4.3 - 2017-09-xx
+
+### API Changes
+
+Added the `.exit_timeout` field to `struct theft_run_config`'s
+`.fork` configuration field. (As this uses the default when 0,
+it isn't a breaking API change.)
+
+
+### Bug Fixes
+
+Fixed worker process management (issue #19): theft now ensures that
+forked child processes have terminated and been cleaned up with
+`waitpid` before starting another trial, to prevent zombie processes
+from accumulating.
+
+
+### Other Improvements
+
+Forked worker processes that have timed out are now given a configurable
+window to clean up and exit (possibly successfully) before they are
+terminated with SIGKILL.
+
+Moved forked worker process state from local variables to a
+`worker_info` structure in `struct theft`. This gathers state that will
+later be used to manage multiple workers in parallel (issue #16).
+
+
 ## v0.4.2 - 2017-08-23
 
 ### API Changes

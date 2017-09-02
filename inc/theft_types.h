@@ -472,6 +472,11 @@ theft_hook_shrink_trial_post_cb(const struct theft_hook_shrink_trial_post_info *
 /* A property can have at most this many arguments. */
 #define THEFT_MAX_ARITY 7
 
+/* For worker processes that were sent a timeout signal,
+ * how long should they be given to terminate and exit
+ * before sending kill(pid, SIGKILL). */
+#define THEFT_DEF_EXIT_TIMEOUT_MSEC 100
+
 /* Configuration struct for a theft run. */
 struct theft_run_config {
     /* Property function under test.
@@ -518,6 +523,10 @@ struct theft_run_config {
         size_t timeout;         /* in milliseconds (or 0, for none) */
         /* signal to send after timeout, defaults to SIGTERM */
         int signal;
+        /* For workers sent a timeout signal, how long should
+         * theft wait for them to actually exit (in msec).
+         * Defaults to THEFT_DEF_EXIT_TIMEOUT_MSEC. */
+        size_t exit_timeout;
     } fork;
 
     /* These functions are called in several contexts to report on
