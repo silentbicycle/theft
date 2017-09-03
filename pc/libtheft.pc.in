@@ -1,0 +1,13 @@
+prefix=@prefix@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libtheft
+Description: Theft
+Version: 0.4.3
+Requires:
+Requires.private:
+Libs: -L${libdir} -ltheft
+Libs.private: -lm
+Cflags: -I${includedir}
+
