@@ -4,6 +4,7 @@
 #include "theft.h"
 #include <inttypes.h>
 #include <string.h>
+#include <sys/types.h>
 
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
 #define DEFAULT_THEFT_SEED 0xa600d64b175eedLLU
@@ -32,6 +33,7 @@ struct fork_info {
     const bool enable;
     const size_t timeout;
     const int signal;
+    const size_t exit_timeout;
 };
 
 struct prop_info {
@@ -108,6 +110,19 @@ struct trial_info {
     struct arg_info args[THEFT_MAX_ARITY];
 };
 
+enum worker_state {
+    WS_INACTIVE,
+    WS_ACTIVE,
+    WS_STOPPED,
+};
+
+struct worker_info {
+    enum worker_state state;
+    int fds[2];
+    pid_t pid;
+    int wstatus;
+};
+
 /* Handle to state for the entire run. */
 struct theft {
     FILE *out;
@@ -121,6 +136,7 @@ struct theft {
     struct hook_info hooks;
     struct counter_info counters;
     struct trial_info trial;
+    struct worker_info workers[1];
 };
 
 #endif
