@@ -56,7 +56,8 @@ static void init_model(struct autoshrink_env *env);
 static enum mutation
 get_weighted_mutation(struct theft *t, struct autoshrink_env *env);
 
-static bool should_drop(struct theft *t, struct autoshrink_env *env);
+static bool should_drop(struct theft *t, struct autoshrink_env *env,
+    size_t request_count);
 
 static void lazily_fill_bit_pool(struct theft *t,
     struct autoshrink_bit_pool *pool,

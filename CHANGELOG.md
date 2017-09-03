@@ -39,6 +39,10 @@ Moved forked worker process state from local variables to a
 `worker_info` structure in `struct theft`. This gathers state that will
 later be used to manage multiple workers in parallel (issue #16).
 
+Limited how much the autoshrinker attempts to shrink by dropping
+requests when there is a small number of requests -- this reduces
+dead ends during shrinking.
+
 Added a `pkg-config` file for libtheft.a. (Thanks @katef.)
 
 

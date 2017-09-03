@@ -334,7 +334,7 @@ theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
         init_model(env);
     }
 
-    if (should_drop(t, env)) {
+    if (should_drop(t, env, orig->request_count)) {
         env->model.cur_set |= ASA_DROP;
         drop_from_bit_pool(t, env, orig, copy);
     } else {
@@ -1021,10 +1021,15 @@ static void init_model(struct autoshrink_env *env) {
     };
 }
 
-static bool should_drop(struct theft *t, struct autoshrink_env *env) {
+static bool should_drop(struct theft *t, struct autoshrink_env *env,
+        size_t request_count) {
     autoshrink_prng_fun *prng = get_prng(t, env);
+    /* Limit the odds of dropping when there are only a few requests */
+    const int rc_mul = 8;
+    uint8_t weight = env->model.weights[WEIGHT_DROP];
+    if (weight > rc_mul * request_count) { weight = rc_mul * request_count; }
     if (env->model.next_action == 0x00) {
-        return prng(8, env->udata) < env->model.weights[WEIGHT_DROP];
+        return prng(8, env->udata) < weight;
     } else {
         return env->model.next_action == ASA_DROP;
     }
