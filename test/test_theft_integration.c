@@ -1434,7 +1434,7 @@ TEST forking_hook(void) {
     PASS();
 }
 
-static size_t Fibonacci(uint8_t x) {
+static size_t Fibonacci(uint16_t x) {
     if (x < 2) {
         return 1;
     } else {
