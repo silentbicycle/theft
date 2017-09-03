@@ -92,10 +92,9 @@ fields in this struct -- see the definition for `struct
 theft_autoshrink_config` in `inc/theft_types.h`.
 
 If autoshrinking is enabled, the `theft_type_info` struct should not
-have a `shrink` callback defined. If custom `hash` and/or `print`
-callback are provided, they will always be run. Otheriwes, default
-behavior will be provided for `hash` (hashing the portion of bit pool
-that is used) and `print` (print the bit pool).
+have `shrink` or `hash` callbacks defined. If a custom `print` callback
+it provided, it will always be run. Otherwise, default behavior will be
+provided for `print` (print the bit pool's requests).
 
 The `print` behavior can be configured via the `print_mode` field:
 

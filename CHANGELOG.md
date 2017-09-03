@@ -16,6 +16,18 @@ forked child processes have terminated and been cleaned up with
 `waitpid` before starting another trial, to prevent zombie processes
 from accumulating.
 
+Fixed a bug where autoshrinking would find a minimal counter-example,
+but then erroneously shrink to a non-minimal one, and subsequently
+reject the minimal one as already tried. This was caused by a custom
+hash callback that hashed values when autoshrinking -- it would land on
+a minimal value (1) right away due to the aux. built-in generator's
+special values list, then drop the bits that chose using the special
+table, and end up with a larger value. If the special value list input
+generating 1 and generating 1 normally hashed differently, then it would
+shrink back to 1. This means that providing a custom hash function with
+autoshrinking enabled should be an API misuse error, but that is an
+interface change, so it will wait until a non-bugfix release.
+
 
 ### Other Improvements
 
