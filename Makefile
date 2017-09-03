@@ -60,7 +60,7 @@ clean:
 
 tags: ${BUILD}/TAGS
 
-${BUILD}/lib${PROJECT}.a: ${OBJS}
+${BUILD}/lib${PROJECT}.a: ${OBJS} ${BUILD}/lib${PROJECT}.pc
 	ar -rcs ${BUILD}/lib${PROJECT}.a ${OBJS}
 
 ${BUILD}/test_${PROJECT}: ${OBJS} ${TEST_OBJS}
