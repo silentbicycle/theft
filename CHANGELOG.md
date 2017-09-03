@@ -27,6 +27,8 @@ Moved forked worker process state from local variables to a
 `worker_info` structure in `struct theft`. This gathers state that will
 later be used to manage multiple workers in parallel (issue #16).
 
+Added a `pkg-config` file for libtheft.a. (Thanks @katef.)
+
 
 ## v0.4.2 - 2017-08-23
 
