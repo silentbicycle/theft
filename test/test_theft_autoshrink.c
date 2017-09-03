@@ -1061,7 +1061,17 @@ TEST double_abs_lt1(void) {
     PASS();
 }
 
+static void teardown(void *unused) {
+    (void)unused;
+    if (test_pool.index) {
+        free(test_pool.index);
+        test_pool.index = NULL;
+    }
+}
+
 SUITE(autoshrink) {
+    SET_TEARDOWN(teardown, NULL);
+
     // Various tests for single autoshrinking steps, with an injected PRNG
     RUN_TEST(ll_drop_nothing);
     RUN_TEST(ll_drop_nothing_but_do_truncate);
