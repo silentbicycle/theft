@@ -1,6 +1,6 @@
 # theft Changes By Release
 
-## v0.4.3 - 2017-09-xx
+## v0.4.3 - 2017-09-04
 
 ### API Changes
 
@@ -44,6 +44,8 @@ requests when there is a small number of requests -- this reduces
 dead ends during shrinking.
 
 Added a `pkg-config` file for libtheft.a. (Thanks @katef.)
+
+Fixed typos in the documentation. (Thanks @katef.)
 
 
 ## v0.4.2 - 2017-08-23
