@@ -7,6 +7,10 @@
 #include <assert.h>
 #include <inttypes.h>
 
+/* Get a theft handle for testing functions that need one, but
+ * don't ever actually run the test. Free with theft_run_free. */
+struct theft *test_theft_init(void);
+
 SUITE_EXTERN(prng);
 SUITE_EXTERN(autoshrink);
 SUITE_EXTERN(aux);

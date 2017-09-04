@@ -94,29 +94,8 @@ static struct autoshrink_bit_pool test_pool = {
     .requests = test_pool_requests,
 };
 
-static enum theft_trial_res unused(struct theft *t, void *v) {
-    (void)t;
-    (void)v;
-    return THEFT_TRIAL_ERROR;
-}
-
-static struct theft *init(void) {
-    struct theft *t = NULL;
-    struct theft_run_config cfg = {
-        .prop1 = unused,
-        .type_info = { &ll_info },
-    };
-
-    enum theft_run_init_res res = theft_run_init(&cfg, &t);
-    if (res == THEFT_RUN_INIT_OK) {
-        return t;
-    } else {
-        return NULL;
-    }
-}
-
 TEST ll_drop_nothing(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     struct fake_prng_info prng_info = {
         .pairs = {
@@ -176,7 +155,7 @@ TEST ll_drop_nothing(void) {
 }
 
 TEST ll_drop_nothing_but_do_truncate(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     struct fake_prng_info prng_info = {
         .pairs = {
@@ -234,7 +213,7 @@ TEST ll_drop_nothing_but_do_truncate(void) {
 }
 
 TEST ll_drop_first(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     struct fake_prng_info prng_info = {
         .pairs = {
@@ -299,7 +278,7 @@ TEST ll_drop_first(void) {
 }
 
 TEST ll_drop_third_and_fourth(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     struct fake_prng_info prng_info = {
         .pairs = {
@@ -359,7 +338,7 @@ TEST ll_drop_third_and_fourth(void) {
 }
 
 TEST ll_drop_last(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     struct fake_prng_info prng_info = {
         .pairs = {
@@ -421,7 +400,7 @@ TEST ll_drop_last(void) {
 }
 
 TEST ll_mutate_shift(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     uint8_t pos_bits = 4; // log2ceil(11)
 
@@ -491,7 +470,7 @@ TEST ll_mutate_shift(void) {
 }
 
 TEST ll_mutate_mask(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     uint8_t pos_bits = 4; // log2ceil(11)
 
@@ -553,7 +532,7 @@ TEST ll_mutate_mask(void) {
 }
 
 TEST ll_mutate_swap(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     uint8_t pos_bits = 4; // log2ceil(11)
 
@@ -613,7 +592,7 @@ TEST ll_mutate_swap(void) {
 }
 
 TEST ll_mutate_sub(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     uint8_t pos_bits = 4; // log2ceil(11)
 
@@ -674,7 +653,7 @@ TEST ll_mutate_sub(void) {
 }
 
 TEST ll_mutate_retries_when_change_has_no_effect(void) {
-    struct theft *t = init(); ASSERT(t);
+    struct theft *t = test_theft_init(); ASSERT(t);
 
     uint8_t pos_bits = 4; // log2ceil(11)
 
