@@ -33,7 +33,7 @@ on a non-macOS virtual machine can improve performance.
 
 ## Timeouts
 
-If forking is enable, the `.timeout` field can be used to configure a
+If forking is enabled, the `.timeout` field can be used to configure a
 timeout for each property trial (in milliseconds). If `.timeout` is
 nonzero, theft will `kill(2)` the child process if the test does not
 complete within the timeout. The `kill` signal defaults to `SIGTERM`,
