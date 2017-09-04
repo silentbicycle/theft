@@ -1,5 +1,22 @@
 # theft Changes By Release
 
+## v0.5.0 - 2017-xx-yy
+
+### API Changes
+
+Added `struct theft *t` handle to all `theft_hook_*_info` structs.
+
+
+### Bug Fixes
+
+None.
+
+
+### Other Improvements
+
+None.
+
+
 ## v0.4.3 - 2017-09-04
 
 ### API Changes
