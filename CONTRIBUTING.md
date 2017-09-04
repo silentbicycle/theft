@@ -52,7 +52,7 @@ will lead to a minor version increase until then. All breaking changes
 should between releases should be noted in the CHANGELOG.
 
 Values derived from the PRNG bitstream are not expected to be consistent
-between versions of the library, though it wolud be better to stay
+between versions of the library, though it would be better to stay
 consistent when possible. (This may change after reaching version
 1.0.0.)
 
