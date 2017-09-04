@@ -304,7 +304,7 @@ These hooks can be overridden to add test-specific behavior. For example:
 - Halting after a certain number of failures (`gen_args_pre` or
   `trial_pre`)
 
-- Halting af a certain amount of time spent running tests
+- Halting after a certain amount of time spent running tests
 (`gen_args_pre` or `trial_pre`)
 
 - Running a failing trial again with a debugger attached or logging

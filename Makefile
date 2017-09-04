@@ -60,7 +60,7 @@ clean:
 
 tags: ${BUILD}/TAGS
 
-${BUILD}/lib${PROJECT}.a: ${OBJS}
+${BUILD}/lib${PROJECT}.a: ${OBJS} ${BUILD}/lib${PROJECT}.pc
 	ar -rcs ${BUILD}/lib${PROJECT}.a ${OBJS}
 
 ${BUILD}/test_${PROJECT}: ${OBJS} ${TEST_OBJS}
@@ -97,22 +97,28 @@ ${BUILD}/theft_autoshrink.o: ${BUILD}/bits_lut.h
 ${BUILD}/bits_lut.h: | ${BUILD}
 	${SCRIPTS}/mk_bits_lut > $@
 
+${BUILD}/%.pc: pc/%.pc.in | ${BUILD}
+	sed -e 's,@prefix@,${PREFIX},g' $< > $@
+
 # Installation
 PREFIX ?=	/usr/local
 INSTALL ?= 	install
 RM ?=		rm
 
-install: ${BUILD}/lib${PROJECT}.a
+install: ${BUILD}/lib${PROJECT}.a ${BUILD}/lib${PROJECT}.pc
 	${INSTALL} -d ${PREFIX}/lib/
 	${INSTALL} -c ${BUILD}/lib${PROJECT}.a ${PREFIX}/lib/lib${PROJECT}.a
 	${INSTALL} -d ${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}.h ${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}_types.h ${PREFIX}/include/
+	${INSTALL} -d ${PREFIX}/share/pkgconfig/
+	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${PREFIX}/share/pkgconfig/
 
 uninstall:
 	${RM} ${PREFIX}/lib/lib${PROJECT}.a
 	${RM} ${PREFIX}/include/${PROJECT}.h
 	${RM} ${PREFIX}/include/${PROJECT}_types.h
+	${RM} ${PREFIX}/share/pkgconfig/lib${PROJECT}.pc
 
 
 # Other dependencies

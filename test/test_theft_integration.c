@@ -1252,6 +1252,51 @@ TEST shrink_and_SIGUSR1_on_timeout(void) {
     PASS();
 }
 
+static enum theft_trial_res
+prop_infinite_loop(struct theft *t, void *arg1) {
+    bool *v = (bool *)arg1;
+    (void)t;
+    (void)v;
+
+    struct sigaction action = {
+        .sa_handler = sigusr1_handler,
+    };
+    struct sigaction old_action;
+    if (-1 == sigaction(SIGUSR1, &action, &old_action)) {
+        return THEFT_TRIAL_ERROR;
+    }
+
+    for (;;) {
+        (void)poll(NULL, 0, 1);
+    }
+
+    return THEFT_TRIAL_ERROR;
+}
+
+/* Send the worker process a SIGUSR1 after a 10 msec timeout.
+ * Since it ignores the SIGUSR1, then make sure we send it
+ * a SIGKILL instead, so the test still terminates. */
+TEST shrink_and_SIGUSR1_on_timeout_then_SIGKILL(void) {
+    enum theft_run_res res;
+
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_infinite_loop,
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_bool) },
+        .trials = 1,
+        .fork = {
+            .enable = true,
+            .timeout = 10,
+            .signal = SIGUSR1,
+        },
+    };
+
+    res = theft_run(&cfg);
+    ASSERT_EQm("should fail: worker didn't exit after timeout signal",
+        THEFT_RUN_FAIL, res);
+    PASS();
+}
+
 static bool printed_verbose_msg = false;
 
 static enum theft_trial_res
@@ -1389,7 +1434,7 @@ TEST forking_hook(void) {
     PASS();
 }
 
-static size_t Fibonacci(uint8_t x) {
+static size_t Fibonacci(uint16_t x) {
     if (x < 2) {
         return 1;
     } else {
@@ -1538,6 +1583,7 @@ SUITE(integration) {
     RUN_TEST(shrink_infinite_loop);
     RUN_TEST(shrink_abort_immediately_to_stress_forking__slow);
     RUN_TEST(shrink_and_SIGUSR1_on_timeout);
+    RUN_TEST(shrink_and_SIGUSR1_on_timeout_then_SIGKILL);
     RUN_TEST(forking_hook);
     RUN_TEST(forking_privilege_drop_cpu_limit__slow);
 

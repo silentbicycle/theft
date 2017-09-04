@@ -1,5 +1,53 @@
 # theft Changes By Release
 
+## v0.4.3 - 2017-09-04
+
+### API Changes
+
+Added the `.exit_timeout` field to `struct theft_run_config`'s
+`.fork` configuration field. (As this uses the default when 0,
+it isn't a breaking API change.)
+
+
+### Bug Fixes
+
+Fixed worker process management (issue #19): theft now ensures that
+forked child processes have terminated and been cleaned up with
+`waitpid` before starting another trial, to prevent zombie processes
+from accumulating.
+
+Fixed a bug where autoshrinking would find a minimal counter-example,
+but then erroneously shrink to a non-minimal one, and subsequently
+reject the minimal one as already tried. This was caused by a custom
+hash callback that hashed values when autoshrinking -- it would land on
+a minimal value (1) right away due to the aux. built-in generator's
+special values list, then drop the bits that chose using the special
+table, and end up with a larger value. If the special value list input
+generating 1 and generating 1 normally hashed differently, then it would
+shrink back to 1. This means that providing a custom hash function with
+autoshrinking enabled should be an API misuse error, but that is an
+interface change, so it will wait until a non-bugfix release.
+
+
+### Other Improvements
+
+Forked worker processes that have timed out are now given a configurable
+window to clean up and exit (possibly successfully) before they are
+terminated with SIGKILL.
+
+Moved forked worker process state from local variables to a
+`worker_info` structure in `struct theft`. This gathers state that will
+later be used to manage multiple workers in parallel (issue #16).
+
+Limited how much the autoshrinker attempts to shrink by dropping
+requests when there is a small number of requests -- this reduces
+dead ends during shrinking.
+
+Added a `pkg-config` file for libtheft.a. (Thanks @katef.)
+
+Fixed typos in the documentation. (Thanks @katef.)
+
+
 ## v0.4.2 - 2017-08-23
 
 ### API Changes

@@ -18,10 +18,8 @@ theft_call(struct theft *t, void **args) {
 
     if (t->fork.enable) {
         struct timespec tv = { .tv_nsec = 1 };
-        int fds[2];
-        if (-1 == pipe(fds)) {
-            return THEFT_TRIAL_ERROR;
-        }
+        if (-1 == pipe(t->workers[0].fds)) { return THEFT_TRIAL_ERROR; }
+
         pid_t pid = -1;
         for (;;) {
             pid = fork();
@@ -30,15 +28,14 @@ theft_call(struct theft *t, void **args) {
                     /* If we get EAGAIN, then wait for terminated
                      * child processes a chance to clean up -- forking
                      * is probably failing due to RLIMIT_NPROC. */
-                    const int pre_sleep_errno = errno;
-                    int stat_loc = 0;
-                    (void)waitpid(-1, &stat_loc, WNOHANG);
+                    const int fork_errno = errno;
+                    if (!step_waitpid(t)) { return THEFT_TRIAL_ERROR; }
                     if (-1 == nanosleep(&tv, NULL)) {
                         perror("nanosleep");
                         return THEFT_TRIAL_ERROR;
                     }
                     if (tv.tv_nsec >= (1L << MAX_FORK_RETRIES)) {
-                        errno = pre_sleep_errno;
+                        errno = fork_errno;
                         perror("fork");
                         return THEFT_TRIAL_ERROR;
                     }
@@ -53,33 +50,36 @@ theft_call(struct theft *t, void **args) {
                 break;
             }
         }
+
         if (pid == -1) {
-            close(fds[0]);
-            close(fds[1]);
+            close(t->workers[0].fds[0]);
+            close(t->workers[0].fds[1]);
             return THEFT_TRIAL_ERROR;
         } else if (pid == 0) {  /* child */
-            close(fds[0]);
+            close(t->workers[0].fds[0]);
+            int out_fd = t->workers[0].fds[1];
             if (run_fork_post_hook(t, args) == THEFT_HOOK_FORK_POST_ERROR) {
                 uint8_t byte = (uint8_t)THEFT_TRIAL_ERROR;
-                ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
+                ssize_t wr = write(out_fd, (const void *)&byte, sizeof(byte));
                 (void)wr;
                 exit(EXIT_FAILURE);
             }
             res = theft_call_inner(t, args);
             uint8_t byte = (uint8_t)res;
-            ssize_t wr = write(fds[1], (const void *)&byte, sizeof(byte));
+            ssize_t wr = write(out_fd, (const void *)&byte, sizeof(byte));
             exit(wr == 1 && res == THEFT_TRIAL_PASS
                 ? EXIT_SUCCESS
                 : EXIT_FAILURE);
         } else {                /* parent */
-            close(fds[1]);
-            res = parent_handle_child_call(t, pid, fds[0]);
-            int stat_loc = 0;
-            pid_t wait_res = waitpid(pid, &stat_loc, WNOHANG);
-            LOG(2 - LOG_CALL, "%s: waitpid %d ? %d\n",
-                __func__, pid, wait_res);
-            (void)wait_res;
-            close(fds[0]);
+            close(t->workers[0].fds[1]);
+            t->workers[0].pid = pid;
+
+            t->workers[0].state = WS_ACTIVE;
+            res = parent_handle_child_call(t, pid, &t->workers[0]);
+            close(t->workers[0].fds[0]);
+            t->workers[0].state = WS_INACTIVE;
+
+            if (!step_waitpid(t)) { return THEFT_TRIAL_ERROR; }
             return res;
         }
     } else {                    /* just call */
@@ -89,7 +89,8 @@ theft_call(struct theft *t, void **args) {
 }
 
 static enum theft_trial_res
-parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
+parent_handle_child_call(struct theft *t, pid_t pid, struct worker_info *worker) {
+    const int fd = worker->fds[0];
     struct pollfd pfd[1] = {
         { .fd = fd, .events = POLLIN },
     };
@@ -134,21 +135,42 @@ parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
         if (-1 == kill(pid, kill_signal)) {
             return THEFT_TRIAL_ERROR;
         }
-        int stat_loc = 0;
-        pid_t wait_res = waitpid(pid, &stat_loc, 0);
-        LOG(2 - LOG_CALL, "%s: kill waitpid: %d ? %d\n",
-            __func__, pid, wait_res);
-        assert(wait_res == pid);
-        /* If the child called exit(EXIT_SUCCESS) then
-         * consider it a PASS, even though it timed out. */
-        LOG(2 - LOG_CALL, "exited? %d, exit_status %d\n",
-            WIFEXITED(stat_loc), WEXITSTATUS(stat_loc));
-        if (WIFEXITED(stat_loc) && WEXITSTATUS(stat_loc) == EXIT_SUCCESS) {
-            return THEFT_TRIAL_PASS;
-        } else {
-            return THEFT_TRIAL_FAIL;
+
+        /* Check if kill's signal made the child process terminate (or
+         * if it exited successfully, and there was just a race on the
+         * timeout). If so, save its exit status.
+         *
+         * If it still hasn't exited after the exit_timeout, then
+         * send it SIGKILL and wait for _that_ to make it exit. */
+        const size_t kill_time = 10; /* time to exit after SIGKILL */
+        const size_t timeout_msec = (t->fork.exit_timeout == 0
+            ? THEFT_DEF_EXIT_TIMEOUT_MSEC
+            : t->fork.exit_timeout);
+
+        /* After sending the signal to the timed out process,
+         * give it timeout_msec to actually exit (in case a custom
+         * signal is triggering some sort of cleanup) before sending
+         * SIGKILL and waiting up to kill_time it to change state. */
+        if (!wait_for_exit(t, worker, timeout_msec, kill_time)) {
+            return THEFT_TRIAL_ERROR;
         }
+
+        /* If the child still exited successfully, then consider it a
+         * PASS, even though it exceeded the timeout. */
+        if (worker->state == WS_STOPPED) {
+            const int st = worker->wstatus;
+            LOG(2 - LOG_CALL, "exited? %d, exit_status %d\n",
+                WIFEXITED(st), WEXITSTATUS(st));
+            if (WIFEXITED(st) && WEXITSTATUS(st) == EXIT_SUCCESS) {
+                return THEFT_TRIAL_PASS;
+            }
+        }
+
+        return THEFT_TRIAL_FAIL;
     } else {
+        /* As long as the result isn't a timeout, the worker can
+         * just be cleaned up by the next batch of waitpid()s. */
+        enum theft_trial_res trial_res = THEFT_TRIAL_ERROR;
         uint8_t res_byte = 0xFF;
         ssize_t rd = 0;
         for (;;) {
@@ -166,12 +188,76 @@ parent_handle_child_call(struct theft *t, pid_t pid, int fd) {
 
         if (rd == 0) {
             /* closed without response -> crashed */
-            return THEFT_TRIAL_FAIL;
+            trial_res = THEFT_TRIAL_FAIL;
         } else {
             assert(rd == 1);
-            return (enum theft_trial_res)res_byte;
+            trial_res = (enum theft_trial_res)res_byte;
+        }
+
+        return trial_res;
+    }
+}
+
+/* Clean up after all child processes that have changed state.
+ * Save the exit/termination status for worker processes. */
+static bool
+step_waitpid(struct theft *t) {
+    int wstatus = 0;
+    int old_errno = errno;
+    for (;;) {
+        errno = 0;
+        pid_t res = waitpid(-1, &wstatus, WNOHANG);
+        LOG(2 - LOG_CALL, "%s: waitpid? %d\n", __func__, res);
+        if (res == -1) {
+            if (errno == ECHILD) { break; } /* No Children */
+            perror("waitpid");
+            return THEFT_TRIAL_ERROR;
+        } else if (res == 0) {
+            break;   /* no children have changed state */
+        } else {
+            if (res == t->workers[0].pid) {
+                t->workers[0].state = WS_STOPPED;
+                t->workers[0].wstatus = wstatus;
+            }
         }
     }
+    errno = old_errno;
+    return true;
+}
+
+/* Wait timeout msec. for the worker to exit. If kill_timeout is
+ * non-zero, then send SIGKILL and wait that much longer. */
+static bool
+wait_for_exit(struct theft *t, struct worker_info *worker,
+    size_t timeout, size_t kill_timeout) {
+    for (size_t i = 0; i < timeout + kill_timeout; i++) {
+        if (!step_waitpid(t)) { return false; }
+        if (worker->state == WS_STOPPED) { break; }
+
+        /* If worker hasn't exited yet and kill_timeout is
+         * non-zero, send SIGKILL. */
+        if (i == timeout) {
+            assert(kill_timeout > 0);
+            assert(worker->pid != -1);
+            int kill_res = kill(worker->pid, SIGKILL);
+            if (kill_res == -1) {
+                if (kill_res == ESRCH) {
+                    /* Process no longer exists (it probably
+                     * just exited); let waitpid handle it. */
+                } else {
+                    perror("kill");
+                    return false;
+                }
+            }
+        }
+
+        const struct timespec one_msec = { .tv_nsec = 1000000 };
+        if (-1 == nanosleep(&one_msec, NULL)) {
+            perror("nanosleep");
+            return false;
+        }
+    }
+    return true;
 }
 
 static enum theft_trial_res

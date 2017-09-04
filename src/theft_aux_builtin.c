@@ -106,12 +106,6 @@ NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
         fprintf(f, FORMAT, *(TYPE *)instance);                         \
     }
 
-#define HASH_SCALAR(NAME, TYPE)                                        \
-    static theft_hash NAME ## _hash(const void *instance, void *env) { \
-        (void)env;                                                     \
-        return theft_hash_onepass((uint8_t *)instance, sizeof(TYPE));  \
-    }
-
 ALLOC_USCALAR(uint, unsigned int, 8*sizeof(unsigned int),
     0, 1, 2, 3, 4, 5, 6, 7,
     63, 64, 127, 128, 129, 255, UINT_MAX - 1, UINT_MAX)
@@ -178,20 +172,6 @@ PRINT_SCALAR(int16_t, int16_t, "%" PRId16)
 PRINT_SCALAR(int32_t, int32_t, "%" PRId32)
 PRINT_SCALAR(int64_t, int64_t, "%" PRId64)
 
-HASH_SCALAR(bool, bool)
-HASH_SCALAR(uint, unsigned int)
-HASH_SCALAR(uint8_t, uint8_t)
-HASH_SCALAR(uint16_t, uint16_t)
-HASH_SCALAR(uint32_t, uint32_t)
-HASH_SCALAR(uint64_t, uint64_t)
-HASH_SCALAR(size_t, size_t)
-
-HASH_SCALAR(int, int)
-HASH_SCALAR(int8_t, int8_t)
-HASH_SCALAR(int16_t, int16_t)
-HASH_SCALAR(int32_t, int32_t)
-HASH_SCALAR(int64_t, int64_t)
-
 #if THEFT_USE_FLOATING_POINT
 #include <math.h>
 #include <float.h>
@@ -216,8 +196,6 @@ static void double_print(FILE *f, const void *instance, void *env) {
     fprintf(f, "%g (0x%016" PRIx64 ")", d, u64);
 }
 
-HASH_SCALAR(float, float)
-HASH_SCALAR(double, double)
 #endif
 
 #define SCALAR_ROW(NAME)                                               \
@@ -226,7 +204,6 @@ HASH_SCALAR(double, double)
           .value = {                                                   \
             .alloc = NAME ## _alloc,                                   \
             .free = theft_generic_free_cb,                             \
-            .hash = NAME ## _hash,                                     \
             .print = NAME ## _print,                                   \
             .autoshrink_config = {                                     \
                 .enable = true,                                        \
@@ -274,12 +251,6 @@ char_ARRAY_alloc(struct theft *t, void *env, void **instance) {
     return THEFT_ALLOC_OK;
 }
 
-static theft_hash char_ARRAY_hash(const void *instance, void *env) {
-    (void)env;
-    const char *v = (const char *)instance;
-    return theft_hash_onepass((const uint8_t *)v, strlen(v));
-}
-
 static void hexdump(FILE *f, const uint8_t *raw, size_t size) {
     for (size_t row_i = 0; row_i < size; row_i += 16) {
         size_t rem = (size - row_i > 16 ? 16 : size - row_i);
@@ -313,7 +284,6 @@ static struct type_info_row rows[] = {
           .value = {
             .alloc = bool_alloc,
             .free = theft_generic_free_cb,
-            .hash = bool_hash,
             .print = bool_print,
             .autoshrink_config = {
                 .enable = true,
@@ -343,7 +313,6 @@ static struct type_info_row rows[] = {
           .value = {
             .alloc = char_ARRAY_alloc,
             .free = theft_generic_free_cb,
-            .hash = char_ARRAY_hash,
             .print = char_ARRAY_print,
             .autoshrink_config = {
                 .enable = true,
@@ -357,7 +326,6 @@ static struct type_info_row rows[] = {
           .value = {
             .alloc = char_ARRAY_alloc,
             .free = theft_generic_free_cb,
-            .hash = char_ARRAY_hash,
             .print = char_ARRAY_print,
             .autoshrink_config = {
                 .enable = true,

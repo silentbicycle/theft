@@ -52,6 +52,7 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
         .enable = cfg->fork.enable,
         .timeout = cfg->fork.timeout,
         .signal = cfg->fork.signal,
+        .exit_timeout = cfg->fork.exit_timeout,
     };
     memcpy(&t->fork, &fork, sizeof(fork));
 

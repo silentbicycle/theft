@@ -104,10 +104,10 @@ production, it just needs to be correct, and fast enough for testing.
 + For any order of receiving packets (including retransmissions), all
   packets should eventually be received and acknowledged, and every
   packet should be checksummed once, in order.
-  
+
 ### In data structure implementations
 
 + For any sequence of insertions and deletions, a balanced binary tree
   should always stay approximately balanced.
-  
+
 + For any input, a sorting algorithm should produce sorted output.
