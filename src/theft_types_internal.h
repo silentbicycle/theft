@@ -123,6 +123,14 @@ struct worker_info {
     int wstatus;
 };
 
+struct log_info {
+    /* TODO: This will be merged into each worker's managed state once
+     * concurrency is implemented. */
+    int16_t level;
+    FILE *file;
+    bool printed;
+};
+
 /* Handle to state for the entire run. */
 struct theft {
     FILE *out;
@@ -137,6 +145,7 @@ struct theft {
     struct counter_info counters;
     struct trial_info trial;
     struct worker_info workers[1];
+    struct log_info log;
 };
 
 #endif

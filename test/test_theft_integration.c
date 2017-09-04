@@ -1302,21 +1302,19 @@ static bool printed_verbose_msg = false;
 static enum theft_trial_res
 prop_even_and_not_between_100_and_5000(struct theft *t, void *arg1) {
     uint64_t *pv = (uint64_t *)arg1;
-    bool *verbose = theft_hook_get_env(t);
-    if (verbose == NULL) { return THEFT_TRIAL_ERROR; }
 
     uint64_t v = *pv;
     if (v & 0x01) {
-        if (*verbose) {
-            fprintf(stdout, "Failing: %" PRIu64 " is odd\n", v);
+        THEFT_LOG(t, 1, "Failing: %" PRIu64 " is odd\n", v);
+        if (theft_get_loglevel(t) > 0) {
             printed_verbose_msg = true;
         }
         return THEFT_TRIAL_FAIL;
     }
 
     if (v >= 100 && v <= 5000) {
-        if (*verbose) {
-            fprintf(stdout, "Failing: %" PRIu64 " is between 100 and 5000\n", v);
+        THEFT_LOG(t, 1, "Failing: %" PRIu64 " is between 100 and 5000\n", v);
+        if (theft_get_loglevel(t) > 0) {
             printed_verbose_msg = true;
         }
         return THEFT_TRIAL_FAIL;
@@ -1327,7 +1325,6 @@ prop_even_and_not_between_100_and_5000(struct theft *t, void *arg1) {
 
 struct verbose_test_env {
     char tag;
-    bool verbose;
     struct theft_print_trial_result_env print_env;
 };
 
@@ -1337,10 +1334,10 @@ trial_post_repeat_with_verbose_set(const struct theft_hook_trial_post_info *info
     void *env) {
     struct verbose_test_env *test_env = (struct verbose_test_env *)env;
     assert(test_env->tag == 'V');
-    test_env->verbose = false;
+    theft_set_loglevel(info->t, 0);
 
     if (info->result == THEFT_TRIAL_FAIL) {
-        test_env->verbose = !info->repeat; /* verbose next time */
+        theft_set_loglevel(info->t, 1);
         return THEFT_HOOK_TRIAL_POST_REPEAT_ONCE;
     }
 

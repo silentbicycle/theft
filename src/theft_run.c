@@ -69,6 +69,9 @@ theft_run_init(const struct theft_run_config *cfg, struct theft **output) {
     memcpy(&prop.type_info, cfg->type_info, sizeof(prop.type_info));
     memcpy(&t->prop, &prop, sizeof(prop));
 
+    struct log_info log = { .file = stdout, };
+    memcpy(&t->log, &log, sizeof(log));
+
     struct hook_info hooks = {
         .run_pre = (cfg->hooks.run_pre != NULL
             ? cfg->hooks.run_pre

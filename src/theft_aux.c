@@ -1,8 +1,9 @@
-#include "theft.h"
 #include "theft_types_internal.h"
 
 #include <assert.h>
 #include <sys/time.h>
+
+/* Misc. convenience functions that are part of the public API. */
 
 /* Name used when no property name is set. */
 static const char def_prop_name[] = "(anonymous)";
@@ -72,6 +73,11 @@ void theft_print_trial_result(
 
     size_t used = 0;
     char buf[64];
+
+    if (t->log.printed) {
+        t->log.printed = false;
+        env->column = 0;
+    }
 
     switch (info->result) {
     case THEFT_TRIAL_PASS:

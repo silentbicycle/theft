@@ -6,6 +6,11 @@
 
 Added `struct theft *t` handle to all `theft_hook_*_info` structs.
 
+Added `THEFT_LOG(T, LOG_LEVEL, ...)` macro and functions to get
+and set the log level and file. Conditionally logging details
+during a property function is a common enough use case that it
+should be part of the public API.
+
 
 ### Bug Fixes
 

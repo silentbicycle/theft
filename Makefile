@@ -37,6 +37,7 @@ OBJS= 		${BUILD}/theft.o \
 		${BUILD}/theft_trial.o \
 		${BUILD}/theft_aux.o \
 		${BUILD}/theft_aux_builtin.o \
+		${BUILD}/theft_aux_logging.o \
 
 TEST_OBJS=	${BUILD}/test_theft.o \
 		${BUILD}/test_theft_autoshrink.o \

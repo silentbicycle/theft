@@ -82,6 +82,32 @@ void theft_hash_sink(struct theft_hasher *h,
 theft_hash theft_hash_done(struct theft_hasher *h);
 
 
+/***********/
+/* Logging */
+/***********/
+
+/* Get/set the current log level. */
+int theft_get_loglevel(struct theft *t);
+void theft_set_loglevel(struct theft *t, int level);
+
+/* Get/set the current log file. */
+FILE *theft_get_logfile(struct theft *t);
+void theft_set_logfile(struct theft *t, FILE *f);
+
+/* Conditionally to the current log file, based on the log level. */
+#define THEFT_LOG(T, LOG_LEVEL, ...)                                   \
+    do {                                                               \
+        if (theft_get_loglevel(t) >= LOG_LEVEL) {                      \
+            fprintf(theft_get_logfile(t), __VA_ARGS__);                \
+            theft_log_printed(t);                                      \
+        }                                                              \
+    } while(0)
+
+/* Inform theft that user input has printed, so the built-in
+ * test runner output formatting resets its line wrap counters. */
+void theft_log_printed(struct theft *t);
+
+
 /*********
  * Hooks *
  *********/
