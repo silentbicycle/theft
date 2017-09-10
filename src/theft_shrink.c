@@ -3,6 +3,7 @@
 #include "theft_call.h"
 #include "theft_trial.h"
 #include "theft_autoshrink.h"
+#include "theft_autoshrink_model.h"
 #include <assert.h>
 
 #define LOG_SHRINK 0
@@ -116,6 +117,7 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
                 as_env->bit_pool = current_bit_pool;
                 theft_autoshrink_free_bit_pool(t, candidate_bit_pool);
                 t->trial.args[arg_i].instance = current;
+                theft_autoshrink_model_notify_trial_result(as_env->model, THEFT_TRIAL_SKIP);
                 continue;
             } else {
                 theft_call_mark_called(t);
@@ -132,9 +134,9 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
             LOG(3 - LOG_SHRINK, "%s: call -> res %d\n", __func__, res);
 
             if (!repeated) {
+                theft_autoshrink_model_notify_trial_result(as_env->model, res);
                 if (res == THEFT_TRIAL_FAIL) {
                     t->trial.successful_shrinks++;
-                    theft_autoshrink_update_model(t, arg_i, res, 3);
                 } else {
                     t->trial.failed_shrinks++;
                 }
@@ -157,8 +159,6 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
                 return SHRINK_ERROR;
             }
         }
-
-        theft_autoshrink_update_model(t, arg_i, res, 8);
 
         switch (res) {
         case THEFT_TRIAL_PASS:

@@ -20,6 +20,7 @@ bool_alloc(struct theft *t, void *env, void **instance) {
     return THEFT_ALLOC_OK;
 }
 
+#define USE_BUILTINS 1
 #define BITS_USE_SPECIAL (3)
 
 #define ALLOC_USCALAR(NAME, TYPE, BITS, ...)                           \
@@ -27,7 +28,7 @@ static enum theft_alloc_res                                            \
 NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
     TYPE *res = malloc(sizeof(*res));                                  \
     if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
-    if (((1LU << BITS_USE_SPECIAL) - 1 ) ==                            \
+    if (USE_BUILTINS && ((1LU << BITS_USE_SPECIAL) - 1 ) ==            \
         theft_random_bits(t, BITS_USE_SPECIAL)) {                      \
         const TYPE special[] = { __VA_ARGS__ };                        \
         size_t idx = theft_random_bits(t, 8)                           \
@@ -50,7 +51,7 @@ static enum theft_alloc_res                                            \
 NAME ## _alloc(struct theft *t, void *env, void **instance) {          \
     TYPE *res = malloc(sizeof(*res));                                  \
     if (res == NULL) { return THEFT_ALLOC_ERROR; }                     \
-    if (((1LU << BITS_USE_SPECIAL) - 1 ) ==                            \
+    if (USE_BUILTINS && ((1LU << BITS_USE_SPECIAL) - 1 ) ==            \
         theft_random_bits(t, BITS_USE_SPECIAL)) {                      \
         const TYPE special[] = { __VA_ARGS__ };                        \
         size_t idx = theft_random_bits(t, 8)                           \

@@ -27,6 +27,7 @@ TEST_LDFLAGS +=	${LDFLAGS}
 
 OBJS= 		${BUILD}/theft.o \
 		${BUILD}/theft_autoshrink.o \
+		${BUILD}/theft_autoshrink_model.o \
 		${BUILD}/theft_bloom.o \
 		${BUILD}/theft_call.o \
 		${BUILD}/theft_hash.o \
@@ -41,6 +42,7 @@ OBJS= 		${BUILD}/theft.o \
 
 TEST_OBJS=	${BUILD}/test_theft.o \
 		${BUILD}/test_theft_autoshrink.o \
+		${BUILD}/test_theft_autoshrink_model.o \
 		${BUILD}/test_theft_autoshrink_ll.o \
 		${BUILD}/test_theft_autoshrink_bulk.o \
 		${BUILD}/test_theft_autoshrink_int_array.o \

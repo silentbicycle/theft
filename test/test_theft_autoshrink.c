@@ -115,8 +115,9 @@ TEST ll_drop_nothing(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_DROP);
+    theft_autoshrink_model_set_next(env.model, ASA_DROP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -144,6 +145,7 @@ TEST ll_drop_nothing(void) {
 
     ll_info.free(output, NULL);
     theft_autoshrink_free_bit_pool(t, out_pool);
+    theft_autoshrink_model_free(t, env.model);
     theft_run_free(t);
 
     PASS();
@@ -172,8 +174,9 @@ TEST ll_drop_nothing_but_do_truncate(void) {
         .prng = fake_prng,
         .udata = &prng_info,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_DROP);
+    theft_autoshrink_model_set_next(env.model, ASA_DROP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -201,6 +204,7 @@ TEST ll_drop_nothing_but_do_truncate(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -230,8 +234,9 @@ TEST ll_drop_first(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_DROP);
+    theft_autoshrink_model_set_next(env.model, ASA_DROP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -265,6 +270,7 @@ TEST ll_drop_first(void) {
     ASSERT_EQUAL_T(&expected, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -294,8 +300,9 @@ TEST ll_drop_third_and_fourth(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_DROP);
+    theft_autoshrink_model_set_next(env.model, ASA_DROP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -323,6 +330,7 @@ TEST ll_drop_third_and_fourth(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -352,8 +360,9 @@ TEST ll_drop_last(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_DROP);
+    theft_autoshrink_model_set_next(env.model, ASA_DROP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -384,6 +393,7 @@ TEST ll_drop_last(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -419,8 +429,9 @@ TEST ll_mutate_shift(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_SHIFT);
+    theft_autoshrink_model_set_next(env.model, ASA_SHIFT);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -453,6 +464,7 @@ TEST ll_mutate_shift(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -479,8 +491,9 @@ TEST ll_mutate_mask(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_MASK);
+    theft_autoshrink_model_set_next(env.model, ASA_MASK);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -514,6 +527,7 @@ TEST ll_mutate_mask(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -538,8 +552,9 @@ TEST ll_mutate_swap(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_SWAP);
+    theft_autoshrink_model_set_next(env.model, ASA_SWAP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -573,6 +588,7 @@ TEST ll_mutate_swap(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -598,8 +614,9 @@ TEST ll_mutate_sub(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_SUB);
+    theft_autoshrink_model_set_next(env.model, ASA_SUB);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -633,6 +650,7 @@ TEST ll_mutate_sub(void) {
     ASSERT_EQUAL_T(&exp_pool, out_pool, &bit_pool_info, NULL);
 
     ll_info.free(output, NULL);
+    theft_autoshrink_model_free(t, env.model);
     theft_autoshrink_free_bit_pool(t, out_pool);
     theft_run_free(t);
     PASS();
@@ -660,8 +678,9 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
         .udata = &prng_info,
         .leave_trailing_zeroes = true,
         .bit_pool = &test_pool,
+        .model = theft_autoshrink_model_new(t),
     };
-    theft_autoshrink_model_set_next(&env, ASA_SWAP);
+    theft_autoshrink_model_set_next(env.model, ASA_SWAP);
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
@@ -696,6 +715,7 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
 
     ll_info.free(output, NULL);
     theft_autoshrink_free_bit_pool(t, out_pool);
+    theft_autoshrink_model_free(t, env.model);
     theft_run_free(t);
     PASS();
 }

@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <sys/types.h>
+#include <assert.h>
 
 #define THEFT_MAX_TACTICS ((uint32_t)-1)
 #define DEFAULT_THEFT_SEED 0xa600d64b175eedLLU
@@ -19,6 +20,8 @@
 
 struct theft_bloom;             /* bloom filter */
 struct theft_rng;               /* pseudorandom number generator */
+
+typedef uint64_t prng_fun(uint8_t bits, void *udata);
 
 struct seed_info {
     const theft_seed run_seed;

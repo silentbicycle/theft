@@ -57,10 +57,9 @@ For some examples of properties to test, see
 [doc/properties.md](doc/properties.md).
 
 
-## Shrinking and Auto-shrinking
+## Shrinking
 
-For more info about shrinking and auto-shrinking, see
-[doc/shrinking.md](doc/shrinking.md).
+For more info about shrinking, see [doc/shrinking.md](doc/shrinking.md).
 
 
 ## Forking

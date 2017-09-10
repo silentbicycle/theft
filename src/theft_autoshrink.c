@@ -10,17 +10,25 @@
 #define GET_DEF(X, DEF) (X ? X : DEF)
 #define LOG_AUTOSHRINK 0
 
-static autoshrink_prng_fun *get_prng(struct theft *t, struct autoshrink_env *env);
+static prng_fun *get_prng(struct theft *t, struct autoshrink_env *env);
 static uint64_t get_mask(uint8_t bits);
 
 struct autoshrink_env *
 theft_autoshrink_alloc_env(struct theft *t, uint8_t arg_i,
         const struct theft_type_info *type_info) {
     (void)t;
+
+    struct autoshrink_model *model = theft_autoshrink_model_new(t);
+    if (model == NULL) { return NULL; }
+
     struct autoshrink_env *env = malloc(sizeof(*env));
-    if (env == NULL) { return NULL; }
+    if (env == NULL) {
+        theft_autoshrink_model_free(t, model);
+        return NULL;
+    }
 
     *env = (struct autoshrink_env) {
+        .model = model,
         .arg_i = arg_i,
         .pool_size = type_info->autoshrink_config.pool_size,
         .print_mode = type_info->autoshrink_config.print_mode,
@@ -32,6 +40,7 @@ theft_autoshrink_alloc_env(struct theft *t, uint8_t arg_i,
 void theft_autoshrink_free_env(struct theft *t, struct autoshrink_env *env) {
     (void)t;
     if (env->bit_pool != NULL) { theft_autoshrink_free_bit_pool(t, env->bit_pool); }
+    theft_autoshrink_model_free(t, env->model);
     free(env);
 }
 
@@ -305,8 +314,7 @@ theft_autoshrink_make_candidate_bit_pool(struct theft *t,
     assert(total_consumed == orig->consumed);
     copy->limit = orig->limit;
 
-    env->model.cur_tried = 0x00;
-    env->model.cur_set = 0x00;
+    theft_autoshrink_model_notify_new_trial(env->model);
 
     LOG(3 - LOG_AUTOSHRINK, "========== BEFORE\n");
     if (3 - LOG_AUTOSHRINK <= THEFT_LOG_LEVEL) {
@@ -315,12 +323,8 @@ theft_autoshrink_make_candidate_bit_pool(struct theft *t,
             orig, NULL, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
-    if (env->model.weights[WEIGHT_DROP] == 0) {
-        init_model(env);
-    }
-
-    if (should_drop(t, env, orig->request_count)) {
-        env->model.cur_set |= ASA_DROP;
+    prng_fun *prng = get_prng(t, env);
+    if (theft_autoshrink_model_should_drop(prng, env->udata, env->model)) {
         drop_from_bit_pool(t, env, orig, copy);
     } else {
         mutate_bit_pool(t, env, orig, copy);
@@ -435,7 +439,7 @@ static void drop_from_bit_pool(struct theft *t,
     const uint64_t drop_threshold = GET_DEF(env->drop_threshold, DEF_DROP_THRESHOLD);
     const uint8_t drop_bits = GET_DEF(env->drop_bits, DEF_DROP_BITS);
 
-    autoshrink_prng_fun *prng = get_prng(t, env);
+    prng_fun *prng = get_prng(t, env);
 
     /* Always drop at least one, unless to_drop is DO_NOT_DROP (which is
      * only for testing). */
@@ -518,7 +522,8 @@ static void drop_from_bit_pool(struct theft *t,
     LOG(2  - LOG_AUTOSHRINK,
         "DROP: %zd -> %zd (%zd requests)\n",
         orig->bits_filled, dst_offset, drop_count);
-    (void)drop_count;
+    theft_autoshrink_model_notify_attempted(env->model,
+        ASA_DROP, drop_count > 0);
     copy->bits_filled = dst_offset;
 }
 
@@ -530,7 +535,7 @@ static void mutate_bit_pool(struct theft *t,
     memcpy(pool->bits, orig->bits, orig_bytes);
     pool->bits_filled = orig->bits_filled;
 
-    autoshrink_prng_fun *prng = get_prng(t, env);
+    prng_fun *prng = get_prng(t, env);
 
     /* Ensure that we aren't getting random bits from a pool while trying
      * to shrink the pool. */
@@ -598,7 +603,6 @@ static void mutate_bit_pool(struct theft *t,
     /* Truncate half of the unconsumed bits  */
     size_t nsize = orig->consumed + (orig->bits_filled - orig->consumed)/2;
     pool->limit = nsize < pool->limit ? nsize : pool->limit;
-
 }
 
 static bool
@@ -606,8 +610,8 @@ choose_and_mutate_request(struct theft *t,
                           struct autoshrink_env *env,
                           const struct autoshrink_bit_pool *orig,
                           struct autoshrink_bit_pool *pool) {
-    autoshrink_prng_fun *prng = get_prng(t, env);
-    enum mutation mtype = get_weighted_mutation(t, env);
+    prng_fun *prng = get_prng(t, env);
+    enum mutation mtype = theft_autoshrink_model_get_weighted_mutation(t, env->model);
 
     const uint8_t request_bits = log2ceil(orig->request_count);
 
@@ -626,7 +630,7 @@ choose_and_mutate_request(struct theft *t,
         assert(false);
     case MUT_SHIFT:
     {
-        env->model.cur_tried |= ASA_SHIFT;
+        bool res;
         const uint8_t shift = prng(2, env->udata) + 1;
         uint64_t pos = 0;
         uint32_t to_change = 0;
@@ -646,18 +650,19 @@ choose_and_mutate_request(struct theft *t,
         LOG(2  - LOG_AUTOSHRINK,
             "SHIFT[%u, %u @ %" PRIx64 " (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
             shift, size, pos, bit_offset, bits, nbits);
-        write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
         if (bits != nbits) {
-            env->model.cur_set |= ASA_SHIFT;
-            return true;
+            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+            res = true;
         } else {
-            return false;
+            res = false;
         }
-        return false;
+        theft_autoshrink_model_notify_attempted(env->model, ASA_SHIFT, res);
+        return res;
     }
+
     case MUT_MASK:
     {
-        env->model.cur_tried |= ASA_MASK;
+        bool res;
         /* Clear each bit with 1/4 probability */
         uint8_t mask_size = (size <= 64 ? size : 64);
         uint64_t mask = prng(mask_size, env->udata) | prng(mask_size, env->udata);
@@ -684,17 +689,18 @@ choose_and_mutate_request(struct theft *t,
         LOG(2  - LOG_AUTOSHRINK,
             "MASK[0x%016" PRIx64 ", %u @ %" PRId64 " (0x%08zx)]: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n",
             mask, size, pos, bit_offset, bits, nbits);
-        write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
         if (bits != nbits) {
-            env->model.cur_set |= ASA_MASK;
-            return true;
+            write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
+            res = true;
         } else {
-            return false;
+            res = false;
         }
+        theft_autoshrink_model_notify_attempted(env->model, ASA_MASK, res);
+        return res;
     }
+
     case MUT_SWAP:
     {
-        env->model.cur_tried |= ASA_SWAP;
         assert(size > 0);
         if (size > 64) {
             /* maybe swap two blocks non-overlapping within the request */
@@ -703,6 +709,7 @@ choose_and_mutate_request(struct theft *t,
                 to_swap /= 2;
             }
             if (to_swap == 0) {
+                theft_autoshrink_model_notify_attempted(env->model, ASA_SWAP, false);
                 return false;
             }
             assert(size - 2*to_swap > 0);
@@ -710,23 +717,26 @@ choose_and_mutate_request(struct theft *t,
             size_t pos_b = prng(32, env->udata) % (size - 2*to_swap);
             if ((pos_a < pos_b && pos_a + to_swap > pos_b)
                 || (pos_b < pos_a && pos_b + to_swap > pos_a)) {
+                theft_autoshrink_model_notify_attempted(env->model, ASA_SWAP, false);
                 return false;   /* overlapping */
             }
 
             const uint64_t a = read_bits_at_offset(pool, bit_offset + pos_a, to_swap);
             const uint64_t b = read_bits_at_offset(pool, bit_offset + pos_b, to_swap);
+            bool res = false;
             if (b < a) {
                 LOG(2 - LOG_AUTOSHRINK, "SWAPPING %zd <-> %zd (bulk)\n",
                     bit_offset + pos_a, bit_offset + pos_b);
                 write_bits_at_offset(pool, bit_offset + pos_a, to_swap, b);
                 write_bits_at_offset(pool, bit_offset + pos_b, to_swap, a);
-                env->model.cur_set |= ASA_SWAP;
-                return true;
+                res = true;
             }
-            return false;
+            theft_autoshrink_model_notify_attempted(env->model, ASA_SWAP, res);
+            return res;
         } else {                /* maybe swap two requests with the same size */
             LOG(4 - LOG_AUTOSHRINK, "SWAP at %zd...\n", pos);
             const uint64_t bits = read_bits_at_offset(pool, bit_offset, size);
+            bool res = false;
 
             /* Find the next pos of the same size, if any.
              * Read both, and if the latter is lexicographically smaller, swap. */
@@ -738,18 +748,22 @@ choose_and_mutate_request(struct theft *t,
                         LOG(2 - LOG_AUTOSHRINK, "SWAPPING %zd <-> %zd\n", pos, i);
                         write_bits_at_offset(pool, bit_offset, size, other);
                         write_bits_at_offset(pool, other_offset, size, bits);
-                        env->model.cur_set |= ASA_SWAP;
-                        return true;
+                        res = true;
+                        break;
                     }
                 }
             }
-            LOG(2 - LOG_AUTOSHRINK, "NO SWAP (would not shrink)\n");
+            if (!res) {
+                LOG(2 - LOG_AUTOSHRINK, "NO SWAP (would not shrink)\n");
+            }
+            theft_autoshrink_model_notify_attempted(env->model, ASA_SWAP, res);
+            return res;
         }
-        return false;
     }
+
     case MUT_SUB:
     {
-        env->model.cur_tried |= ASA_SUB;
+        bool res = false;
         uint64_t pos = 0;
         uint32_t to_change = 0;
         if (size > 64) {        /* Pick an offset and region to change */
@@ -767,7 +781,7 @@ choose_and_mutate_request(struct theft *t,
             while ((1LLU << sub_bits) < bits && sub_bits < 64) {
                 sub_bits++;
             }
-            sub_bits /= 2;
+            sub_bits /= 4;
             if (sub_bits == 0) { sub_bits = 1; }
             uint64_t sub = prng(sub_bits, env->udata);
 
@@ -777,14 +791,15 @@ choose_and_mutate_request(struct theft *t,
                 sub = 1;
             }
             LOG(2 - LOG_AUTOSHRINK,
-                "SUB[%" PRIu64 ", %u @ %" PRId64 " (0x%08zx)]: 0x%016"
+                "SUB[%u -> %" PRIu64 ", %u @ %" PRId64 " (0x%08zx)]: 0x%016"
                 PRIx64 " -> 0x%016" PRIx64 "\n",
-                sub, size, pos, bit_offset, bits, nbits);
-            env->model.cur_set |= ASA_SUB;
+                sub_bits, sub, size, pos, bit_offset, bits, nbits);
             write_bits_at_offset(pool, bit_offset + pos, to_change, nbits);
-            return true;
+            res = true;
         }
-        return false;
+
+        theft_autoshrink_model_notify_attempted(env->model, ASA_SUB, res);
+        return res;
     }
     }
 }
@@ -1011,166 +1026,12 @@ static uint64_t def_autoshrink_prng(uint8_t bits, void *udata) {
     return theft_random_bits(t, bits);
 }
 
-static autoshrink_prng_fun *get_prng(struct theft *t,
-                                     struct autoshrink_env *env) {
+static prng_fun *get_prng(struct theft *t,
+                          struct autoshrink_env *env) {
     if (env->prng) {
         return env->prng;
     } else {
         env->udata = t;
         return def_autoshrink_prng;
     }
-}
-
-static void init_model(struct autoshrink_env *env) {
-    if (env->model.next_action != 0x00) {
-        return;                 /* a test has an action scheduled */
-    }
-    env->model = (struct autoshrink_model) {
-        .weights = {
-            [WEIGHT_DROP] = TWO_EVENLY,
-            [WEIGHT_SHIFT] = FOUR_EVENLY,
-            [WEIGHT_MASK] = FOUR_EVENLY,
-            [WEIGHT_SWAP] = FOUR_EVENLY - 0x10,
-            [WEIGHT_SUB] = FOUR_EVENLY,
-        },
-    };
-}
-
-static bool should_drop(struct theft *t, struct autoshrink_env *env,
-        size_t request_count) {
-    autoshrink_prng_fun *prng = get_prng(t, env);
-    /* Limit the odds of dropping when there are only a few requests */
-    const int rc_mul = 8;
-    uint8_t weight = env->model.weights[WEIGHT_DROP];
-    if (weight > rc_mul * request_count) { weight = rc_mul * request_count; }
-    if (env->model.next_action == 0x00) {
-        return prng(8, env->udata) < weight;
-    } else {
-        return env->model.next_action == ASA_DROP;
-    }
-}
-
-static enum mutation
-get_weighted_mutation(struct theft *t, struct autoshrink_env *env) {
-    if (env->model.next_action != 0x00) {
-        switch (env->model.next_action) {
-        default: assert(false);
-        case ASA_SHIFT:
-            return MUT_SHIFT;
-        case ASA_MASK:
-            return MUT_MASK;
-        case ASA_SWAP:
-            return MUT_SWAP;
-        case ASA_SUB:
-            return MUT_SUB;
-        }
-    }
-
-    const uint16_t shift = env->model.weights[WEIGHT_SHIFT];
-    const uint16_t mask = shift + env->model.weights[WEIGHT_MASK];
-    const uint16_t swap = mask + env->model.weights[WEIGHT_SWAP];
-    const uint16_t sub = swap + env->model.weights[WEIGHT_SUB];
-
-    LOG(4 - LOG_AUTOSHRINK,
-        "%s: shift %04x, mask %04x, swap %04x, sub %04x => LIMIT %04x\n",
-        __func__,
-        env->model.weights[WEIGHT_SHIFT],
-        env->model.weights[WEIGHT_MASK],
-        env->model.weights[WEIGHT_SWAP],
-        env->model.weights[WEIGHT_SUB],
-        sub);
-    uint8_t bit_count = 7;
-    while ((1LU << bit_count) < sub) {
-        bit_count++;
-    }
-    assert(bit_count <= 16);
-
-    for (;;) {
-        const uint16_t bits = theft_random_bits(t, bit_count);
-        LOG(4 - LOG_AUTOSHRINK,
-            "%s: 0x%04x -- ", __func__, bits);
-        if (bits < shift) {
-            LOG(4 - LOG_AUTOSHRINK, "SHIFT\n");
-            return MUT_SHIFT;
-        } else if (bits < mask) {
-            LOG(4 - LOG_AUTOSHRINK, "MASK\n");
-            return MUT_MASK;
-        } else if (bits < swap) {
-            LOG(4 - LOG_AUTOSHRINK, "SWAP\n");
-            return MUT_SWAP;
-        } else if (bits < sub) {
-            LOG(4 - LOG_AUTOSHRINK, "SUB\n");
-            return MUT_SUB;
-        } else {
-            LOG(4 - LOG_AUTOSHRINK, "continue\n");
-            continue;  // draw again
-        }
-    }
-}
-
-static void adjust(struct autoshrink_model *model,
-        enum autoshrink_weight w,
-    uint8_t min, uint8_t max, int8_t adjustment) {
-    enum autoshrink_action flag = (enum autoshrink_action)(1U << w);
-    uint8_t nv = 0;
-    if (model->cur_set & flag) {
-        nv = model->weights[w] + adjustment;
-    } else if ((model->cur_tried & flag) && adjustment > 0) {
-        /* De-emphasize actions that produced no changes, but don't add
-         * emphasis to them if they caused the property to pass (leading
-         * to a negative adjustment) */
-        LOG(3 - LOG_AUTOSHRINK,
-            "DE-EMPHASIZING flag 0x%02x by %u\n",
-            flag, adjustment);
-        nv = model->weights[w] - adjustment;
-        LOG(3 - LOG_AUTOSHRINK,
-            "  -- was %u, now %u\n", model->weights[w], nv);
-    }
-
-    if (nv != 0) {
-        if (nv > max) {
-            nv = max;
-        } else if (nv < min) {
-            nv = min;
-        }
-        model->weights[w] = nv;
-    }
-}
-
-void
-theft_autoshrink_update_model(struct theft *t,
-        uint8_t arg_id, enum theft_trial_res res,
-        uint8_t adjustment) {
-    struct autoshrink_env *env = t->trial.args[arg_id].env;
-
-    const uint8_t cur_set = env->model.cur_set;
-    if (cur_set == 0x00) {
-        return;
-    }
-
-    uint8_t adj = (res == THEFT_TRIAL_FAIL ? adjustment : -adjustment);
-
-    LOG(3 - LOG_AUTOSHRINK,
-        "%s: res %d, arg_id %u, adj %u, cur_set 0x%02x\n",
-        __func__, res, arg_id, adjustment, cur_set);
-
-    adjust(&env->model, WEIGHT_DROP, DROPS_MIN, DROPS_MAX, adj);
-    adjust(&env->model, WEIGHT_SHIFT, MODEL_MIN, MODEL_MAX, adj);
-    adjust(&env->model, WEIGHT_MASK, MODEL_MIN, MODEL_MAX, adj);
-    adjust(&env->model, WEIGHT_SWAP, MODEL_MIN, MODEL_MAX, adj);
-    adjust(&env->model, WEIGHT_SUB, MODEL_MIN, MODEL_MAX, adj);
-
-    LOG(3 - LOG_AUTOSHRINK,
-        "cur_set: %02" PRIx8 " -- new weights DROP %u SHIFT %u MASK %u SWAP %u SUB %u\n",
-        (uint8_t)env->model.cur_set,
-        env->model.weights[WEIGHT_DROP],
-        env->model.weights[WEIGHT_SHIFT],
-        env->model.weights[WEIGHT_MASK],
-        env->model.weights[WEIGHT_SWAP],
-        env->model.weights[WEIGHT_SUB]);
-}
-
-void theft_autoshrink_model_set_next(struct autoshrink_env *env,
-    enum autoshrink_action action) {
-    env->model.next_action = action;
 }

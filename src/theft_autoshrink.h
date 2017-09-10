@@ -6,6 +6,7 @@
 
 #include "theft_hash.h"
 #include "theft_shrink.h"
+#include "theft_autoshrink_model.h"
 
 #define AUTOSHRINK_ENV_TAG 0xa5
 #define AUTOSHRINK_BIT_POOL_TAG 'B'
@@ -55,39 +56,6 @@ struct autoshrink_bit_pool {
  * drop_from_bit_pool, because it complicates tests. */
 #define DO_NOT_DROP (0xFFFFFFFFLU)
 
-typedef uint64_t autoshrink_prng_fun(uint8_t bits, void *udata);
-
-#define TWO_EVENLY 0x80
-#define FOUR_EVENLY 0x40
-#define MODEL_MIN 0x08
-#define MODEL_MAX 0x80
-
-#define DROPS_MIN 0x10
-#define DROPS_MAX 0xA0
-
-enum autoshrink_action {
-    ASA_DROP = 0x01,
-    ASA_SHIFT = 0x02,
-    ASA_MASK = 0x04,
-    ASA_SWAP = 0x08,
-    ASA_SUB = 0x10,
-};
-
-enum autoshrink_weight {
-    WEIGHT_DROP = 0x00,
-    WEIGHT_SHIFT = 0x01,
-    WEIGHT_MASK = 0x02,
-    WEIGHT_SWAP = 0x03,
-    WEIGHT_SUB = 0x04,
-};
-
-struct autoshrink_model {
-    enum autoshrink_action cur_tried;
-    enum autoshrink_action cur_set;
-    enum autoshrink_action next_action;
-    uint8_t weights[5];
-};
-
 struct autoshrink_env {
     // config
     uint8_t arg_i;
@@ -98,23 +66,14 @@ struct autoshrink_env {
     uint64_t drop_threshold;
     uint8_t drop_bits;
 
-    struct autoshrink_model model;
+    struct autoshrink_model *model;
     struct autoshrink_bit_pool *bit_pool;
 
     // allow injecting a fake prng, for testing
     bool leave_trailing_zeroes;
-    autoshrink_prng_fun *prng;
+    prng_fun *prng;
     void *udata;
 };
-
-enum mutation {
-    MUT_SHIFT,
-    MUT_MASK,
-    MUT_SWAP,
-    MUT_SUB,
-};
-#define LAST_MUTATION MUT_SUB
-#define MUTATION_TYPE_BITS 2
 
 struct change_info {
     enum mutation t;
@@ -157,11 +116,6 @@ void
 theft_autoshrink_get_real_args(struct theft *t,
     void **dst, void **src);
 
-void
-theft_autoshrink_update_model(struct theft *t,
-    uint8_t arg_id, enum theft_trial_res res,
-    uint8_t adjustment);
-
 /* Alloc callback, with autoshrink_env passed along. */
 enum theft_alloc_res
 theft_autoshrink_alloc(struct theft *t, struct autoshrink_env *env,
@@ -190,9 +144,5 @@ void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
     const struct autoshrink_bit_pool *pool,
     const struct autoshrink_bit_pool *req_pool,
     enum theft_autoshrink_print_mode print_mode);
-
-/* Set the next action the model will deliver. (This is a hook for testing.) */
-void theft_autoshrink_model_set_next(struct autoshrink_env *env,
-    enum autoshrink_action action);
 
 #endif

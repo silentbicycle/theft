@@ -6,10 +6,24 @@
 
 Added `struct theft *t` handle to all `theft_hook_*_info` structs.
 
+Removed `shrink` callback from `struct theft_type_info` and `enable`
+flag from `autoshrink_config`: custom shrink callbacks are no longer
+part of the public API. It can be tricky to write custom shrinker
+functions that aren't accidentally quadratic (or worse) due to
+backtracking, and heuristics to avoid this are already built into
+autoshrinking. This also eliminates several cases that greatly
+complicate multi-core searching and shrinking.
+
+Removed `hash` callback from `struct theft_type_info`. All hashing
+is handled internally now.
+
 Added `THEFT_LOG(T, LOG_LEVEL, ...)` macro and functions to get
 and set the log level and file. Conditionally logging details
 during a property function is a common enough use case that it
 should be part of the public API.
+
+Improved the adaptive weighting used to choose modifications during
+autoshrinking, based on what has previously been effective.
 
 
 ### Bug Fixes

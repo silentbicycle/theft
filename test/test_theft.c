@@ -39,6 +39,7 @@ struct theft *test_theft_init(void) {
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
     RUN_SUITE(autoshrink);
+    RUN_SUITE(autoshrink_model);
     RUN_SUITE(aux);
     RUN_SUITE(bloom);
     RUN_SUITE(error);

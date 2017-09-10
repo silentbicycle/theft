@@ -51,14 +51,6 @@ write_bits_at_offset(struct autoshrink_bit_pool *pool,
 
 static void truncate_trailing_zero_bytes(struct autoshrink_bit_pool *pool);
 
-static void init_model(struct autoshrink_env *env);
-
-static enum mutation
-get_weighted_mutation(struct theft *t, struct autoshrink_env *env);
-
-static bool should_drop(struct theft *t, struct autoshrink_env *env,
-    size_t request_count);
-
 static void lazily_fill_bit_pool(struct theft *t,
     struct autoshrink_bit_pool *pool,
     const uint32_t bit_count);

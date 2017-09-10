@@ -556,6 +556,7 @@ static enum theft_trial_res
 prop_uint_is_lte_12345(struct theft *t, void *arg1) {
     uint32_t *arg = (uint32_t *)arg1;
     (void)t;
+    //fprintf(stdout, "%s: %" PRIu32 "\n", __func__, *arg);
     return *arg <= 12345 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL;
 }
 
@@ -642,13 +643,15 @@ shrink_all_the_way_shrink_post(const struct theft_hook_shrink_post_info *info,
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
     if (info->state == THEFT_SHRINK_POST_DONE_SHRINKING) {
         uint32_t *pnum = (uint32_t *)info->arg;
-        env->local_minimum = *pnum;
-        printf("Saving local minimum %u after %zd shrinks (succ %zd, fail %zd) -- %p\n",
-            env->local_minimum,
-            info->shrink_count,
-            info->successful_shrinks,
-            info->failed_shrinks,
-            (void *)info->arg);
+        if (env->local_minimum == 0 || env->local_minimum > *pnum) {
+            env->local_minimum = *pnum;
+            printf("Saving local minimum %u after %zd shrinks (succ %zd, fail %zd) -- %p\n",
+                env->local_minimum,
+                info->shrink_count,
+                info->successful_shrinks,
+                info->failed_shrinks,
+                (void *)info->arg);
+        }
     }
     return THEFT_HOOK_SHRINK_POST_CONTINUE;
 }
@@ -666,21 +669,20 @@ shrink_all_the_way_trial_post(const struct theft_hook_trial_post_info *info, voi
 }
 
 TEST save_local_minimum_and_re_run(void) {
-    SKIPm("FIXME: adaptive weighting needs work");
-
     struct shrink_test_env env = { .shrinks = 0 };
+    theft_seed seed = theft_seed_of_time();
 
     struct theft_run_config cfg = {
         .prop1 = prop_uint_is_lte_12345,
         .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint32_t) },
-        .seed = theft_seed_of_time(),
+        .seed = seed,
         .hooks = {
             .trial_post = shrink_all_the_way_trial_post,
             .shrink_trial_post = shrink_all_the_way_shrink_trial_post,
             .shrink_post = shrink_all_the_way_shrink_post,
             .env = (void *)&env,
         },
-        .trials = 1,
+        .trials = 10,
     };
 
     enum theft_run_res res = theft_run(&cfg);
