@@ -4,6 +4,7 @@
 
 #include "theft.h"
 #include "theft_bloom.h"
+#include "theft_hash.h"
 #include "theft_types_internal.h"
 
 /* This is a dynamic blocked bloom filter, loosely based on

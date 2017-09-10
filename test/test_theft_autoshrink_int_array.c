@@ -52,8 +52,5 @@ struct theft_type_info ia_info = {
     .alloc = ia_alloc,
     .free = ia_free,
     .print = ia_print,
-    .autoshrink_config = {
-        .enable = true,
-    },
 };
 

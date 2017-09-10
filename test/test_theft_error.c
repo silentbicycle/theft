@@ -60,9 +60,6 @@ TEST alloc_returns_skip(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -98,9 +95,6 @@ TEST second_alloc_returns_skip(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -130,9 +124,6 @@ TEST alloc_returns_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -160,9 +151,6 @@ TEST second_alloc_returns_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -202,9 +190,6 @@ TEST alloc_returns_skip_during_autoshrink(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -233,9 +218,6 @@ TEST alloc_returns_error_during_autoshrink(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -245,88 +227,6 @@ TEST alloc_returns_error_during_autoshrink(void) {
         .trials = 1000,
         .hooks = {
             .shrink_pre = shrink_pre_set_shrinking,
-            .env = (void *)&env,
-        },
-    };
-
-    enum theft_run_res res = theft_run(&cfg);
-
-    ASSERT_EQ_FMT(THEFT_RUN_ERROR, res, "%d");
-    PASS();
-}
-
-static enum theft_shrink_res
-bits_shrink(struct theft *t, const void *instance, uint32_t tactic,
-        void *penv, void **output) {
-    (void)t;
-    assert(penv);
-    struct err_env *env = (struct err_env *)penv;
-    if (env->b == BEH_SHRINK_ERROR) {
-        return THEFT_SHRINK_ERROR;
-    }
-
-    if (tactic == 2) {
-        return THEFT_SHRINK_NO_MORE_TACTICS;
-    }
-
-    const uint8_t *bits = (const uint8_t *)instance;
-    uint8_t *res = calloc(1, sizeof(*res));
-    if (res == NULL) {
-        return THEFT_SHRINK_ERROR;
-    }
-    *res = (tactic == 0 ? (*bits / 2) : (*bits - 1));
-    *output = res;
-    return THEFT_SHRINK_OK;
-}
-
-TEST error_from_both_autoshrink_and_shrink_cb(void) {
-    struct err_env env = {
-        .tag = 'e',
-        .b = BEH_NONE,
-    };
-
-    static struct theft_type_info type_info = {
-        .alloc = bits_alloc,
-        .free = theft_generic_free_cb,
-        .shrink = bits_shrink,
-        .autoshrink_config = {
-            .enable = true,
-        },
-    };
-    type_info.env = &env;
-
-    struct theft_run_config cfg = {
-        .prop1 = prop_bits_gt_0,
-        .type_info = { &type_info },
-        .hooks = {
-            .env = (void *)&env,
-        },
-    };
-
-    enum theft_run_res res = theft_run(&cfg);
-    ASSERT_ENUM_EQm("defining shrink and autoshrink should error",
-        THEFT_RUN_ERROR_BAD_ARGS, res, theft_run_res_str);
-    PASS();
-}
-
-TEST shrinking_error(void) {
-    struct err_env env = {
-        .tag = 'e',
-        .b = BEH_SHRINK_ERROR,
-    };
-
-    static struct theft_type_info type_info = {
-        .alloc = bits_alloc,
-        .free = theft_generic_free_cb,
-        .shrink = bits_shrink,
-    };
-    type_info.env = &env;
-
-    struct theft_run_config cfg = {
-        .prop1 = prop_bits_gt_0,
-        .type_info = { &type_info },
-        .trials = 10000,
-        .hooks = {
             .env = (void *)&env,
         },
     };
@@ -355,9 +255,6 @@ TEST run_pre_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -394,9 +291,6 @@ TEST run_post_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -433,9 +327,6 @@ TEST trial_pre_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -472,9 +363,6 @@ TEST trial_post_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -511,9 +399,6 @@ TEST shrink_pre_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -551,9 +436,6 @@ TEST shrink_post_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -590,9 +472,6 @@ TEST shrink_trial_post_hook_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -627,9 +506,6 @@ TEST trial_skip(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -664,9 +540,6 @@ TEST trial_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -715,9 +588,6 @@ TEST trial_error_during_autoshrink(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -755,9 +625,6 @@ TEST counterexample_error(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
     };
     type_info.env = &env;
 
@@ -803,7 +670,6 @@ TEST fail_but_pass_when_rerun(void) {
     static struct theft_type_info type_info = {
         .alloc = bits_alloc,
         .free = theft_generic_free_cb,
-        .shrink = bits_shrink,
     };
     type_info.env = &env;
 
@@ -831,8 +697,6 @@ SUITE(error) {
     RUN_TEST(alloc_returns_error_during_autoshrink);
     RUN_TEST(second_alloc_returns_skip);
     RUN_TEST(second_alloc_returns_error);
-    RUN_TEST(shrinking_error);
-    RUN_TEST(error_from_both_autoshrink_and_shrink_cb);
     RUN_TEST(run_pre_hook_error);
     RUN_TEST(run_post_hook_error);
     RUN_TEST(trial_pre_hook_error);

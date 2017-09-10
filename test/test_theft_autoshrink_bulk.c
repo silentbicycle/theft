@@ -69,7 +69,6 @@ struct theft_type_info bb_info = {
     .free = bb_free,
     .print = bb_print,
     .autoshrink_config = {
-        .enable = true,
         .print_mode = THEFT_AUTOSHRINK_PRINT_ALL,
     },
 };

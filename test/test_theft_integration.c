@@ -21,11 +21,6 @@ uint_alloc(struct theft *t, void *env, void **output) {
     return THEFT_ALLOC_OK;
 }
 
-static void uint_free(void *p, void *env) {
-    (void)env;
-    free(p);
-}
-
 static void uint_print(FILE *f, const void *p, void *env) {
     (void)env;
     fprintf(f, "%u", *(uint32_t *)p);
@@ -33,7 +28,7 @@ static void uint_print(FILE *f, const void *p, void *env) {
 
 static struct theft_type_info uint_type_info = {
     .alloc = uint_alloc,
-    .free = uint_free,
+    .free = theft_generic_free_cb,
     .print = uint_print,
 };
 
@@ -79,91 +74,41 @@ static void list_free(void *instance, void *env) {
     (void)env;
 }
 
-static void list_unpack_seed(theft_hash seed,
-        int32_t *lower, uint32_t *upper) {
-    *lower = (int32_t)(seed & 0xFFFFFFFF);
-    *upper = (uint32_t)((seed >> 32) & 0xFFFFFFFF);
-
-}
-
 static enum theft_alloc_res
 list_alloc(struct theft *t, void *env, void **output) {
     (void)env;
     list *l = NULL;             /* empty */
 
-    int32_t lower = 0;
-    uint32_t upper = 0;
-    int len = 0;
+    uint64_t len = 0;
 
-    theft_seed seed = theft_random(t);
-    list_unpack_seed(seed, &lower, &upper);
+    list *cur = NULL;
 
-    while (upper >= (uint32_t)(0x40000000 | (1 << len))) {
-        if (len < 31) {
-            len++;
+    uint64_t max_len = theft_random_bits(t, 8);
+
+    while (len < max_len) {
+        if (0 == theft_random_bits(t, 6)) { break; }
+        cur = calloc(1, sizeof(*cur));
+        if (cur == NULL) { return THEFT_ALLOC_ERROR; }
+
+        /* Limit to 0 ~ 1023 so uniqueness test will have failures */
+        cur->v = theft_random_bits(t, 10);
+
+        /* Add an extra choice point as a shrinking hint */
+        if (theft_random_bits(t, 1)) {
+            if (l == NULL) {
+                l = cur;
+            } else {
+                cur->next = l;
+                l = cur;
+            }
         } else {
-            break;
+            free(cur);
         }
-        list *nl = malloc(sizeof(list));
-        if (nl) {
-            /* Limit to 0 ~ 1023 so uniqueness test will have failures. */
-            nl->v = lower & (1024 - 1);
-            /* nl->v = lower; */
-            nl->next = l;
-            l = nl;
-        } else {
-            list_free(l, NULL);
-        }
-
-        seed = theft_random(t);
-        list_unpack_seed(seed, &lower, &upper);
+        len++;
     }
 
     *output = l;
     return THEFT_ALLOC_OK;
-}
-
-static theft_hash list_hash(const void *instance, void *env) {
-    list *l = (list *)instance;
-    struct theft_hasher h;
-    theft_hash_init(&h);
-
-    /* printf("\nhashing list %p...", l); */
-
-    while (l) {
-        /* printf("%d, ", l->v); */
-        theft_hash_sink(&h, (uint8_t *)&l->v, 4);
-        l = l->next;
-    }
-    (void)env;
-    theft_hash res = theft_hash_done(&h);
-    /* printf(" => %llu\n", res); */
-    return res;
-}
-
-static list *copy_list(list *l) {
-    list *res = NULL;
-    list *cur = NULL;
-
-    while (l) {
-        list *nl = malloc(sizeof(*nl));
-        if (nl == NULL) {
-            list_free(res, NULL);
-            return NULL;
-        }
-        nl->v = l->v;
-        if (res == NULL) {
-            res = nl;           /* store head for return */
-            cur = nl;
-        } else {
-            cur->next = nl;     /* append at tail */
-            cur = nl;
-        }
-        nl->next = NULL;
-        l = l->next;
-    }
-
-    return res;
 }
 
 static int list_length(list *l) {
@@ -173,95 +118,6 @@ static int list_length(list *l) {
         l = l->next;
     }
     return len;
-}
-
-static enum theft_shrink_res
-split_list_copy(list *l, bool first_half, list **output) {
-    int len = list_length(l);
-    if (len < 2) { return THEFT_SHRINK_DEAD_END; }
-    list *nl = copy_list(l);
-    if (nl == NULL) { return THEFT_SHRINK_ERROR; }
-    list *t = nl;
-    for (int i = 0; i < len/2 - 1; i++) { t = t->next; }
-
-    list *tail = t->next;
-    t->next = NULL;
-    if (first_half) {
-        list_free(tail, NULL);
-        *output = nl;
-    } else {
-        list_free(nl, NULL);
-        *output = tail;
-    }
-    return THEFT_SHRINK_OK;
-}
-
-static enum theft_shrink_res
-list_shrink(struct theft *t, const void *instance, uint32_t tactic,
-        void *env, void **output) {
-    (void)t;
-    list *l = (list *)instance;
-    if (l == NULL) { return THEFT_SHRINK_NO_MORE_TACTICS; }
-
-    /* When reducing, it's faster to have the tactics ordered by how
-     * much they simplify the instance, if possible. In this case, we
-     * first try discarding either half of the list, then dividing the
-     * whole list by 2, before operations that only impact one element
-     * of the list. */
-
-    if (tactic == 0) {          /* first half */
-        return split_list_copy(l, true, (list **)output);
-    } else if (tactic == 1) {   /* second half */
-        return split_list_copy(l, false, (list **)output);
-    } else if (tactic == 2) {      /* div whole list by 2 */
-        bool nonzero = false;
-        for (list *link = l; link; link = link->next) {
-            if (link->v > 0) { nonzero = true; break; }
-        }
-
-        if (nonzero) {
-            list *nl = copy_list(l);
-            if (nl == NULL) { return THEFT_SHRINK_ERROR; }
-
-            for (list *link = nl; link; link = link->next) {
-                link->v /= 2;
-            }
-            *output = nl;
-            return THEFT_SHRINK_OK;
-        } else {
-            return THEFT_SHRINK_DEAD_END;
-        }
-    } else if (tactic == 3) {      /* drop head */
-        if (l->next == NULL) { return THEFT_SHRINK_DEAD_END; }
-        list *nl = copy_list(l->next);
-        if (nl == NULL) { return THEFT_SHRINK_ERROR; }
-        list *nnl = nl->next;
-        nl->next = NULL;
-        list_free(nl, NULL);
-        *output = nnl;
-        return THEFT_SHRINK_OK;
-    } else if (tactic == 4) {      /* drop tail */
-        if (l->next == NULL) { return THEFT_SHRINK_DEAD_END; }
-
-        list *nl = copy_list(l);
-        if (nl == NULL) { return THEFT_SHRINK_ERROR; }
-        list *prev = nl;
-        list *tl = nl;
-
-        while (tl->next) {
-            prev = tl;
-            tl = tl->next;
-        }
-        prev->next = NULL;
-        list_free(tl, NULL);
-        *output = nl;
-        return THEFT_SHRINK_OK;
-    } else {
-        (void)instance;
-        (void)tactic;
-        (void)env;
-        return THEFT_SHRINK_NO_MORE_TACTICS;
-    }
 }
 
 static void list_print(FILE *f, const void *instance, void *env) {
@@ -278,8 +134,6 @@ static void list_print(FILE *f, const void *instance, void *env) {
 static struct theft_type_info list_info = {
     .alloc = list_alloc,
     .free = list_free,
-    .hash = list_hash,
-    .shrink = list_shrink,
     .print = list_print,
 };
 
@@ -475,7 +329,7 @@ always_seeds_trial_post(const struct theft_hook_trial_post_info *info, void *ven
 
 TEST always_seeds_must_be_run() {
     /* This test is expected to fail, with meaningful counter-examples. */
-    static theft_hash always_seeds[] = {
+    static theft_seed always_seeds[] = {
         0x600d5eed, 0xabad5eed,
     };
 
@@ -569,36 +423,6 @@ prop_bool_tautology(struct theft *t, void *arg1) {
     }
 }
 
-static enum theft_alloc_res
-bool_alloc(struct theft *t, void *env, void **output) {
-    bool *bp = malloc(sizeof(*bp));
-    if (bp == NULL) { return THEFT_ALLOC_ERROR; }
-    theft_seed seed = theft_random(t);
-    *bp = (seed & 0x01 ? true : false);
-    (void)env;
-    (void)t;
-    *output = bp;
-    return THEFT_ALLOC_OK;
-}
-
-static void bool_free(void *instance, void *env) {
-    (void)env;
-    free(instance);
-}
-
-static theft_hash bool_hash(const void *instance, void *env) {
-    bool *bp = (bool *)instance;
-    bool b = *bp;
-    (void)env;
-    return (theft_hash)(b ? 1 : 0);
-}
-
-static struct theft_type_info bool_info = {
-    .alloc = bool_alloc,
-    .free = bool_free,
-    .hash = bool_hash,
-};
-
 static enum theft_hook_run_post_res
 save_report_run_post(const struct theft_hook_run_post_info *info, void *env) {
     struct theft_run_report *report = (struct theft_run_report *)env;
@@ -613,7 +437,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
 
     struct theft_run_config cfg = {
         .prop1 = prop_bool_tautology,
-        .type_info = { &bool_info },
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_bool) },
         .trials = 100,
         .hooks = {
             .run_post = save_report_run_post,
@@ -623,7 +447,7 @@ TEST overconstrained_state_spaces_should_be_detected(void) {
 
     enum theft_run_res res = theft_run(&cfg);
     ASSERT_EQ(THEFT_RUN_FAIL, res);
-    ASSERT_EQ(2, report.fail);
+    ASSERT_EQ_FMT((size_t)2, report.fail, "%zd");
     ASSERT_EQ(98, report.dup);
     PASS();
 }
@@ -735,56 +559,6 @@ prop_uint_is_lte_12345(struct theft *t, void *arg1) {
     return *arg <= 12345 ? THEFT_TRIAL_PASS : THEFT_TRIAL_FAIL;
 }
 
-static enum theft_shrink_res
-uint_shrink(struct theft *t, const void *instance, uint32_t tactic,
-        void *env, void **output) {
-    (void)t;
-    (void)env;
-    const uint32_t *pnum = (const uint32_t *)instance;
-    uint32_t *res = malloc(sizeof(*pnum));
-    if (res == NULL) {
-        return THEFT_SHRINK_ERROR;
-    }
-
-    *res = *pnum;
-    if (tactic == 0) {
-        (*res) -= (*res / 4);
-        *output = res;
-        return THEFT_SHRINK_OK;
-    } else if (tactic == 1) {
-        (*res)--;
-        *output = res;
-        return THEFT_SHRINK_OK;
-    } else {
-        free(res);
-        return THEFT_SHRINK_NO_MORE_TACTICS;
-    }
-}
-
-static enum theft_alloc_res
-shrink_test_uint_alloc(struct theft *t, void *env, void **output) {
-    uint32_t *n = malloc(sizeof(uint32_t));
-    if (n == NULL) { return THEFT_ALLOC_ERROR; }
-    uint32_t value = (theft_random(t) & 0xFFFFFFFF);
-    /* Make sure the value is large enough that we can test
-     * cancelling shrinking early. */
-    if (value < 100000) {
-        value += 100000;
-    }
-    *n = value;
-    (void)t; (void)env;
-    *output = n;
-    return THEFT_ALLOC_OK;
-}
-
-
-static struct theft_type_info shrink_test_uint_type_info = {
-    .alloc = shrink_test_uint_alloc,
-    .free = uint_free,
-    .print = uint_print,
-    .shrink = uint_shrink,
-};
-
 struct shrink_test_env {
     size_t shrinks;
     size_t fail;
@@ -832,7 +606,7 @@ TEST only_shrink_three_times(void) {
 
     struct theft_run_config cfg = {
         .prop1 = prop_uint_is_lte_12345,
-        .type_info = { &shrink_test_uint_type_info },
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint32_t) },
         .trials = 1,
         .hooks = {
             .shrink_pre = halt_after_third_shrink_shrink_pre,
@@ -854,6 +628,7 @@ shrink_all_the_way_shrink_trial_post(const struct theft_hook_shrink_trial_post_i
     void *venv) {
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
     uint32_t *pnum = (uint32_t *)info->args[0];
+
     if (*pnum == 12346 && env->reruns < 3) {
         env->reruns++;
         return THEFT_HOOK_SHRINK_TRIAL_POST_REPEAT;
@@ -882,6 +657,7 @@ static enum theft_hook_trial_post_res
 shrink_all_the_way_trial_post(const struct theft_hook_trial_post_info *info, void *venv) {
     struct shrink_test_env *env = (struct shrink_test_env *)venv;
     uint32_t *pnum = (uint32_t *)info->args[0];
+
     if (*pnum == 12346 && env->reruns < 33) {
         env->reruns += 10;
         return THEFT_HOOK_TRIAL_POST_REPEAT;
@@ -890,11 +666,14 @@ shrink_all_the_way_trial_post(const struct theft_hook_trial_post_info *info, voi
 }
 
 TEST save_local_minimum_and_re_run(void) {
+    SKIPm("FIXME: adaptive weighting needs work");
+
     struct shrink_test_env env = { .shrinks = 0 };
 
     struct theft_run_config cfg = {
         .prop1 = prop_uint_is_lte_12345,
-        .type_info = { &shrink_test_uint_type_info },
+        .type_info = { theft_get_builtin_type_info(THEFT_BUILTIN_uint32_t) },
+        .seed = theft_seed_of_time(),
         .hooks = {
             .trial_post = shrink_all_the_way_trial_post,
             .shrink_trial_post = shrink_all_the_way_shrink_trial_post,

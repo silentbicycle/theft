@@ -31,10 +31,6 @@ For example:
         .alloc = random_buffer_alloc_cb,
         /* free the buffer */
         .free = random_buffer_free_cb,
-        /* get a hash based on the buffer */
-        .hash = random_buffer_hash_cb,
-        /* return a simpler variant of a buffer, or an error */
-        .shrink = random_buffer_shrink_cb,
         /* print an instance */
         .print = random_buffer_print_cb,
     };
@@ -42,23 +38,6 @@ For example:
 
 All of these callbacks except 'alloc' are optional. For more details,
 see the **Type Info Callbacks** subsection below.
-
-If *autoshrinking* is used, type-generic shrinking and hashing
-can be handled internally:
-
-```c
-    static struct theft_type_info random_buffer_info = {
-        .alloc = random_buffer_alloc_cb,
-        .free = random_buffer_free_cb,
-        .print = random_buffer_print_cb,
-        .autoshrink_config = {
-            .enable = true,
-        },
-    };
-```
-
-Note that this has implications for how the `alloc` callback is written.
-For details, see "Auto-shrinking" in [shrinking.md](shrinking.md).
 
 Finally, call `theft_run` with a configuration struct:
 
@@ -137,6 +116,10 @@ which will return approximately evenly distributed `uint64_t`
 values less than LIMIT. For example, `theft_random_choice(t, 5)` will
 return values from `[0, 1, 2, 3, 4]`.
 
+Note that smaller random bit values should lead to simpler instances.
+In particular, a bitstream of all `0` bits should produce a minimal
+value for the type. For more details, see [shrinking.md](shrinking.md).
+
 - On success, write the instance into `(*instance*)` and return
   `THEFT_ALLOC_OK`.
 
@@ -144,11 +127,6 @@ return values from `[0, 1, 2, 3, 4]`.
   `THEFT_ALLOC_SKIP`.
 
 - To halt the entire test run with an error, return `THEFT_ALLOC_ERROR`.
-
-If **autoshrinking** is used, there is an additional constraint: smaller
-random bit values should lead to simpler instances. In particular, a
-bitstream of all `0` bits should produce a minimal value for the type.
-For more details, see [shrinking.md](shrinking.md).
 
 
 ### free - free an instance and any associated resources
@@ -161,59 +139,6 @@ For more details, see [shrinking.md](shrinking.md).
 Free the memory and other resources associated with the instance. If not
 provided, theft will just leak resources. If only a single
 `free(instance)` is needed, use `theft_generic_free_cb`.
-
-
-### hash - get a hash for an instance
-
-```c
-    typedef theft_hash
-    theft_hash_cb(const void *instance, void *env);
-```
-
-Using the included `theft_hash_*` functionality, produce a hash value
-based on a given instance. This will usually consist of
-`theft_hash_init(&h)`, then calling `theft_hash_sink(&h, &field,
-sizeof(field))` on the instance's contents, and then returning
-the result from `theft_hash_done(&h)`.
-
-If provided, theft will use these hashes to avoid testing combinations
-of arguments that have already been tried. Note that if the contents of
-`env` impacts how instances are constructed / simplified, it should also
-be fed into the hash.
-
-
-### shrink - produce a simpler copy of an instance
-
-```c
-    enum theft_shrink_res {
-        THEFT_SHRINK_OK,
-        THEFT_SHRINK_DEAD_END,
-        THEFT_SHRINK_NO_MORE_TACTICS,
-        THEFT_SHRINK_ERROR,
-    };
-    typedef enum theft_shrink_res
-    theft_shrink_cb(struct theft *t, const void *instance,
-        uint32_t tactic, void *env, void **output);
-```
-
-For a given instance, producer a simpler copy, using the numerical value
-in TACTIC to choose between multiple options. If not provided, theft
-will just report the initially generated counter-example arguments
-as-is. This is equivalent to a shrink callback that always returns
-`THEFT_NO_MORE_TACTICS`.
-
-If a simpler instance can be produced, write it into `(*output)` and
-return `THEFT_SHRINK_OK`. If the current tactic is unusable, return
-`THEFT_SHRINK_DEAD_END`, and if all known tactics have been tried,
-return `THEFT_SHRINK_NO_MORE_TACTICS`.
-
-If shrinking succeeds, theft will reset the tactic counter back to
-0, so tactics that simplify by larger steps should be tried first,
-and then later tactics can get them unstuck.
-
-For more information about shrinking, recommendations for writing custom
-shrinkers, using autoshrinking, and so on, see
-[shrinking.md](shrinking.md).
 
 
 ### print - print an instance to the output stream

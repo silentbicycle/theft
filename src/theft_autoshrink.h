@@ -4,6 +4,9 @@
 #include "theft_types_internal.h"
 #include <limits.h>
 
+#include "theft_hash.h"
+#include "theft_shrink.h"
+
 #define AUTOSHRINK_ENV_TAG 0xa5
 #define AUTOSHRINK_BIT_POOL_TAG 'B'
 
@@ -165,14 +168,18 @@ theft_autoshrink_alloc(struct theft *t, struct autoshrink_env *env,
     void **instance);
 
 theft_hash
-theft_autoshrink_hash(struct theft *t, const void *instance,
-    struct autoshrink_env *env, void *type_env);
+theft_autoshrink_hash(struct autoshrink_env *env);
 
 void
 theft_autoshrink_print(struct theft *t, FILE *f,
     struct autoshrink_env *env, const void *instance, void *type_env);
 
-enum theft_shrink_res
+bool
+theft_autoshrink_make_candidate_bit_pool(struct theft *t,
+    struct autoshrink_env *env,
+    struct autoshrink_bit_pool **output_bit_pool);
+
+enum shrink_res
 theft_autoshrink_shrink(struct theft *t,
     struct autoshrink_env *env,
     uint32_t tactic, void **output,

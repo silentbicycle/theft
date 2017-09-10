@@ -2,13 +2,7 @@
 #define THEFT_SHRINK_INTERNAL_H
 
 #include "theft_types_internal.h"
-
-enum shrink_res {
-    SHRINK_OK,                  /* simplified argument further */
-    SHRINK_DEAD_END,            /* at local minima */
-    SHRINK_ERROR,               /* hard error during shrinking */
-    SHRINK_HALT,                /* don't shrink any further */
-};
+#include "theft_shrink.h"
 
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t, uint8_t arg_i);
@@ -20,7 +14,7 @@ shrink_pre_hook(struct theft *t,
 static enum theft_hook_shrink_post_res
 shrink_post_hook(struct theft *t,
     uint8_t arg_index, void *arg, uint32_t tactic,
-    enum theft_shrink_res sres);
+    enum shrink_res sres);
 
 static enum theft_hook_shrink_trial_post_res
 shrink_trial_post_hook(struct theft *t,

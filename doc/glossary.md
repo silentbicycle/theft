@@ -49,15 +49,10 @@ a starting state for the random number generator.
 
 ## shrink
 
-Taking an instance and returning a simpler copy, or indicating
-that there are no ways to simplify the instance. When there are
-multiple ways to shrink the instance, a 'tactic' is used to
-decide between them.
-
-## tactic
-
-A numerical ID used to choose between multiple ways to shrink
-(simplify) an instance.
+Taking an instance and returning a simpler copy, or indicating that
+there are no ways to simplify the instance further. When there are
+multiple ways to shrink the instance, use heuristics to choose between
+them, with backtracking.
 
 ## trial
 

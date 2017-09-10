@@ -296,12 +296,7 @@ theft_call_inner(struct theft *t, void **args) {
 static void
 get_arg_hash_buffer(theft_hash *buffer, struct theft *t) {
     for (uint8_t i = 0; i < t->prop.arity; i++) {
-        struct theft_type_info *ti = t->prop.type_info[i];
-
-        theft_hash h = (ti->autoshrink_config.enable
-            ? theft_autoshrink_hash(t, t->trial.args[i].instance,
-                t->trial.args[i].u.as.env, ti->env)
-            : ti->hash(t->trial.args[i].instance, ti->env));
+        theft_hash h = theft_autoshrink_hash(t->trial.args[i].env);
 
         LOG(4, "%s: arg %d hash; 0x%016" PRIx64 "\n", __func__, i, h);
         buffer[i] = h;

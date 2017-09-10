@@ -19,28 +19,25 @@ theft_shrink(struct theft *t) {
         /* Greedily attempt to simplify each argument as much as
          * possible before switching to the next. */
         for (uint8_t arg_i = 0; arg_i < t->prop.arity; arg_i++) {
-            struct theft_type_info *ti = t->prop.type_info[arg_i];
-        greedy_continue:
-            if (ti->shrink || ti->autoshrink_config.enable) {
-                /* attempt to simplify this argument by one step */
-                enum shrink_res rres = attempt_to_shrink_arg(t, arg_i);
+            /* attempt to simplify this argument by one step */
+            enum shrink_res rres = attempt_to_shrink_arg(t, arg_i);
 
-                switch (rres) {
-                case SHRINK_OK:
-                    LOG(3 - LOG_SHRINK, "%s %u: progress\n", __func__, arg_i);
-                    progress = true;
-                    goto greedy_continue; /* keep trying to shrink same argument */
-                case SHRINK_HALT:
-                    LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
-                    return true;
-                case SHRINK_DEAD_END:
-                    LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
-                    continue;   /* try next argument, if any */
-                default:
-                case SHRINK_ERROR:
-                    LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
-                    return false;
-                }
+            switch (rres) {
+            case SHRINK_OK:
+                LOG(3 - LOG_SHRINK, "%s %u: progress\n", __func__, arg_i);
+                progress = true;
+                arg_i--;
+                continue;             /* keep trying to shrink same argument */
+            case SHRINK_HALT:
+                LOG(3 - LOG_SHRINK, "%s %u: HALT\n", __func__, arg_i);
+                return true;
+            case SHRINK_DEAD_END:
+                LOG(3 - LOG_SHRINK, "%s %u: DEAD END\n", __func__, arg_i);
+                continue;   /* try next argument, if any */
+            default:
+            case SHRINK_ERROR:
+                LOG(1 - LOG_SHRINK, "%s %u: ERROR\n", __func__, arg_i);
+                return false;
             }
         }
     } while (progress);
@@ -57,8 +54,6 @@ theft_shrink(struct theft *t) {
 static enum shrink_res
 attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
     struct theft_type_info *ti = t->prop.type_info[arg_i];
-    const bool use_autoshrink = ti->autoshrink_config.enable;
-
     for (uint32_t tactic = 0; tactic < THEFT_MAX_TACTICS; tactic++) {
         LOG(2 - LOG_SHRINK, "SHRINKING arg %u, tactic %u\n", arg_i, tactic);
         void *current = t->trial.args[arg_i].instance;
@@ -75,16 +70,12 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
         struct autoshrink_env *as_env = NULL;
         struct autoshrink_bit_pool *current_bit_pool = NULL;
         struct autoshrink_bit_pool *candidate_bit_pool = NULL;
-        if (use_autoshrink) {
-            as_env = t->trial.args[arg_i].u.as.env;
-            assert(as_env);
-            current_bit_pool = t->trial.args[arg_i].u.as.env->bit_pool;
-        }
+        as_env = t->trial.args[arg_i].env;
+        assert(as_env);
+        current_bit_pool = t->trial.args[arg_i].env->bit_pool;
 
-        enum theft_shrink_res sres = (use_autoshrink
-            ? theft_autoshrink_shrink(t, as_env, tactic, &candidate,
-                &candidate_bit_pool)
-            : ti->shrink(t, current, tactic, ti->env, &candidate));
+        enum shrink_res sres = theft_autoshrink_shrink(t,
+            as_env, tactic, &candidate, &candidate_bit_pool);
 
         LOG(3 - LOG_SHRINK, "%s: tactic %u -> res %d\n", __func__, tactic, sres);
 
@@ -92,7 +83,7 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
 
         enum theft_hook_shrink_post_res shrink_post_res;
         shrink_post_res = shrink_post_hook(t, arg_i,
-            sres == THEFT_SHRINK_OK ? candidate : current,
+            sres == SHRINK_OK ? candidate : current,
             tactic, sres);
         if (shrink_post_res != THEFT_HOOK_SHRINK_POST_CONTINUE) {
             if (ti->free) { ti->free(candidate, ti->env); }
@@ -103,29 +94,27 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
         }
 
         switch (sres) {
-        case THEFT_SHRINK_OK:
+        case SHRINK_OK:
             break;
-        case THEFT_SHRINK_DEAD_END:
+        case SHRINK_DEAD_END:
             continue;           /* try next tactic */
-        case THEFT_SHRINK_NO_MORE_TACTICS:
+        case SHRINK_HALT:
             return SHRINK_DEAD_END;
-        case THEFT_SHRINK_ERROR:
+        case SHRINK_ERROR:
         default:
             return SHRINK_ERROR;
         }
 
         t->trial.args[arg_i].instance = candidate;
-        if (use_autoshrink) { as_env->bit_pool = candidate_bit_pool; }
+        as_env->bit_pool = candidate_bit_pool;
 
         if (t->bloom) {
             if (theft_call_check_called(t)) {
                 LOG(3 - LOG_SHRINK,
                     "%s: already called, skipping\n", __func__);
                 if (ti->free) { ti->free(candidate, ti->env); }
-                if (use_autoshrink) {
-                    as_env->bit_pool = current_bit_pool;
-                    theft_autoshrink_free_bit_pool(t, candidate_bit_pool);
-                }
+                as_env->bit_pool = current_bit_pool;
+                theft_autoshrink_free_bit_pool(t, candidate_bit_pool);
                 t->trial.args[arg_i].instance = current;
                 continue;
             } else {
@@ -163,9 +152,8 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
                 break;
             } else {
                 if (ti->free) { ti->free(current, ti->env); }
-                if (use_autoshrink && current_bit_pool) {
-                    theft_autoshrink_free_bit_pool(t, current_bit_pool);
-                }
+                assert(current_bit_pool);
+                theft_autoshrink_free_bit_pool(t, current_bit_pool);
                 return SHRINK_ERROR;
             }
         }
@@ -179,29 +167,24 @@ attempt_to_shrink_arg(struct theft *t, uint8_t arg_i) {
                 arg_i, (void *)candidate, (void *)candidate_bit_pool,
                 (void *)current, (void *)current_bit_pool);
             t->trial.args[arg_i].instance = current;
-            if (use_autoshrink) {
-                theft_autoshrink_free_bit_pool(t, candidate_bit_pool);
-                t->trial.args[arg_i].u.as.env->bit_pool = current_bit_pool;
-            }
+            theft_autoshrink_free_bit_pool(t, candidate_bit_pool);
+            t->trial.args[arg_i].env->bit_pool = current_bit_pool;
             if (ti->free) { ti->free(candidate, ti->env); }
             break;
         case THEFT_TRIAL_FAIL:
             LOG(2 - LOG_SHRINK, "FAIL: COMMITTING %u: was %p (pool %p), now %p (pool %p)\n",
                 arg_i, (void *)current, (void *)current_bit_pool,
                 (void *)candidate, (void *)candidate_bit_pool);
-            if (use_autoshrink) {
-                assert(t->trial.args[arg_i].u.as.env->bit_pool == candidate_bit_pool);
-                theft_autoshrink_free_bit_pool(t, current_bit_pool);
-            }
+            assert(t->trial.args[arg_i].env->bit_pool == candidate_bit_pool);
+            theft_autoshrink_free_bit_pool(t, current_bit_pool);
             assert(t->trial.args[arg_i].instance == candidate);
             if (ti->free) { ti->free(current, ti->env); }
             return SHRINK_OK;
         default:
         case THEFT_TRIAL_ERROR:
             if (ti->free) { ti->free(current, ti->env); }
-            if (use_autoshrink) {
-                theft_autoshrink_free_bit_pool(t, current_bit_pool);
-            }
+            assert(current_bit_pool);
+            theft_autoshrink_free_bit_pool(t, current_bit_pool);
             return SHRINK_ERROR;
         }
     }
@@ -238,15 +221,15 @@ shrink_pre_hook(struct theft *t,
 static enum theft_hook_shrink_post_res
 shrink_post_hook(struct theft *t,
         uint8_t arg_index, void *arg, uint32_t tactic,
-        enum theft_shrink_res sres) {
+        enum shrink_res sres) {
     if (t->hooks.shrink_post != NULL) {
         enum theft_shrink_post_state state;
         switch (sres) {
-        case THEFT_SHRINK_OK:
+        case SHRINK_OK:
             state = THEFT_SHRINK_POST_SHRUNK; break;
-        case THEFT_SHRINK_NO_MORE_TACTICS:
+        case SHRINK_HALT:
             state = THEFT_SHRINK_POST_DONE_SHRINKING; break;
-        case THEFT_SHRINK_DEAD_END:
+        case SHRINK_DEAD_END:
             state = THEFT_SHRINK_POST_SHRINK_FAILED; break;
         default:
             assert(false);

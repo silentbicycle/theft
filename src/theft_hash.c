@@ -1,4 +1,5 @@
 #include "theft.h"
+#include "theft_hash.h"
 
 #include <assert.h>
 

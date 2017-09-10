@@ -1,5 +1,6 @@
 #include "theft_autoshrink_internal.h"
 
+#include "theft_hash.h"
 #include "theft_random.h"
 #include "theft_rng.h"
 
@@ -257,61 +258,45 @@ theft_autoshrink_alloc(struct theft *t, struct autoshrink_env *env,
 }
 
 theft_hash
-theft_autoshrink_hash(struct theft *t, const void *instance,
-        struct autoshrink_env *env, void *type_env) {
-
-    /* If the user has a hash callback defined, use it on
-     * the instance, otherwise hash the bit pool. */
-    const struct theft_type_info *ti = t->prop.type_info[env->arg_i];
-    if (ti->hash != NULL) {
-        return ti->hash(instance, type_env);
-    } else {
-        struct autoshrink_bit_pool *pool = env->bit_pool;
-        assert(pool);
-        /* Hash the consumed bits from the bit pool */
-        struct theft_hasher h;
-        theft_hash_init(&h);
-        LOG(5 - LOG_AUTOSHRINK, "@@@ SINKING: [ ");
-        for (size_t i = 0; i < pool->consumed / 8; i++) {
-            LOG(5 - LOG_AUTOSHRINK, "%02x ", pool->bits[i]);
-        }
-        theft_hash_sink(&h, pool->bits, pool->consumed / 8);
-        const uint8_t rem_bits = pool->consumed % 8;
-        if (rem_bits > 0) {
-            const uint8_t last_byte = pool->bits[pool->consumed / 8];
-            const uint8_t mask = ((1U << rem_bits) - 1);
-            uint8_t rem = last_byte & mask;
-            LOG(5 - LOG_AUTOSHRINK, "%02x/%d", rem, rem_bits);
-            theft_hash_sink(&h, &rem, 1);
-        }
-        LOG(5 - LOG_AUTOSHRINK, " ]\n");
-        theft_hash res = theft_hash_done(&h);
-        LOG(2 - LOG_AUTOSHRINK, "%s: 0x%016" PRIx64 "\n", __func__, res);
-        return res;
+theft_autoshrink_hash(struct autoshrink_env *env) {
+    struct autoshrink_bit_pool *pool = env->bit_pool;
+    assert(pool);
+    /* Hash the consumed bits from the bit pool */
+    struct theft_hasher h;
+    theft_hash_init(&h);
+    LOG(5 - LOG_AUTOSHRINK, "@@@ SINKING: [ ");
+    for (size_t i = 0; i < pool->consumed / 8; i++) {
+        LOG(5 - LOG_AUTOSHRINK, "%02x ", pool->bits[i]);
     }
+    theft_hash_sink(&h, pool->bits, pool->consumed / 8);
+    const uint8_t rem_bits = pool->consumed % 8;
+    if (rem_bits > 0) {
+        const uint8_t last_byte = pool->bits[pool->consumed / 8];
+        const uint8_t mask = ((1U << rem_bits) - 1);
+        uint8_t rem = last_byte & mask;
+        LOG(5 - LOG_AUTOSHRINK, "%02x/%d", rem, rem_bits);
+        theft_hash_sink(&h, &rem, 1);
+    }
+    LOG(5 - LOG_AUTOSHRINK, " ]\n");
+    theft_hash res = theft_hash_done(&h);
+    LOG(2 - LOG_AUTOSHRINK, "%s: 0x%016" PRIx64 "\n", __func__, res);
+    return res;
 }
 
-enum theft_shrink_res
-theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
-        uint32_t tactic, void **output,
+bool
+theft_autoshrink_make_candidate_bit_pool(struct theft *t,
+        struct autoshrink_env *env,
         struct autoshrink_bit_pool **output_bit_pool) {
     struct autoshrink_bit_pool *orig = env->bit_pool;
     assert(orig);
 
-    if (tactic >= GET_DEF(env->max_failed_shrinks, DEF_MAX_FAILED_SHRINKS)) {
-        return THEFT_SHRINK_NO_MORE_TACTICS;
-    }
-
-    if (!build_index(orig)) {
-        return THEFT_SHRINK_ERROR;
-    }
+    if (!build_index(orig)) { return false; }
 
     /* Make a copy of the bit pool to shrink */
     struct autoshrink_bit_pool *copy = alloc_bit_pool(
         orig->bits_filled, orig->limit, orig->request_ceil);
-    if (copy == NULL) {
-        return THEFT_SHRINK_ERROR;
-    }
+    if (copy == NULL) { return false; }
+
     copy->generation = orig->generation + 1;
     size_t total_consumed = 0;
     for (size_t i = 0; i < orig->request_count; i++) {
@@ -323,7 +308,7 @@ theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
     env->model.cur_tried = 0x00;
     env->model.cur_set = 0x00;
 
-    LOG(3 - LOG_AUTOSHRINK, "========== BEFORE (tactic %u)\n", tactic);
+    LOG(3 - LOG_AUTOSHRINK, "========== BEFORE\n");
     if (3 - LOG_AUTOSHRINK <= THEFT_LOG_LEVEL) {
         theft_autoshrink_dump_bit_pool(stdout,
             orig->bits_filled,
@@ -351,20 +336,41 @@ theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
         truncate_trailing_zero_bytes(copy);
     }
 
+    *output_bit_pool = copy;
+    return true;
+}
+
+enum shrink_res
+theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
+        uint32_t tactic, void **output,
+        struct autoshrink_bit_pool **output_bit_pool) {
+    struct autoshrink_bit_pool *orig = env->bit_pool;
+    assert(orig);
+
+    if (tactic >= GET_DEF(env->max_failed_shrinks, DEF_MAX_FAILED_SHRINKS)) {
+        return SHRINK_HALT;
+    }
+
+    struct autoshrink_bit_pool *mutated_copy = NULL;
+    if (!theft_autoshrink_make_candidate_bit_pool(t, env, &mutated_copy)) {
+        return SHRINK_ERROR;
+    }
+
     void *res = NULL;
-    enum theft_alloc_res ares = alloc_from_bit_pool(t, env, copy, &res, true);
+    enum theft_alloc_res ares = alloc_from_bit_pool(t, env,
+        mutated_copy, &res, true);
     if (ares == THEFT_ALLOC_SKIP) {
-        theft_autoshrink_free_bit_pool(t, copy);
-        return THEFT_SHRINK_DEAD_END;
+        theft_autoshrink_free_bit_pool(t, mutated_copy);
+        return SHRINK_DEAD_END;
     } else if (ares == THEFT_ALLOC_ERROR) {
-        theft_autoshrink_free_bit_pool(t, copy);
-        return THEFT_SHRINK_ERROR;
+        theft_autoshrink_free_bit_pool(t, mutated_copy);
+        return SHRINK_ERROR;
     }
 
     assert(ares == THEFT_ALLOC_OK);
     *output = res;
-    *output_bit_pool = copy;
-    return THEFT_SHRINK_OK;
+    *output_bit_pool = mutated_copy;
+    return SHRINK_OK;
 }
 
 static void
@@ -664,7 +670,7 @@ choose_and_mutate_request(struct theft *t,
         uint64_t pos = 0;
         uint32_t to_change = 0;
 
-        if (size > 64) {        /* Pick an offset and region to shift */
+        if (size > 64) {        /* Pick an offset and region to mask */
             pos = prng(32, env->udata) % size;
             to_change = prng(6, env->udata);
             if (to_change > size - pos) {
@@ -1135,12 +1141,7 @@ void
 theft_autoshrink_update_model(struct theft *t,
         uint8_t arg_id, enum theft_trial_res res,
         uint8_t adjustment) {
-    /* If this type isn't using autoshrink, there's nothing to do. */
-    if (t->prop.type_info[arg_id]->autoshrink_config.enable == false) {
-        return;
-    }
-
-    struct autoshrink_env *env = t->trial.args[arg_id].u.as.env;
+    struct autoshrink_env *env = t->trial.args[arg_id].env;
 
     const uint8_t cur_set = env->model.cur_set;
     if (cur_set == 0x00) {

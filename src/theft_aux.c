@@ -1,5 +1,7 @@
 #include "theft_types_internal.h"
 
+#include "theft_hash.h"
+
 #include <assert.h>
 #include <sys/time.h>
 

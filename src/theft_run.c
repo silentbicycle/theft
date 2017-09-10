@@ -406,10 +406,6 @@ check_all_args(uint8_t arity, const struct theft_run_config *cfg,
     for (uint8_t i = 0; i < arity; i++) {
         const struct theft_type_info *ti = cfg->type_info[i];
         if (ti->alloc == NULL) { return false; }
-        if (ti->autoshrink_config.enable && ti->shrink) { return false; }
-        if (ti->hash == NULL && !ti->autoshrink_config.enable) {
-            ah = false;
-        }
     }
     *all_hashable = ah;
     return true;
@@ -418,15 +414,8 @@ check_all_args(uint8_t arity, const struct theft_run_config *cfg,
 static bool init_arg_info(struct theft *t, struct trial_info *trial_info) {
     for (size_t i = 0; i < t->prop.arity; i++) {
         const struct theft_type_info *ti = t->prop.type_info[i];
-        if (ti->autoshrink_config.enable) {
-            trial_info->args[i].type = ARG_AUTOSHRINK;
-            trial_info->args[i].u.as.env = theft_autoshrink_alloc_env(t, i, ti);
-            if (trial_info->args[i].u.as.env == NULL) {
-                return false;
-            }
-        } else {
-            trial_info->args[i].type = ARG_BASIC;
-        }
+        trial_info->args[i].env = theft_autoshrink_alloc_env(t, i, ti);
+        if (trial_info->args[i].env == NULL) { return false; }
     }
     return true;
 }
@@ -435,12 +424,9 @@ static bool init_arg_info(struct theft *t, struct trial_info *trial_info) {
 static enum all_gen_res
 gen_all_args(struct theft *t) {
     for (uint8_t i = 0; i < t->prop.arity; i++) {
-        struct theft_type_info *ti = t->prop.type_info[i];
         void *p = NULL;
-
-        enum theft_alloc_res res = (ti->autoshrink_config.enable
-            ? theft_autoshrink_alloc(t, t->trial.args[i].u.as.env, &p)
-            : ti->alloc(t, ti->env, &p));
+        enum theft_alloc_res res = theft_autoshrink_alloc(t,
+            t->trial.args[i].env, &p);
 
         if (res == THEFT_ALLOC_SKIP) {
             return ALL_GEN_SKIP;

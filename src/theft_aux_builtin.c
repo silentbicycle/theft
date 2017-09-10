@@ -205,9 +205,6 @@ static void double_print(FILE *f, const void *instance, void *env) {
             .alloc = NAME ## _alloc,                                   \
             .free = theft_generic_free_cb,                             \
             .print = NAME ## _print,                                   \
-            .autoshrink_config = {                                     \
-                .enable = true,                                        \
-            },                                                         \
         },                                                             \
     }
 
@@ -285,9 +282,6 @@ static struct type_info_row rows[] = {
             .alloc = bool_alloc,
             .free = theft_generic_free_cb,
             .print = bool_print,
-            .autoshrink_config = {
-                .enable = true,
-            },
         },
     },
     SCALAR_ROW(uint),
@@ -314,9 +308,6 @@ static struct type_info_row rows[] = {
             .alloc = char_ARRAY_alloc,
             .free = theft_generic_free_cb,
             .print = char_ARRAY_print,
-            .autoshrink_config = {
-                .enable = true,
-            },
         },
     },
     /* This is actually the same implementation, but
@@ -327,9 +318,6 @@ static struct type_info_row rows[] = {
             .alloc = char_ARRAY_alloc,
             .free = theft_generic_free_cb,
             .print = char_ARRAY_print,
-            .autoshrink_config = {
-                .enable = true,
-            },
         },
     },
 };

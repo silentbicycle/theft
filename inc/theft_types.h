@@ -7,9 +7,6 @@ struct theft;
 /* A pseudo-random number/seed, used to generate instances. */
 typedef uint64_t theft_seed;
 
-/* A hash of an instance. */
-typedef uint64_t theft_hash;
-
 /* Configuration for a theft run. (Forward reference, defined below.) */
 struct theft_run_config;
 
@@ -75,18 +72,13 @@ typedef enum theft_trial_res theft_propfun7(struct theft *t,
     void *arg1, void *arg2, void *arg3, void *arg4, void *arg5,
     void *arg6, void *arg7);
 
-/* Internal state for incremental hashing. */
-struct theft_hasher {
-    theft_hash accum;
-};
-
 
 /***********************
  * Type info callbacks *
  ***********************/
 
-/* This struct contains callbacks used to specify how to allocate, free,
- * hash, print, and/or shrink the property test input.
+/* This struct contains callbacks used to specify how to allocate,
+ * print, and free the property test input.
  *
  * Only `alloc` is required, though `free` is strongly recommended. */
 struct theft_type_info;         /* (forward reference) */
@@ -113,49 +105,14 @@ enum theft_alloc_res {
 typedef enum theft_alloc_res
 theft_alloc_cb(struct theft *t, void *env, void **output);
 
-/* Free an instance. */
-typedef void
-theft_free_cb(void *instance, void *env);
-
-/* Hash an instance. Used to skip combinations of arguments which
- * have probably already been checked. */
-typedef theft_hash
-theft_hash_cb(const void *instance, void *env);
-
-/* Attempt to shrink an instance to a simpler instance.
- *
- * For a given INSTANCE, there are likely to be multiple ways in which
- * it can be simplified. For example, a list of unsigned ints could have
- * the first element decremented, divided by 2, or dropped. This
- * callback should write a pointer to a freshly allocated, simplified
- * instance in *output, or should return THEFT_SHRINK_DEAD_END to
- * indicate that the instance cannot be simplified further by this
- * method.
- *
- * These tactics will be lazily explored breadth-first, to
- * try to find simpler versions of arguments that cause the
- * property to no longer hold.
- *
- * If there are no other tactics to try for this instance, then
- * return THEFT_SHRINK_NO_MORE_TACTICS. Otherwise, theft will
- * keep calling the callback with successive tactics.
- *
- * If this callback is NULL, it is equivalent to always returning
- * THEFT_SHRINK_NO_MORE_TACTICS. */
-enum theft_shrink_res {
-    THEFT_SHRINK_OK,
-    THEFT_SHRINK_DEAD_END,
-    THEFT_SHRINK_NO_MORE_TACTICS,
-    THEFT_SHRINK_ERROR,
-};
-typedef enum theft_shrink_res
-theft_shrink_cb(struct theft *t, const void *instance,
-    uint32_t tactic, void *env, void **output);
-
 /* Print INSTANCE to output stream F.
  * Used for displaying counter-examples. Can be NULL. */
 typedef void
 theft_print_cb(FILE *f, const void *instance, void *env);
+
+/* Free an instance. */
+typedef void
+theft_free_cb(void *instance, void *env);
 
 /* When printing an autoshrink bit pool, should just the user's print
  * callback be used (if available), or should it also print the raw
@@ -171,7 +128,6 @@ enum theft_autoshrink_print_mode {
 /* Configuration for autoshrinking.
  * For all of these fields, leaving them as 0 will use the default. */
 struct theft_autoshrink_config {
-    bool enable;                /* true: Enable autoshrinking */
     /* Initial allocation size (default: DEF_POOL_SIZE).
      * When generating very complex instances, this may need to be increased. */
     size_t pool_size;
@@ -190,11 +146,8 @@ struct theft_type_info {
     theft_alloc_cb *alloc;      /* gen random instance from seed */
 
     /* Optional, but recommended: */
-    theft_free_cb *free;        /* free instance */
-    theft_hash_cb *hash;        /* instance -> hash */
     theft_print_cb *print;      /* fprintf instance */
-    /* shrink instance, if autoshrinking is not in use */
-    theft_shrink_cb *shrink;
+    theft_free_cb *free;        /* free instance */
 
     struct theft_autoshrink_config autoshrink_config;
 

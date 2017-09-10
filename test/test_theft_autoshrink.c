@@ -33,20 +33,17 @@ static int bit_pool_eq(const void *exp, const void *got, void *udata) {
     struct autoshrink_bit_pool *a = (struct autoshrink_bit_pool *)exp;
     struct autoshrink_bit_pool *b = (struct autoshrink_bit_pool *)got;
     if (a->bits_filled != b->bits_filled) { return 0; }
-    if (a->consumed != b->consumed) { return 0; }
-    if (a->request_count != b->request_count) { return 0; }
 
-    for (size_t i = 0; i < a->request_count; i++) {
-        if (a->requests[i] != b->requests[i]) {
-            return 0;
-        }
-    }
     const size_t limit = (a->bits_filled / 8) + ((a->bits_filled % 8) == 0 ? 0 : 1);
     for (size_t i = 0; i < limit; i++) {
         if (a->bits[i] != b->bits[i]) {
             return 0;
         }
     }
+
+    /* Note: for comparison purposes, ignore request sizes -- they
+     * aren't filled in until actually attempting to allocate an
+     * instance from the bit pool. */
 
     return 1;
 }
@@ -123,10 +120,8 @@ TEST ll_drop_nothing(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 0, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
 
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     uint8_t exp_bits[] = { 0x01, 0x48, 0x40, 0x00, 0x32, 0x10, 0x00, 0x00 };
     uint32_t exp_requests[] = { 3, 8,
@@ -182,9 +177,8 @@ TEST ll_drop_nothing_but_do_truncate(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 0, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* Drop the zeroes off the end */
     uint8_t exp_bits[] = { 0x01, 0x48, 0x40, 0x00, 0x32, 0x10, };
@@ -241,9 +235,8 @@ TEST ll_drop_first(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 0, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {1, 0, 3, 0}:
      * 0b001, 0b00000001,
@@ -306,9 +299,7 @@ TEST ll_drop_third_and_fourth(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 0, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 1, 0}:
      * 0b001, 0b00000000,
@@ -366,9 +357,8 @@ TEST ll_drop_last(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 0, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 1, 0, 3}:
      * 0b001, 0b00000000,
@@ -434,9 +424,8 @@ TEST ll_mutate_shift(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 1, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 0, 0, 1}:
      * 0b001, 0b00000000,
@@ -495,9 +484,8 @@ TEST ll_mutate_mask(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 1, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 1, 0, 2, 0}:
      * 0b001, 0b00000000,
@@ -555,9 +543,8 @@ TEST ll_mutate_swap(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 1, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 1, 0, 0, 2}:
      * 0b001, 0b00000000,
@@ -601,9 +588,9 @@ TEST ll_mutate_sub(void) {
             // popcount: 1 change
             { 5, 0x00 /* + 1 */, },
 
-            // subtract (4 % 3) from 3
+            // subtract 1 from 3
             { pos_bits, 7 },
-            { 8, 0x04 },
+            { 1, 0x01 },
         },
     };
     struct autoshrink_env env = {
@@ -616,9 +603,8 @@ TEST ll_mutate_sub(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 1, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 1, 0, 2, 0}:
      * 0b001, 0b00000000,
@@ -679,9 +665,8 @@ TEST ll_mutate_retries_when_change_has_no_effect(void) {
 
     void *output = NULL;
     struct autoshrink_bit_pool *out_pool = NULL;
-    enum theft_shrink_res res;
-    res = theft_autoshrink_shrink(t, &env, 1, &output, &out_pool);
-    ASSERT_EQ_FMT(THEFT_SHRINK_OK, res, "%d");
+
+    ASSERT(theft_autoshrink_make_candidate_bit_pool(t, &env, &out_pool));
 
     /* These bits will construct an LL of {0, 1, 0, 0, 2}:
      * 0b001, 0b00000000,
@@ -956,6 +941,7 @@ bulk_trial_pre_hook(const struct theft_hook_trial_pre_info *info, void *penv) {
 
 TEST bulk_random_bits(void) {
     theft_seed seed = theft_seed_of_time();
+
     enum theft_run_res res;
 
     struct hook_env env = { .minimal = false };

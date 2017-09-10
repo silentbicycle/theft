@@ -63,25 +63,6 @@ uint64_t theft_random_choice(struct theft *t, uint64_t ceil);
 #endif
 
 
-/***********
- * Hashing *
- ***********/
-
-/* Hash a buffer in one pass. (Wraps the below functions.) */
-theft_hash theft_hash_onepass(const uint8_t *data, size_t bytes);
-
-/* Initialize/reset a hasher for incremental hashing. */
-void theft_hash_init(struct theft_hasher *h);
-
-/* Sink more data into an incremental hash. */
-void theft_hash_sink(struct theft_hasher *h,
-    const uint8_t *data, size_t bytes);
-
-/* Finish hashing and get the result.
- * (This also resets the internal hasher state.) */
-theft_hash theft_hash_done(struct theft_hasher *h);
-
-
 /***********/
 /* Logging */
 /***********/
@@ -197,6 +178,7 @@ const char *theft_trial_res_str(enum theft_trial_res res);
 /* Return a string name of a run result. */
 const char *theft_run_res_str(enum theft_run_res res);
 
+
 /***********************
  * Built-in generators *
  ***********************/
@@ -261,9 +243,7 @@ enum theft_builtin_type_info {
 };
 
 /* Get a const pointer to built-in type_info callbacks for
- * TYPE. See the comments for each type above for details.
- *
- * NOTE: All built-ins have autoshrink enabled. */
+ * TYPE. See the comments for each type above for details. */
 const struct theft_type_info *
 theft_get_builtin_type_info(enum theft_builtin_type_info type);
 

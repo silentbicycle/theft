@@ -84,20 +84,9 @@ struct prng_info {
     struct autoshrink_bit_pool *bit_pool;
 };
 
-enum arg_type {
-    ARG_BASIC,
-    ARG_AUTOSHRINK,
-};
-
 struct arg_info {
     void *instance;
-
-    enum arg_type type;
-    union {
-        struct {
-            struct autoshrink_env *env;
-        } as;
-    } u;
+    struct autoshrink_env *env;
 };
 
 /* Result from an individual trial. */

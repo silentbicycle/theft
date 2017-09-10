@@ -13,6 +13,7 @@ static enum theft_trial_res unused(struct theft *t, void *v) {
 static enum theft_alloc_res
 unused_alloc(struct theft *t, void *env, void **instance) {
     (void)t; (void)env; (void)instance;
+    assert(false);
     return THEFT_ALLOC_ERROR;
 }
 
@@ -37,11 +38,11 @@ struct theft *test_theft_init(void) {
 
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
-    RUN_SUITE(prng);
     RUN_SUITE(autoshrink);
     RUN_SUITE(aux);
     RUN_SUITE(bloom);
     RUN_SUITE(error);
     RUN_SUITE(integration);
+    RUN_SUITE(prng);
     GREATEST_MAIN_END();        /* display results */
 }

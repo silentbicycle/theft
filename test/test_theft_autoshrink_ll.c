@@ -74,7 +74,6 @@ struct theft_type_info ll_info = {
     .free = ll_free,
     .print = ll_print,
     .autoshrink_config = {
-        .enable = true,
         .print_mode = THEFT_AUTOSHRINK_PRINT_ALL,
     },
 };
