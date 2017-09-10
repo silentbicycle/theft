@@ -744,11 +744,9 @@ choose_and_mutate_request(struct theft *t,
     case MUT_SUB:
     {
         env->model.cur_tried |= ASA_SUB;
-        uint8_t sub_size = (size <= 64 ? size : 64);
-        const uint64_t sub = prng(sub_size, env->udata);
         uint64_t pos = 0;
         uint32_t to_change = 0;
-        if (size > 64) {        /* Pick an offset and region to shift */
+        if (size > 64) {        /* Pick an offset and region to change */
             pos = prng(32, env->udata) % size;
             to_change = prng(6, env->udata);
             if (to_change > size - pos) {
@@ -757,11 +755,20 @@ choose_and_mutate_request(struct theft *t,
         } else {                /* just change the whole thing */
             to_change = size;
         }
-        uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
+        const uint64_t bits = read_bits_at_offset(pool, bit_offset + pos, to_change);
         if (bits > 0) {
+            uint8_t sub_bits = 1;
+            while ((1LLU << sub_bits) < bits && sub_bits < 64) {
+                sub_bits++;
+            }
+            sub_bits /= 2;
+            if (sub_bits == 0) { sub_bits = 1; }
+            uint64_t sub = prng(sub_bits, env->udata);
+
             uint64_t nbits = bits - (sub % bits);
             if (nbits == bits) {
                 nbits--;
+                sub = 1;
             }
             LOG(2 - LOG_AUTOSHRINK,
                 "SUB[%" PRIu64 ", %u @ %" PRId64 " (0x%08zx)]: 0x%016"
