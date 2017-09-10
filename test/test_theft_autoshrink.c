@@ -54,7 +54,7 @@ static int bit_pool_eq(const void *exp, const void *got, void *udata) {
 static int bit_pool_print(const void *t, void *udata) {
     struct autoshrink_bit_pool *pool = (struct autoshrink_bit_pool *)t;
     theft_autoshrink_dump_bit_pool(stdout, pool->bits_filled, pool,
-        THEFT_AUTOSHRINK_PRINT_ALL);
+        NULL, THEFT_AUTOSHRINK_PRINT_ALL);
     (void)udata;
     return 0;
 }

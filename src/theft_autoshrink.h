@@ -181,6 +181,7 @@ theft_autoshrink_shrink(struct theft *t,
 /* This is only exported for testing. */
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
     const struct autoshrink_bit_pool *pool,
+    const struct autoshrink_bit_pool *req_pool,
     enum theft_autoshrink_print_mode print_mode);
 
 /* Set the next action the model will deliver. (This is a hook for testing.) */

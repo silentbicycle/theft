@@ -327,7 +327,7 @@ theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
     if (3 - LOG_AUTOSHRINK <= THEFT_LOG_LEVEL) {
         theft_autoshrink_dump_bit_pool(stdout,
             orig->bits_filled,
-            orig, THEFT_AUTOSHRINK_PRINT_ALL);
+            orig, NULL, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
     if (env->model.weights[WEIGHT_DROP] == 0) {
@@ -344,7 +344,7 @@ theft_autoshrink_shrink(struct theft *t, struct autoshrink_env *env,
     if (3 - LOG_AUTOSHRINK <= THEFT_LOG_LEVEL) {
         theft_autoshrink_dump_bit_pool(stdout,
             copy->bits_filled,
-            copy, THEFT_AUTOSHRINK_PRINT_ALL);
+            copy, orig, THEFT_AUTOSHRINK_PRINT_ALL);
     }
 
     if (!env->leave_trailing_zeroes) {
@@ -576,7 +576,7 @@ static void mutate_bit_pool(struct theft *t,
             if (LOG_AUTOSHRINK >= 3) {
                 theft_autoshrink_dump_bit_pool(stdout,
                     pool->bits_filled,
-                    pool, THEFT_AUTOSHRINK_PRINT_ALL);
+                    pool, NULL, THEFT_AUTOSHRINK_PRINT_ALL);
             }
 
             if (changed == change_count) {
@@ -858,6 +858,7 @@ write_bits_at_offset(struct autoshrink_bit_pool *pool,
 
 void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
                                     const struct autoshrink_bit_pool *pool,
+                                    const struct autoshrink_bit_pool *req_pool,
                                     enum theft_autoshrink_print_mode print_mode) {
     fprintf(f, "\n-- autoshrink [generation: %zd, requests: %zd -- %zd/%zd bits consumed]\n",
         pool->generation, pool->request_count, pool->consumed,
@@ -899,17 +900,18 @@ void theft_autoshrink_dump_bit_pool(FILE *f, size_t bit_count,
     /* Print the bit pool, grouped into requests -- this corresponds to
      * the actual values the caller gets from `theft_random_bits`. */
     if (print_mode & THEFT_AUTOSHRINK_PRINT_REQUESTS) {
+        if (req_pool == NULL) { req_pool = pool; }
         if (prev) {
             fprintf(f, "\n\n");
         }
         size_t offset = 0;
-        if (pool->request_count > 0) {
-            fprintf(f, "requests: (%zd)\n", pool->request_count);
+        if (req_pool->request_count > 0) {
+            fprintf(f, "requests: (%zd)\n", req_pool->request_count);
         }
-        for (size_t i = 0; i < pool->request_count; i++) {
-            uint32_t req_size = pool->requests[i];
-            if (offset + req_size > pool->bits_filled) {
-                req_size = pool->bits_filled - offset;
+        for (size_t i = 0; i < req_pool->request_count; i++) {
+            uint32_t req_size = req_pool->requests[i];
+            if (offset + req_size > req_pool->bits_filled) {
+                req_size = req_pool->bits_filled - offset;
             }
             if (req_size <= 64) { /* fits in a uint64_t */
                 uint64_t bits = read_bits_at_offset(pool, offset, req_size);
@@ -975,7 +977,7 @@ theft_autoshrink_print(struct theft *t, FILE *f,
 
     struct autoshrink_bit_pool *pool = env->bit_pool;
     assert(pool->bits_ceil >= pool->consumed);
-    theft_autoshrink_dump_bit_pool(f, pool->consumed, pool, print_mode);
+    theft_autoshrink_dump_bit_pool(f, pool->consumed, pool, NULL, print_mode);
 }
 
 static bool append_request(struct autoshrink_bit_pool *pool,
