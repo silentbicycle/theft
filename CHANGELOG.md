@@ -28,7 +28,9 @@ autoshrinking, based on what has previously been effective.
 
 ### Bug Fixes
 
-None.
+Fixed a bug in `infer_arity` that incorrectly indicated that a
+configuration with THEFT_MAX_ARITY (7) arguments had 0. Reported by
+@kquick.
 
 
 ### Other Improvements

@@ -367,7 +367,7 @@ infer_arity(const struct theft_run_config *cfg) {
             return i;
         }
     }
-    return 0;
+    return THEFT_MAX_ARITY;
 }
 
 static bool copy_propfun_for_arity(const struct theft_run_config *cfg,
