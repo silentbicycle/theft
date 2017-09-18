@@ -257,8 +257,9 @@ static void hexdump(FILE *f, const uint8_t *raw, size_t size) {
             fprintf(f, "%02x ", raw[row_i + i]);
         }
 
-        for (size_t ii = rem; ii < 16; ++ii)
+        for (size_t ii = rem; ii < 16; ++ii) {
             fprintf(f, "   ");  /* add padding */
+        }
 
         for (size_t i = 0; i < rem; i++) {
             char c = ((const char *)raw)[i];
