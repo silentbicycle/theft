@@ -49,6 +49,7 @@ TEST_OBJS=	${BUILD}/test_theft.o \
 		${BUILD}/test_theft_error.o \
 		${BUILD}/test_theft_prng.o \
 		${BUILD}/test_theft_integration.o \
+	   ${BUILD}/test_char_array.o \
 
 
 # Basic targets
