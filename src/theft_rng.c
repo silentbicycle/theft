@@ -14,6 +14,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/* An implementation of the xoroshiro128+ RNG.
+ *
+ * Based on Vigna, 'Further scramblings of Marsaglia's xorshift generators',
+ * doi:10.1016/j.cam.2016.11.006
+ * 
+ * More information available at http://xoroshiro.di.unimi.it/
+ *
+ * Performance information and benchmarks available at http://nullprogram.com/blog/2017/09/21/
+ */
+
 #include <stdlib.h>
 #include "theft_rng.h"
 
@@ -21,16 +31,19 @@ struct theft_rng {
   uint64_t state[2];
 };
 
+/* Heap-allocate a xoroshiro128+ state struct. */
 struct theft_rng *theft_rng_init(uint64_t seed) {
   struct theft_rng *rng = malloc(sizeof(struct theft_rng));
   theft_rng_reset(rng, seed);
   return rng;
 }
 
+/* Free a heap-allocated xoroshiro128+ state struct. */
 void theft_rng_free(struct theft_rng *rng) {
   free(rng);
 }
 
+/* Re-seed an existing xoroshiro128+ state struct. */
 void theft_rng_reset(struct theft_rng *rng, uint64_t seed) {
   uint64_t candidate_state[2] = { seed, ~seed };
   /* Ensures that bad seeds don't affect the generator */
@@ -40,6 +53,7 @@ void theft_rng_reset(struct theft_rng *rng, uint64_t seed) {
   }
 }
 
+/* Get a 64-bit random number. */
 uint64_t theft_rng_random(struct theft_rng *rng) {
   uint64_t s0 = rng->state[0];
   uint64_t s1 = rng->state[1];
@@ -50,6 +64,7 @@ uint64_t theft_rng_random(struct theft_rng *rng) {
   return result;
 }
 
+/* Convert a 64-bit number to a double in the real interval [0,1]. */
 double theft_rng_uint64_to_double(uint64_t x) {
   return (x >> 11) * (1.0/9007199254740991.0);
 }
