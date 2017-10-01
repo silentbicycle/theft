@@ -15,12 +15,10 @@ theft is distributed under the ISC license.
 
 theft does not depend on anything beyond C99 and a Unix-like
 environment. Its internal tests use [greatest][], but there is not any
-coupling between them. It contains implementations of the
-[Mersenne Twister][mt] PRNG and the [FNV-1a][fnv] hashing algorithm -
-see their files for copyright info.
+coupling between them. It contains an implementation of the [FNV-1a][fnv] 
+hashing algorithm - see its files for copyright info.
 
 [greatest]: https://github.com/silentbicycle/greatest
-[mt]: http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
 [fnv]: http://www.isthe.com/chongo/tech/comp/fnv/
 
 
