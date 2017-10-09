@@ -5,16 +5,16 @@
 
 /* Wrapper for xoroshiro128+. */
 
-/* Opaque type for the state of an xoroshiro128+ PRNG. */
+/* Opaque type for the state of a PRNG. */
 struct theft_rng;
 
-/* Heap-allocate an xoroshiro128+ state struct. */
+/* Heap-allocate a PRNG state struct. */
 struct theft_rng *theft_rng_init(uint64_t seed);
 
-/* Free a heap-allocated xoroshiro128+ state struct. */
+/* Free a heap-allocated PRNG state struct. */
 void theft_rng_free(struct theft_rng *rng);
 
-/* Re-seed an existing xoroshiro128+ state struct. */
+/* Re-seed an existing PRNG state struct. */
 void theft_rng_reset(struct theft_rng *mt, uint64_t seed);
 
 /* Get a 64-bit random number. */
