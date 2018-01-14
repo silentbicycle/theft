@@ -39,7 +39,8 @@ which could lead to printing memory past the end of the char array.
 
 ### Other Improvements
 
-None.
+Replaced the 64-bit Mersenne Twister PRNG with xoroshiro128+, which is
+significantly faster. (Thanks @kozross.)
 
 
 ## v0.4.3 - 2017-09-04
