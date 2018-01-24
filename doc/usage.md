@@ -312,7 +312,7 @@ These hooks can be overridden to add test-specific behavior. For example:
 
 - Halting shrinking after a certain amount of time (`shrink_pre`)
 
-- Dropping priveleges with `setrlimit`, `pledge`, etc. on the
+- Dropping privileges with `setrlimit`, `pledge`, etc. on the
   forked child process before running the property (`fork_post`).
 
 
