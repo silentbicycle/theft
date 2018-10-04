@@ -58,7 +58,12 @@ test: ${BUILD}/test_${PROJECT}
 	${BUILD}/test_${PROJECT} ${ARG}
 
 clean:
-	rm -rf ${BUILD} gmon.out
+	rm -rf ${BUILD} gmon.out cscope.out
+
+cscope: ${SRC}/*.c ${SRC}/*.h ${INC}/*
+	cscope -bu ${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
+
+ctags: ${BUILD}/tags
 
 tags: ${BUILD}/TAGS
 
@@ -73,6 +78,11 @@ ${BUILD}/%.o: ${SRC}/%.c ${SRC}/*.h ${INC}/* | ${BUILD}
 
 ${BUILD}/%.o: ${TEST}/%.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	${CC} -c -o $@ ${TEST_CFLAGS} $<
+
+${BUILD}/tags: ${SRC}/*.c ${SRC}/*.h ${INC}/* | ${BUILD}
+	ctags -f $@ \
+		--tag-relative --langmap=c:+.h --fields=+l --c-kinds=+l --extra=+q \
+		${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
 
 ${BUILD}/TAGS: ${SRC}/*.c ${SRC}/*.h ${INC}/* | ${BUILD}
 	etags -o $@ ${SRC}/*.[ch] ${INC}/*.h ${TEST}/*.[ch]
@@ -126,4 +136,4 @@ uninstall:
 # Other dependencies
 ${BUILD}/theft.o: Makefile ${INC}/*.h
 
-.PHONY: all test clean tags coverage profile install uninstall
+.PHONY: all test clean cscope ctags tags coverage profile install uninstall
