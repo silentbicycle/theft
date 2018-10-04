@@ -1,2 +1,5 @@
+cscope.*
+tags
+TAGS
 build/
 tmp/
