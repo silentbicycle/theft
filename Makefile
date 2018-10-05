@@ -106,19 +106,19 @@ INSTALL ?= 	install
 RM ?=		rm
 
 install: ${BUILD}/lib${PROJECT}.a ${BUILD}/lib${PROJECT}.pc
-	${INSTALL} -d ${PREFIX}/lib/
-	${INSTALL} -c ${BUILD}/lib${PROJECT}.a ${PREFIX}/lib/lib${PROJECT}.a
-	${INSTALL} -d ${PREFIX}/include/
-	${INSTALL} -c ${INC}/${PROJECT}.h ${PREFIX}/include/
-	${INSTALL} -c ${INC}/${PROJECT}_types.h ${PREFIX}/include/
-	${INSTALL} -d ${PREFIX}/share/pkgconfig/
-	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${PREFIX}/share/pkgconfig/
+	${INSTALL} -d ${DESTDIR}${PREFIX}/lib/
+	${INSTALL} -c ${BUILD}/lib${PROJECT}.a ${DESTDIR}${PREFIX}/lib/lib${PROJECT}.a
+	${INSTALL} -d ${DESTDIR}${PREFIX}/include/
+	${INSTALL} -c ${INC}/${PROJECT}.h ${DESTDIR}${PREFIX}/include/
+	${INSTALL} -c ${INC}/${PROJECT}_types.h ${DESTDIR}${PREFIX}/include/
+	${INSTALL} -d ${DESTDIR}${PREFIX}/share/pkgconfig/
+	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PREFIX}/share/pkgconfig/
 
 uninstall:
-	${RM} ${PREFIX}/lib/lib${PROJECT}.a
-	${RM} ${PREFIX}/include/${PROJECT}.h
-	${RM} ${PREFIX}/include/${PROJECT}_types.h
-	${RM} ${PREFIX}/share/pkgconfig/lib${PROJECT}.pc
+	${RM} ${DESTDIR}${PREFIX}/lib/lib${PROJECT}.a
+	${RM} ${DESTDIR}${PREFIX}/include/${PROJECT}.h
+	${RM} ${DESTDIR}${PREFIX}/include/${PROJECT}_types.h
+	${RM} ${DESTDIR}${PREFIX}/share/pkgconfig/lib${PROJECT}.pc
 
 
 # Other dependencies
