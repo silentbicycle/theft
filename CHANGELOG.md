@@ -10,6 +10,11 @@ Added check so `free` instance callback is optional. Previously, the
 documentation indicated it was optional, but the trial cleanup code
 always attempted to call it. (Reported by @deweerdt.)
 
+Fixed a bug in `infer_arity` that incorrectly indicated that a
+configuration with THEFT_MAX_ARITY (7) arguments had 0. Reported by
+@kquick.
+
+
 ### Other Improvements
 
 Added `-fPIC` to build flags.
