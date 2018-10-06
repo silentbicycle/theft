@@ -11,8 +11,12 @@ documentation indicated it was optional, but the trial cleanup code
 always attempted to call it. (Reported by @deweerdt.)
 
 Fixed a bug in `infer_arity` that incorrectly indicated that a
-configuration with THEFT_MAX_ARITY (7) arguments had 0. Reported by
-@kquick.
+configuration with THEFT_MAX_ARITY (7) arguments had 0. (Reported by
+@kquick.)
+
+Fixed a bug in the builtin char array hexdump function's print callback,
+which could lead to printing memory past the end of the char array.
+(Fixed by @kquick.)
 
 
 ### Other Improvements
