@@ -6,6 +6,10 @@
 
 ### Bug Fixes
 
+Added check so `free` instance callback is optional. Previously, the
+documentation indicated it was optional, but the trial cleanup code
+always attempted to call it. (Reported by @deweerdt.)
+
 ### Other Improvements
 
 Added `-fPIC` to build flags.

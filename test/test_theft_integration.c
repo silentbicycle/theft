@@ -15,7 +15,7 @@ static enum theft_alloc_res
 uint_alloc(struct theft *t, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
     if (n == NULL) { return THEFT_ALLOC_ERROR; }
-    *n = (uint32_t)(theft_random(t) & 0xFFFFFFFF);
+    *n = (uint32_t)(theft_random_bits(t, 8*sizeof(uint32_t)));
     (void)t; (void)env;
     *output = n;
     return THEFT_ALLOC_OK;
@@ -95,7 +95,7 @@ list_alloc(struct theft *t, void *env, void **output) {
     uint32_t upper = 0;
     int len = 0;
 
-    theft_seed seed = theft_random(t);
+    theft_seed seed = theft_random_bits(t, 64);
     list_unpack_seed(seed, &lower, &upper);
 
     while (upper >= (uint32_t)(0x40000000 | (1 << len))) {
@@ -115,7 +115,7 @@ list_alloc(struct theft *t, void *env, void **output) {
             list_free(l, NULL);
         }
 
-        seed = theft_random(t);
+        seed = theft_random_bits(t, 64);
         list_unpack_seed(seed, &lower, &upper);
     }
 
@@ -573,8 +573,7 @@ static enum theft_alloc_res
 bool_alloc(struct theft *t, void *env, void **output) {
     bool *bp = malloc(sizeof(*bp));
     if (bp == NULL) { return THEFT_ALLOC_ERROR; }
-    theft_seed seed = theft_random(t);
-    *bp = (seed & 0x01 ? true : false);
+    *bp = theft_random_bits(t, 1) ? true : false;
     (void)env;
     (void)t;
     *output = bp;
@@ -765,7 +764,7 @@ static enum theft_alloc_res
 shrink_test_uint_alloc(struct theft *t, void *env, void **output) {
     uint32_t *n = malloc(sizeof(uint32_t));
     if (n == NULL) { return THEFT_ALLOC_ERROR; }
-    uint32_t value = (theft_random(t) & 0xFFFFFFFF);
+    uint32_t value = (uint32_t)theft_random_bits(t, 32);
     /* Make sure the value is large enough that we can test
      * cancelling shrinking early. */
     if (value < 100000) {
@@ -1562,6 +1561,38 @@ TEST trial_post_hook_gets_correct_args(void) {
     PASS();
 }
 
+static struct theft_type_info uint_type_info_no_free = {
+    .alloc = uint_alloc,
+    .free = NULL,               /* intentionally missing */
+    .print = uint_print,
+    .autoshrink_config = {
+        .enable = true,
+    },
+};
+
+static enum theft_trial_res
+prop_triskaidekaphobia(struct theft *t, void *arg1) {
+    (void)t;
+    uint32_t v = *(uint32_t *)arg1;
+    return ((v % 13) == 0 ? THEFT_TRIAL_FAIL : THEFT_TRIAL_PASS);
+}
+
+TEST free_callback_should_be_optional(void) {
+    struct theft_run_config cfg = {
+        .name = __func__,
+        .prop1 = prop_triskaidekaphobia,
+        /* Not using a built-in so .free can be NULL. */
+        .type_info = { &uint_type_info_no_free },
+        .trials = 1000,
+        .seed = theft_seed_of_time(),
+    };
+
+    enum theft_run_res res = theft_run(&cfg);
+    ASSERTm("FAIL is likely, PASS is okay, but don't crash",
+        res == THEFT_RUN_FAIL || res == THEFT_RUN_PASS);
+    PASS();
+}
+
 SUITE(integration) {
     RUN_TEST(generated_unsigned_ints_are_positive);
     RUN_TEST(generated_int_list_with_cons_is_longer);
@@ -1592,4 +1623,5 @@ SUITE(integration) {
     // Regressions
     RUN_TEST(expected_seed_should_be_used_first);
     RUN_TEST(trial_post_hook_gets_correct_args);
+    RUN_TEST(free_callback_should_be_optional);
 }
