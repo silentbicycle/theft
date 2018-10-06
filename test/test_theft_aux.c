@@ -80,8 +80,9 @@ TEST a_squared_lte_fixed(void) {
         },
     };
 
+    enum theft_run_res run_res = theft_run(&cfg);
     ASSERT_EQ_FMTm("should find counter-examples",
-        THEFT_RUN_FAIL, theft_run(&cfg), "%d");
+        THEFT_RUN_FAIL, run_res, "%d");
     ASSERTm("Should shrink to a minimal case", env.found);
     PASS();
 }

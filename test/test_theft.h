@@ -18,5 +18,6 @@ SUITE_EXTERN(aux);
 SUITE_EXTERN(bloom);
 SUITE_EXTERN(error);
 SUITE_EXTERN(integration);
+SUITE_EXTERN(char_array);
 
 #endif

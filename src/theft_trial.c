@@ -91,7 +91,7 @@ void theft_trial_free_args(struct theft *t) {
         struct arg_info *ai = &t->trial.args[i];
         theft_autoshrink_free_env(t, ai->env);
 
-        if (ai->instance != NULL) {
+        if (ai->instance != NULL && ti->free != NULL) {
             ti->free(t->trial.args[i].instance, ti->env);
         }
     }
