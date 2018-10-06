@@ -1,6 +1,6 @@
 # theft Changes By Release
 
-## v0.5.0 - 2017-xx-yy
+## v0.5.0 - 2018-xx-yy
 
 ### API Changes
 
@@ -42,6 +42,12 @@ which could lead to printing memory past the end of the char array.
 Replaced the 64-bit Mersenne Twister PRNG with xoroshiro128+, which is
 significantly faster. (Thanks @kozross.)
 
+Fixed a few typos. (Thanks @neuschaefer.)
+
+Added Makefile targets for vi-style ctags & cscope. (Thanks @alyptik.)
+
+Added `${DESTDIR}` prefix to Makefile install paths, for easier
+sandboxed builds and packaging. (Thanks @richardipsum.)
 
 ## v0.4.3 - 2017-09-04
 
