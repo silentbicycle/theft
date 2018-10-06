@@ -1,5 +1,38 @@
 # theft Changes By Release
 
+## v0.4.4 - 2018-10-06
+
+### API Changes
+
+None.
+
+### Bug Fixes
+
+Added check so `free` instance callback is optional. Previously, the
+documentation indicated it was optional, but the trial cleanup code
+always attempted to call it. (Reported by @deweerdt.)
+
+Fixed a bug in `infer_arity` that incorrectly indicated that a
+configuration with THEFT_MAX_ARITY (7) arguments had 0. (Reported by
+@kquick.)
+
+Fixed a bug in the builtin char array hexdump function's print callback,
+which could lead to printing memory past the end of the char array.
+(Fixed by @kquick.)
+
+
+### Other Improvements
+
+Added `-fPIC` to build flags.
+
+Fixed a few typos. (Thanks @neuschaefer.)
+
+Added Makefile targets for vi-style ctags & cscope. (Thanks @alyptik.)
+
+Added `${DESTDIR}` prefix to Makefile install paths, for easier
+sandboxed builds and packaging. (Thanks @richardipsum.)
+
+
 ## v0.4.3 - 2017-09-04
 
 ### API Changes

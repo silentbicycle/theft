@@ -11,5 +11,7 @@ int main(int argc, char **argv) {
     RUN_SUITE(bloom);
     RUN_SUITE(error);
     RUN_SUITE(integration);
+    RUN_SUITE(prng);
+    RUN_SUITE(char_array);
     GREATEST_MAIN_END();        /* display results */
 }

@@ -92,7 +92,7 @@ void theft_trial_free_args(struct theft *t) {
         if (ai->type == ARG_AUTOSHRINK) {
             theft_autoshrink_free_env(t, ai->u.as.env);
         }
-        if (ai->instance != NULL) {
+        if (ai->instance != NULL && ti->free != NULL) {
             ti->free(t->trial.args[i].instance, ti->env);
         }
     }
