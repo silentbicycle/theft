@@ -4,6 +4,8 @@
 
 ### API Changes
 
+None.
+
 ### Bug Fixes
 
 Added check so `free` instance callback is optional. Previously, the
@@ -22,6 +24,13 @@ which could lead to printing memory past the end of the char array.
 ### Other Improvements
 
 Added `-fPIC` to build flags.
+
+Fixed a few typos. (Thanks @neuschaefer.)
+
+Added Makefile targets for vi-style ctags & cscope. (Thanks @alyptik.)
+
+Added `${DESTDIR}` prefix to Makefile install paths, for easier
+sandboxed builds and packaging. (Thanks @richardipsum.)
 
 
 ## v0.4.3 - 2017-09-04
