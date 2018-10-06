@@ -8,6 +8,8 @@
 
 ### Other Improvements
 
+Added `-fPIC` to build flags.
+
 
 ## v0.4.3 - 2017-09-04
 
