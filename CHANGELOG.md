@@ -1,6 +1,6 @@
 # theft Changes By Release
 
-## v0.4.4 - 2018-xx-yy
+## v0.4.4 - 2018-10-06
 
 ### API Changes
 
