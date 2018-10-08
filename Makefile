@@ -124,7 +124,7 @@ install: ${BUILD}/lib${PROJECT}.a ${BUILD}/lib${PROJECT}.pc
 	${INSTALL} -c ${INC}/${PROJECT}.h ${DESTDIR}${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}_types.h ${DESTDIR}${PREFIX}/include/
 	${INSTALL} -d ${DESTDIR}${PREFIX}/share/pkgconfig/
-	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PREFIX}/share/pkgconfig/
+	${INSTALL} -c -m644 ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PREFIX}/share/pkgconfig/
 
 uninstall:
 	${RM} ${DESTDIR}${PREFIX}/lib/lib${PROJECT}.a
