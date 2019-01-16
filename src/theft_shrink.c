@@ -1,4 +1,5 @@
 #include "theft_shrink_internal.h"
+#include "theft_shrink.h"
 
 #include "theft_call.h"
 #include "theft_trial.h"
