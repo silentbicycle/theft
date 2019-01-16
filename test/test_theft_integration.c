@@ -42,7 +42,7 @@ is_pos(struct theft *t, void *arg1) {
     return THEFT_TRIAL_PASS;
 }
 
-TEST generated_unsigned_ints_are_positive() {
+TEST generated_unsigned_ints_are_positive(void) {
     enum theft_run_res res;
 
     /* The configuration struct can be passed in as an argument literal,
@@ -154,7 +154,7 @@ static enum theft_trial_res prop_gen_cons(struct theft *t, void *arg1) {
     return res;
 }
 
-TEST generated_int_list_with_cons_is_longer() {
+TEST generated_int_list_with_cons_is_longer(void) {
     enum theft_run_res res;
     struct theft_run_config cfg = {
         .name = __func__,
@@ -202,7 +202,7 @@ gildnrv_trial_post_hook(const struct theft_hook_trial_post_info *info, void *pen
     return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
-TEST generated_int_list_does_not_repeat_values() {
+TEST generated_int_list_does_not_repeat_values(void) {
     /* This test is expected to fail, with meaningful counter-examples. */
     struct test_env env = { .fail = false };
 
@@ -268,7 +268,7 @@ trial_post_hook_cb(const struct theft_hook_trial_post_info *info, void *env) {
     return THEFT_HOOK_TRIAL_POST_CONTINUE;
 }
 
-TEST two_generated_lists_do_not_match() {
+TEST two_generated_lists_do_not_match(void) {
     /* This test is expected to fail, with meaningful counter-examples. */
     struct test_env env;
     memset(&env, 0, sizeof(env));
@@ -326,7 +326,7 @@ always_seeds_trial_post(const struct theft_hook_trial_post_info *info, void *ven
       .always_seed_count = COUNT(A),                                  \
       .always_seeds = A
 
-TEST always_seeds_must_be_run() {
+TEST always_seeds_must_be_run(void) {
     /* This test is expected to fail, with meaningful counter-examples. */
     static theft_seed always_seeds[] = {
         0x600d5eed, 0xabad5eed,

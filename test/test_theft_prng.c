@@ -2,7 +2,7 @@
 #include "theft_random.h"
 #include "theft_run.h"
 
-TEST prng_should_return_same_series_from_same_seeds() {
+TEST prng_should_return_same_series_from_same_seeds(void) {
     theft_seed seeds[8];
     theft_seed values[8][8];
 
