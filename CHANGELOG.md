@@ -33,6 +33,9 @@ autoshrinking, based on what has previously been effective.
 Replaced the 64-bit Mersenne Twister PRNG with xoroshiro128+, which is
 significantly faster. (Thanks @kozross.)
 
+Eliminated a couple warnings: an assignment in an assert, missing
+prototypes. (Thanks @jmesmon.)
+
 
 ## v0.4.4 - 2018-10-06
 
