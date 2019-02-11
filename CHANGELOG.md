@@ -21,6 +21,8 @@ the environment.
 Eliminated a couple warnings: an assignment in an assert, missing
 prototypes. (Thanks @jmesmon.)
 
+Updated vendored copy of greatest to 1.4.1.
+
 
 ## v0.4.4 - 2018-10-06
 
