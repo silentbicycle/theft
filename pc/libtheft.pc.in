@@ -4,7 +4,7 @@ includedir=${prefix}/include
 
 Name: theft
 Description: Property-based testing for C
-Version: 0.4.3
+Version: 0.4.5
 Requires:
 Requires.private:
 Libs: -L${libdir} -ltheft
