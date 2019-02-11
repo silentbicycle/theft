@@ -114,6 +114,7 @@ ${BUILD}/%.pc: pc/%.pc.in | ${BUILD}
 
 # Installation
 PREFIX ?=	/usr/local
+PKGCONFIG_DST ?=${DESTDIR}${PREFIX}/lib/pkgconfig
 INSTALL ?= 	install
 RM ?=		rm
 
@@ -123,14 +124,14 @@ install: ${BUILD}/lib${PROJECT}.a ${BUILD}/lib${PROJECT}.pc
 	${INSTALL} -d ${DESTDIR}${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}.h ${DESTDIR}${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}_types.h ${DESTDIR}${PREFIX}/include/
-	${INSTALL} -d ${DESTDIR}${PREFIX}/share/pkgconfig/
-	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PREFIX}/share/pkgconfig/
+	${INSTALL} -d ${DESTDIR}${PKGCONFIG_DST}
+	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PKGCONFIG_DST}/
 
 uninstall:
 	${RM} ${DESTDIR}${PREFIX}/lib/lib${PROJECT}.a
 	${RM} ${DESTDIR}${PREFIX}/include/${PROJECT}.h
 	${RM} ${DESTDIR}${PREFIX}/include/${PROJECT}_types.h
-	${RM} ${DESTDIR}${PREFIX}/share/pkgconfig/lib${PROJECT}.pc
+	${RM} ${DESTDIR}${PKGCONFIG_DST}/lib${PROJECT}.pc
 
 
 # Other dependencies
