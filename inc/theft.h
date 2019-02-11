@@ -6,10 +6,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Version 0.4.4 */
+/* Version 0.4.5 */
 #define THEFT_VERSION_MAJOR 0
 #define THEFT_VERSION_MINOR 4
-#define THEFT_VERSION_PATCH 4
+#define THEFT_VERSION_PATCH 5
 
 #include "theft_types.h"
 

@@ -25,7 +25,7 @@ static enum theft_alloc_res
 bits_alloc(struct theft *t, void *penv, void **output) {
     assert(penv);
     struct err_env *env = (struct err_env *)penv;
-    assert(env->tag = 'e');
+    assert(env->tag == 'e');
 
     if (env->b == BEH_SKIP_ALL) {
         return THEFT_ALLOC_SKIP;
