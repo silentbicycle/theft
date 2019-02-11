@@ -1,5 +1,24 @@
 # theft Changes By Release
 
+## v0.4.5 - 2019-02-11
+
+### API Changes
+
+None.
+
+
+### Bug Fixes
+
+Only run the prng test suite once. (Probably a merge error.)
+
+
+### Other Improvements
+
+Changed the pkg-config path setup in the Makefile default to
+`${PREFIX}/lib/pkgconfig`, and make it easier to override via
+the environment.
+
+
 ## v0.4.4 - 2018-10-06
 
 ### API Changes
