@@ -18,6 +18,9 @@ Changed the pkg-config path setup in the Makefile default to
 `${PREFIX}/lib/pkgconfig`, and make it easier to override via
 the environment.
 
+Eliminated a couple warnings: an assignment in an assert, missing
+prototypes. (Thanks @jmesmon.)
+
 
 ## v0.4.4 - 2018-10-06
 
