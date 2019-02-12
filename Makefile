@@ -110,28 +110,28 @@ ${BUILD}/bits_lut.h: | ${BUILD}
 	${SCRIPTS}/mk_bits_lut > $@
 
 ${BUILD}/%.pc: pc/%.pc.in | ${BUILD}
-	sed -e 's,@prefix@,${PREFIX},g' $< > $@
+	sed -e 's,@prefix@,${PREFIX},g' -e 's,@libdir@,${LIBDIR},g' $< > $@
 
 # Installation
-PREFIX ?=	/usr/local
-PKGCONFIG_DST ?=${DESTDIR}${PREFIX}/lib/pkgconfig
+PREFIX ?=	/usr/local/
+LIBDIR ?=	lib
 INSTALL ?= 	install
 RM ?=		rm
 
 install: ${BUILD}/lib${PROJECT}.a ${BUILD}/lib${PROJECT}.pc
-	${INSTALL} -d ${DESTDIR}${PREFIX}/lib/
-	${INSTALL} -c ${BUILD}/lib${PROJECT}.a ${DESTDIR}${PREFIX}/lib/lib${PROJECT}.a
+	${INSTALL} -d ${DESTDIR}${PREFIX}${LIBDIR}
+	${INSTALL} -c ${BUILD}/lib${PROJECT}.a ${DESTDIR}${PREFIX}${LIBDIR}/lib${PROJECT}.a
 	${INSTALL} -d ${DESTDIR}${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}.h ${DESTDIR}${PREFIX}/include/
 	${INSTALL} -c ${INC}/${PROJECT}_types.h ${DESTDIR}${PREFIX}/include/
-	${INSTALL} -d ${DESTDIR}${PKGCONFIG_DST}
-	${INSTALL} -c ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PKGCONFIG_DST}/
+	${INSTALL} -d ${DESTDIR}${PREFIX}${LIBDIR}/pkgconfig/
+	${INSTALL} -c -m 644 ${BUILD}/lib${PROJECT}.pc ${DESTDIR}${PREFIX}${LIBDIR}/pkgconfig/
 
 uninstall:
-	${RM} ${DESTDIR}${PREFIX}/lib/lib${PROJECT}.a
+	${RM} ${DESTDIR}${PREFIX}${LIBDIR}/lib${PROJECT}.a
 	${RM} ${DESTDIR}${PREFIX}/include/${PROJECT}.h
 	${RM} ${DESTDIR}${PREFIX}/include/${PROJECT}_types.h
-	${RM} ${DESTDIR}${PKGCONFIG_DST}/lib${PROJECT}.pc
+	${RM} ${DESTDIR}${PREFIX}${LIBDIR}/pkgconfig/lib${PROJECT}.pc
 
 
 # Other dependencies
