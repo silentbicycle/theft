@@ -1331,6 +1331,7 @@ struct verbose_test_env {
 };
 
 /* Re-run each failure once, with the verbose flag set. */
+static
 enum theft_hook_trial_post_res
 trial_post_repeat_with_verbose_set(const struct theft_hook_trial_post_info *info,
     void *env) {
