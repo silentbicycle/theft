@@ -76,7 +76,9 @@ void theft_random_bits_bulk(struct theft *t, uint32_t bit_count, uint64_t *buf) 
         LOG(5, "== buf[%zd]: %016" PRIx64 " (%u / %u)\n",
             offset, buf[offset], bit_count - rem, bit_count);
         t->prng.bits_available -= take;
-        t->prng.buf >>= take;
+
+        if(take < 64)
+                t->prng.buf >>= take;
 
         shift += take;
         if (shift == 64) {
