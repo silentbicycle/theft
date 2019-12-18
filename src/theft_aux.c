@@ -1,4 +1,5 @@
 #include "theft.h"
+#include "theft_autoshrink.h"
 #include "theft_types_internal.h"
 
 #include <assert.h>
@@ -141,11 +142,16 @@ theft_print_counterexample(const struct theft_hook_counterexample_info *info,
         info->trial_id, (uint64_t)info->trial_seed);
     for (int i = 0; i < arity; i++) {
         struct theft_type_info *ti = info->type_info[i];
-        if (ti->print) {
             fprintf(t->out, "    Argument %d:\n", i);
+        if(ti->autoshrink_config.enable) {
+            theft_autoshrink_print(t, t->out, t->trial.args[i].u.as.env,
+                                   info->args[i], ti->env);
+        } else if (ti->print) {
             ti->print(t->out, info->args[i], ti->env);
-            fprintf(t->out, "\n");
+        } else {
+            fprintf(t->out, "<not printable>\n");
         }
+        fprintf(t->out, "\n");
     }
     return THEFT_HOOK_COUNTEREXAMPLE_CONTINUE;
 }
