@@ -105,7 +105,7 @@ customized ones are:
 
 All of the callbacks are passed the `void *env` field from their
 `theft_type_info` struct. This pointer is completely opaque to theft,
-but can be cast to an arbitrary struct to pass other test-specifc state
+but can be cast to an arbitrary struct to pass other test-specific state
 to the callbacks. If its contents vary from trial to trial and it
 influences the property test, it should be considered another input and
 hashed accordingly.
